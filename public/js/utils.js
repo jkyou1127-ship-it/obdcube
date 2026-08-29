@@ -46,3 +46,31 @@ const STATUS_LABEL = {
   rejected: "반려됨",
   cancelled: "취소됨"
 };
+
+// ---- 테마(다크/라이트) 전환 ----
+function getStoredTheme() {
+  try { return localStorage.getItem("obdcube-theme"); } catch (e) { return null; }
+}
+
+function setStoredTheme(theme) {
+  try { localStorage.setItem("obdcube-theme", theme); } catch (e) {}
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  const btn = el("theme-toggle");
+  if (btn) btn.textContent = theme === "light" ? "🌙" : "☀️";
+}
+
+function initThemeToggle() {
+  applyTheme(getStoredTheme() === "light" ? "light" : "dark");
+  const btn = el("theme-toggle");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+    setStoredTheme(next);
+    applyTheme(next);
+  });
+}
+
+initThemeToggle();

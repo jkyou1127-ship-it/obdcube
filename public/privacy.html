@@ -14,8 +14,18 @@
   .policy-wrap ul { padding-left: 20px; }
   .back-link { display: inline-block; margin-bottom: 20px; }
 </style>
+<script>
+  (function () {
+    try {
+      if (localStorage.getItem("obdcube-theme") === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    } catch (e) {}
+  })();
+</script>
 </head>
 <body>
+<button id="theme-toggle" class="theme-toggle" type="button" title="테마 변경" aria-label="테마 변경">🌙</button>
 <div class="policy-wrap">
   <a class="back-link btn small" href="index.html">← 돌아가기</a>
   <h1>개인정보처리방침</h1>
@@ -61,5 +71,22 @@
   <h2>8. 고지의 의무</h2>
   <p>본 방침은 법령이나 서비스 내용 변경에 따라 수정될 수 있으며, 변경 시 앱 내 공지를 통해 고지합니다.</p>
 </div>
+<script>
+  (function () {
+    var btn = document.getElementById("theme-toggle");
+    function apply(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      btn.textContent = theme === "light" ? "🌙" : "☀️";
+    }
+    var stored;
+    try { stored = localStorage.getItem("obdcube-theme"); } catch (e) { stored = null; }
+    apply(stored === "light" ? "light" : "dark");
+    btn.addEventListener("click", function () {
+      var next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+      try { localStorage.setItem("obdcube-theme", next); } catch (e) {}
+      apply(next);
+    });
+  })();
+</script>
 </body>
 </html>
