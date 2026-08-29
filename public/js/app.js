@@ -214,7 +214,7 @@ let pendingDeleteAccountPassword = null;
 
 el("btn-delete-account-start").addEventListener("click", () => {
   el("delete-account-password").value = "";
-  el("form-delete-account").classList.remove("hidden");
+  el("delete-account-flow").classList.remove("hidden");
   el("delete-account-final").classList.add("hidden");
   el("delete-account-password").focus();
 });
@@ -240,7 +240,8 @@ el("btn-delete-account-final").addEventListener("click", async () => {
 
 async function renderMyPage() {
   el("mypage-nickname").value = AppState.profile.nickname;
-  el("form-delete-account").classList.add("hidden");
+  el("delete-account-flow").classList.add("hidden");
+  el("form-delete-account").classList.remove("hidden");
   el("delete-account-final").classList.add("hidden");
   pendingDeleteAccountPassword = null;
 
