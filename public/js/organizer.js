@@ -481,7 +481,16 @@ async function renderEventsList(comp, canManage, isEnded) {
           ` : ""}
         </div>
       `).join("");
-      return `<div class="round-group"><strong>${round}라운드</strong>${rows}</div>`;
+      return `
+        <div class="round-group">
+          <strong>${round}라운드</strong>
+          ${canManage ? `
+            <button class="btn small round-bulk-public" data-event="${ev.id}" data-round="${round}" data-value="true">일괄 공개</button>
+            <button class="btn small round-bulk-public" data-event="${ev.id}" data-round="${round}" data-value="false">일괄 비공개</button>
+          ` : ""}
+          ${rows}
+        </div>
+      `;
     }).join("") || "<p class='desc'>등록된 스크램블이 없습니다.</p>";
 
     const participantsHtml = canManage ? await buildParticipantsPanel(comp.id, ev, isEnded, recordsLocked) : "";
@@ -770,6 +779,21 @@ function attachEventBlockHandlers(compId, canManage) {
         await toggleScrambleVisibility(compId, btn.dataset.event, btn.dataset.scramble, btn.dataset.value === "true");
         const comp = await fetchCompetition(compId);
         await renderEventsList(comp, canManage, comp.status === "ended");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+
+  el("events-list").querySelectorAll(".round-bulk-public").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const isPublic = btn.dataset.value === "true";
+      if (!confirm(`이 라운드의 스크램블을 모두 ${isPublic ? "공개" : "비공개"}로 전환할까요?`)) return;
+      try {
+        await setRoundScramblesVisibility(compId, btn.dataset.event, Number(btn.dataset.round), isPublic);
+        const comp = await fetchCompetition(compId);
+        await renderEventsList(comp, canManage, comp.status === "ended");
+        showToast(`라운드를 일괄 ${isPublic ? "공개" : "비공개"} 처리했습니다.`, "success");
       } catch (err) {
         showToast(err.message, "error");
       }

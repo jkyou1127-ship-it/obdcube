@@ -289,6 +289,16 @@ async function toggleScrambleVisibility(compId, eventId, scrambleId, isPublic) {
     .update({ isPublic });
 }
 
+// 특정 라운드의 스크램블을 한 번에 공개/비공개 전환
+async function setRoundScramblesVisibility(compId, eventId, round, isPublic) {
+  const snap = await db.collection("competitions").doc(compId)
+    .collection("events").doc(eventId).collection("scrambles")
+    .where("round", "==", round).get();
+  const batch = db.batch();
+  snap.forEach(doc => batch.update(doc.ref, { isPublic }));
+  await batch.commit();
+}
+
 async function deleteScramble(compId, eventId, scrambleId) {
   await db.collection("competitions").doc(compId)
     .collection("events").doc(eventId).collection("scrambles").doc(scrambleId)
