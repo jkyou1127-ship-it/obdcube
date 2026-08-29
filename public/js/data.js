@@ -201,13 +201,38 @@ async function deleteScramble(compId, eventId, scrambleId) {
 }
 
 async function applyToParticipate(compId, eventId) {
-  return db.collection("competitions").doc(compId)
-    .collection("events").doc(eventId).collection("participants").add({
+  const eventRef = db.collection("competitions").doc(compId).collection("events").doc(eventId);
+  const uid = AppState.user.uid;
+
+  try {
+    // 명단(roster) 문서는 uid를 id로 사용. 이미 존재하는 문서에 대한 set()은
+    // 보안 규칙상 create가 아닌 update로 취급되고 update는 아무도 허용하지
+    // 않으므로, 이미 신청한 경우 여기서 권한 거부로 자연스럽게 막힌다.
+    await eventRef.collection("roster").doc(uid).set({
       nickname: AppState.profile.nickname,
-      uid: AppState.user.uid,
-      rounds: {},
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+  } catch (err) {
+    if (err.code === "permission-denied") {
+      throw new Error("이미 참가 신청하셨습니다.");
+    }
+    throw err;
+  }
+
+  return eventRef.collection("participants").add({
+    nickname: AppState.profile.nickname,
+    uid,
+    rounds: { 1: { times: [], status: "", rank: null } },
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+async function fetchRoster(compId, eventId) {
+  const snap = await db.collection("competitions").doc(compId)
+    .collection("events").doc(eventId).collection("roster").get();
+  const list = [];
+  snap.forEach(doc => list.push({ uid: doc.id, ...doc.data() }));
+  return list;
 }
 
 async function fetchParticipants(compId, eventId) {
@@ -222,7 +247,7 @@ async function addParticipant(compId, eventId, name) {
   return db.collection("competitions").doc(compId)
     .collection("events").doc(eventId).collection("participants").add({
       nickname: name,
-      rounds: {},
+      rounds: { 1: { times: [], status: "", rank: null } },
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 }
@@ -234,9 +259,18 @@ async function updateParticipantRound(compId, eventId, participantId, round, dat
 }
 
 async function deleteParticipant(compId, eventId, participantId) {
-  await db.collection("competitions").doc(compId)
-    .collection("events").doc(eventId).collection("participants").doc(participantId)
-    .delete();
+  const eventRef = db.collection("competitions").doc(compId).collection("events").doc(eventId);
+  const participantRef = eventRef.collection("participants").doc(participantId);
+  const snap = await participantRef.get();
+  const uid = snap.exists ? snap.data().uid : null;
+
+  const batch = db.batch();
+  batch.delete(participantRef);
+  if (uid) {
+    // 참가 신청 시 함께 생성된 공개 명단(roster) 항목도 같이 정리
+    batch.delete(eventRef.collection("roster").doc(uid));
+  }
+  await batch.commit();
 }
 
 async function fetchAdmins() {

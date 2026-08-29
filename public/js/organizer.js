@@ -192,6 +192,13 @@ async function renderEventsList(comp, canManage, isEnded) {
     }).join("") || "<p class='desc'>등록된 스크램블이 없습니다.</p>";
 
     const participantsHtml = canManage ? await buildParticipantsPanel(comp.id, ev) : "";
+    const roster = await fetchRoster(comp.id, ev.id);
+    const rosterHtml = `
+      <div class="roster-block">
+        <strong>참가자 명단 (${roster.length}명)</strong>
+        <p class="desc">${roster.length === 0 ? "아직 참가 신청한 사람이 없습니다." : roster.map(r => escapeHtml(r.nickname)).join(", ")}</p>
+      </div>
+    `;
 
     return `
       <div class="event-block" data-event-id="${ev.id}">
@@ -207,6 +214,7 @@ async function renderEventsList(comp, canManage, isEnded) {
             <button type="submit" class="btn small">추가</button>
           </form>
         ` : ""}
+        ${rosterHtml}
         ${participantsHtml}
       </div>
     `;

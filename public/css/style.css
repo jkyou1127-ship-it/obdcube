@@ -216,6 +216,10 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 }
 .scramble-row .scramble-text { font-family: "Courier New", monospace; flex: 1; min-width: 200px; }
 
+.roster-block { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.roster-block strong { font-size: 13px; }
+.roster-block .desc { margin: 4px 0 0; }
+
 .participants-panel {
   margin-top: 14px;
   padding-top: 14px;

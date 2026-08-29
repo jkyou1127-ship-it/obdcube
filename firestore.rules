@@ -110,6 +110,16 @@ service cloud.firestore {
                           );
           allow update, delete: if isSignedIn() && (isAdmin() || isOrganizer());
         }
+
+        // 참가자 명단 (공개 열람용, 기록/순위는 포함하지 않음) - 문서 id = 본인 uid.
+        // 이미 신청한 사람이 다시 신청하면 문서가 이미 있어 update로 취급되고,
+        // update는 아무도 허용하지 않으므로 중복 신청이 자동으로 막힘.
+        match /roster/{uid} {
+          allow read: if isSignedIn();
+          allow create: if isSignedIn() && request.auth.uid == uid;
+          allow update: if false;
+          allow delete: if isSignedIn() && (isAdmin() || isOrganizer() || request.auth.uid == uid);
+        }
       }
     }
   }
