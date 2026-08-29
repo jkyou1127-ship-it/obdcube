@@ -47,34 +47,24 @@ function isUserOrganizerOf(comp) {
   return Array.isArray(comp.coOrganizerUids) && comp.coOrganizerUids.includes(AppState.user.uid);
 }
 
-// 오늘 날짜(로컬 기준 YYYY-MM-DD). UTC 기준(toISOString)으로 계산하면 한국(UTC+9) 등에서는
-// 자정 이후 몇 시간 동안 날짜가 하루 전으로 계산되어 개최일 당일인데도 "참가신청중"으로
-// 잘못 표시되는 문제가 있어, 반드시 브라우저 로컬 시간대 기준으로 계산해야 한다.
-function todayLocalDateString() {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-// 개최일(startDate, "YYYY-MM-DD") 이전인지 여부 - 이 기간에는 참가 신청만 받고 기록은 입력하지 않음
-function isBeforeStartDate(comp) {
-  if (!comp || !comp.startDate) return false;
-  const today = todayLocalDateString();
-  return today < comp.startDate;
+// 대회가 아직 시작되지 않았는지 여부. 개최일이 지나도 주최자가 "대회 시작" 버튼을
+// 누르기 전까지는 계속 참가신청중 상태이며 기록도 입력할 수 없다.
+// (started 필드가 아예 없는 기존 대회는 이 기능 도입 이전에 만들어진 것이므로
+// 이미 시작된 것으로 취급해 하위 호환을 유지한다 - 오직 명시적으로 false일 때만 미시작)
+function isNotStarted(comp) {
+  return !!comp && comp.started === false;
 }
 
 function getCompetitionStatusInfo(comp) {
   if (comp.status === "ended") return { label: "종료됨", cls: "ended" };
   if (comp.participationClosed === true) return { label: "신청마감", cls: "closed" };
-  if (isBeforeStartDate(comp)) return { label: "참가신청중", cls: "upcoming" };
+  if (isNotStarted(comp)) return { label: "참가신청중", cls: "upcoming" };
   return { label: "진행중", cls: "active" };
 }
 
-// 기록 등록이 잠겨야 하는 상태인지: 대회 종료 후, 또는 개최일 이전
+// 기록 등록이 잠겨야 하는 상태인지: 대회 종료 후, 또는 아직 시작 전
 function isRecordsLocked(comp) {
-  return comp.status === "ended" || isBeforeStartDate(comp);
+  return comp.status === "ended" || isNotStarted(comp);
 }
 
 function parseTimeToSeconds(str) {

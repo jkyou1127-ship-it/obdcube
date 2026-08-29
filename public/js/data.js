@@ -68,6 +68,7 @@ async function approveApplication(app) {
     applicationId: app.id,
     status: "active",
     participationClosed: false,
+    started: false,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   (app.events || []).forEach(eventName => {
@@ -124,6 +125,13 @@ async function removeCoOrganizer(compId, uid) {
 async function fetchCompetition(compId) {
   const doc = await db.collection("competitions").doc(compId).get();
   return doc.exists ? { id: doc.id, ...doc.data() } : null;
+}
+
+async function startCompetition(compId) {
+  await db.collection("competitions").doc(compId).update({
+    started: true,
+    startedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
 }
 
 async function endCompetition(compId) {

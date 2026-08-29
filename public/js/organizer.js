@@ -26,6 +26,7 @@ async function openCompetitionDetail(compId) {
   const canManage = isUserOrganizerOf(comp);
   el("organizer-tools").classList.toggle("hidden", !canManage || isEnded);
   el("organizer-actions").classList.toggle("hidden", !canManage);
+  el("btn-start-competition").classList.toggle("hidden", isEnded || !isNotStarted(comp));
   el("btn-end-competition").classList.toggle("hidden", isEnded);
   el("btn-close-participation").classList.toggle("hidden", isEnded || comp.participationClosed === true);
   el("coorganizer-panel").classList.toggle("hidden", !canManage);
@@ -351,6 +352,18 @@ async function renderParticipatePanel(comp) {
         </label>
       `).join("");
 }
+
+el("btn-start-competition").addEventListener("click", async () => {
+  if (!currentCompId) return;
+  if (!confirm("대회를 시작할까요? 시작 후에는 참가자들이 기록을 입력할 수 있습니다.")) return;
+  try {
+    await startCompetition(currentCompId);
+    showToast("대회를 시작했습니다.", "success");
+    await openCompetitionDetail(currentCompId);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
 
 el("btn-end-competition").addEventListener("click", async () => {
   if (!currentCompId) return;
