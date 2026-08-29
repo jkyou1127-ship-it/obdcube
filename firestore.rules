@@ -139,7 +139,7 @@ service cloud.firestore {
                              isCompActive() &&
                              request.resource.data.roundMeta == resource.data.roundMeta)
                           );
-          allow delete: if isSignedIn() && (isAdmin() || isOrganizer());
+          allow delete: if isSignedIn() && (isAdmin() || isOrganizer() || resource.data.uid == request.auth.uid);
         }
 
         // 참가자 명단 (공개 열람용, 기록/순위는 포함하지 않음) - 문서 id = 본인 uid.

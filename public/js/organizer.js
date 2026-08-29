@@ -115,6 +115,7 @@ async function renderCompetitionRoster(comp) {
 async function renderMyRecordsPanel(comp) {
   const panel = el("my-records-panel");
   const recordsLocked = isRecordsLocked(comp);
+  const isEnded = comp.status === "ended";
   const lockReason = comp.status === "ended" ? "대회가 종료되어" : "개최일 전이라";
   const events = await fetchEvents(comp.id);
   const mine = await Promise.all(events.map(async ev => {
@@ -148,12 +149,14 @@ async function renderMyRecordsPanel(comp) {
           <div class="solves-cell">${solveInputs}</div>
           <span>${resultLabelForFormat(format)}: ${hasAnyEntry ? formatSecondsToTime(average) : "-"}</span>
         </div>
-        ${recordsLocked ? `<span class='desc'>${lockReason} 기록을 등록할 수 없습니다.</span>` : `<button class="btn small my-record-save">저장</button>`}
+        <div class="actions">
+          ${recordsLocked ? `<span class='desc'>${lockReason} 기록을 등록할 수 없습니다.</span>` : `<button class="btn small my-record-save">저장</button>`}
+          ${isEnded ? "" : `<button class="btn small danger my-record-cancel">참가 취소</button>`}
+        </div>
       </div>
     `;
   }).join("");
 
-  if (recordsLocked) return;
   container.querySelectorAll(".my-record-save").forEach(btn => {
     btn.addEventListener("click", async () => {
       const row = btn.closest(".my-record-row");
@@ -162,6 +165,21 @@ async function renderMyRecordsPanel(comp) {
         await updateMyTimes(comp.id, row.dataset.event, row.dataset.participant, row.dataset.round, times);
         showToast("기록을 저장했습니다.", "success");
         await renderMyRecordsPanel(comp);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+  container.querySelectorAll(".my-record-cancel").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const row = btn.closest(".my-record-row");
+      if (!confirm("이 종목 참가를 취소할까요? 입력한 기록도 함께 삭제됩니다.")) return;
+      try {
+        await deleteParticipant(comp.id, row.dataset.event, row.dataset.participant);
+        showToast("참가를 취소했습니다.", "success");
+        await renderMyRecordsPanel(comp);
+        await renderCompetitionRoster(comp).catch(() => {});
+        await renderParticipatePanel(comp).catch(() => {});
       } catch (err) {
         showToast(err.message, "error");
       }
