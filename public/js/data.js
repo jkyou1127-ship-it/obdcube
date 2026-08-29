@@ -148,6 +148,16 @@ async function closeParticipation(compId) {
   });
 }
 
+// 종목·스크램블 추가와 참가 신청만 막는다. 대회 종료(endCompetition)와 달리
+// 기록 등록/수정은 계속 가능하다.
+async function closeEventAdditions(compId) {
+  await db.collection("competitions").doc(compId).update({
+    eventsClosed: true,
+    participationClosed: true,
+    eventsClosedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
 async function deleteCompetition(compId) {
   // 대회와 연결된 주최 신청 기록(같은 id)도 함께 삭제해
   // 마이페이지/관리자 패널에 남아있지 않도록 한다.

@@ -24,13 +24,15 @@ async function openCompetitionDetail(compId) {
   statusEl.className = "badge " + statusInfo.cls;
 
   const canManage = isUserOrganizerOf(comp);
-  el("organizer-tools").classList.toggle("hidden", !canManage || isEnded);
+  const eventsClosed = isEnded || comp.eventsClosed === true;
+  el("organizer-tools").classList.toggle("hidden", !canManage || eventsClosed);
   el("organizer-actions").classList.toggle("hidden", !canManage);
   el("btn-start-competition").classList.toggle("hidden", isEnded || !isNotStarted(comp));
-  el("btn-end-competition").classList.toggle("hidden", isEnded);
   el("btn-close-participation").classList.toggle("hidden", isEnded || comp.participationClosed === true);
+  el("btn-close-events").classList.toggle("hidden", eventsClosed);
+  el("btn-end-competition").classList.toggle("hidden", isEnded);
   el("coorganizer-panel").classList.toggle("hidden", !canManage);
-  el("event-request-panel").classList.toggle("hidden", isEnded);
+  el("event-request-panel").classList.toggle("hidden", eventsClosed);
 
   // 화면 전환은 기본 정보가 세팅된 시점에 바로 실행 - 아래 각 패널 렌더링 중
   // 하나가 실패해도(예: 권한 오류) 상세 화면 자체는 항상 열리도록 한다.
@@ -367,7 +369,7 @@ el("btn-start-competition").addEventListener("click", async () => {
 
 el("btn-end-competition").addEventListener("click", async () => {
   if (!currentCompId) return;
-  if (!confirm("이 대회를 종료할까요? 종료 후에는 종목·스크램블 추가 및 참가 신청을 받을 수 없습니다.")) return;
+  if (!confirm("이 대회를 완전히 종료할까요? 종료 후에는 종목·스크램블 추가, 참가 신청, 기록 등록/수정을 모두 할 수 없습니다.")) return;
   try {
     await endCompetition(currentCompId);
     showToast("대회를 종료했습니다.", "success");
@@ -383,6 +385,18 @@ el("btn-close-participation").addEventListener("click", async () => {
   try {
     await closeParticipation(currentCompId);
     showToast("참가 신청을 마감했습니다.", "success");
+    await openCompetitionDetail(currentCompId);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+el("btn-close-events").addEventListener("click", async () => {
+  if (!currentCompId) return;
+  if (!confirm("종목·스크램블 추가와 참가 신청을 마감할까요? 기록 등록/수정은 계속 가능합니다.")) return;
+  try {
+    await closeEventAdditions(currentCompId);
+    showToast("종목추가를 마감했습니다.", "success");
     await openCompetitionDetail(currentCompId);
   } catch (err) {
     showToast(err.message, "error");
@@ -423,7 +437,7 @@ el("form-participate").addEventListener("submit", async (e) => {
 async function renderEventsList(comp, canManage, isEnded) {
   const container = el("events-list");
   container.innerHTML = "<p class='desc'>불러오는 중...</p>";
-  const canAddMore = canManage && !isEnded;
+  const canAddMore = canManage && !isEnded && comp.eventsClosed !== true;
   const recordsLocked = isRecordsLocked(comp);
 
   const events = await fetchEvents(comp.id);
