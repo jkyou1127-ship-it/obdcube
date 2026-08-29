@@ -47,12 +47,26 @@ function isUserOrganizerOf(comp) {
   return Array.isArray(comp.coOrganizerUids) && comp.coOrganizerUids.includes(AppState.user.uid);
 }
 
+// 오늘 날짜(로컬 기준 YYYY-MM-DD). UTC 기준(toISOString)으로 계산하면 한국(UTC+9) 등에서는
+// 자정 이후 몇 시간 동안 날짜가 하루 전으로 계산되는 문제가 있어 로컬 시간대로 계산한다.
+function todayLocalDateString() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 // 대회가 아직 시작되지 않았는지 여부. 개최일이 지나도 주최자가 "대회 시작" 버튼을
 // 누르기 전까지는 계속 참가신청중 상태이며 기록도 입력할 수 없다.
-// (started 필드가 아예 없는 기존 대회는 이 기능 도입 이전에 만들어진 것이므로
-// 이미 시작된 것으로 취급해 하위 호환을 유지한다 - 오직 명시적으로 false일 때만 미시작)
+// started 필드를 명시적으로 지정한 경우(이 기능 도입 이후 생성된 대회)는 그 값을 그대로 따르고,
+// 필드가 아예 없는 기존 대회는 예전처럼 개최일 기준으로 판단한다(하위 호환).
 function isNotStarted(comp) {
-  return !!comp && comp.started === false;
+  if (!comp) return false;
+  if (comp.started === true) return false;
+  if (comp.started === false) return true;
+  if (!comp.startDate) return false;
+  return todayLocalDateString() < comp.startDate;
 }
 
 function getCompetitionStatusInfo(comp) {
