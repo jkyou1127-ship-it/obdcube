@@ -69,6 +69,7 @@ async function approveApplication(app) {
     const eventRef = compRef.collection("events").doc();
     batch.set(eventRef, {
       name: eventName,
+      format: "ao5",
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   });
@@ -134,9 +135,10 @@ async function fetchEvents(compId) {
   return list;
 }
 
-async function addEvent(compId, name) {
+async function addEvent(compId, name, format) {
   return db.collection("competitions").doc(compId).collection("events").add({
     name,
+    format: format === "mo3" ? "mo3" : "ao5",
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 }

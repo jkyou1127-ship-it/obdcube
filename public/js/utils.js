@@ -46,6 +46,29 @@ function parseTimeToSeconds(str) {
   return isNaN(v) ? Infinity : v;
 }
 
+function formatSecondsToTime(seconds) {
+  if (seconds == null || seconds === Infinity || isNaN(seconds)) return "DNF";
+  if (seconds >= 60) {
+    const m = Math.floor(seconds / 60);
+    const s = (seconds % 60).toFixed(2).padStart(5, "0");
+    return `${m}:${s}`;
+  }
+  return seconds.toFixed(2);
+}
+
+// format: "ao5" (5회 중 최고/최저 제외 평균) 또는 "mo3" (3회 단순 평균)
+function computeAverage(times, format) {
+  const parsed = (times || []).map(t => parseTimeToSeconds(t));
+  if (format === "mo3") {
+    if (parsed.some(v => v === Infinity)) return Infinity;
+    return parsed.reduce((a, b) => a + b, 0) / parsed.length;
+  }
+  const sorted = [...parsed].sort((a, b) => a - b);
+  const trimmed = sorted.slice(1, sorted.length - 1);
+  if (trimmed.length === 0 || trimmed.some(v => v === Infinity)) return Infinity;
+  return trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
+}
+
 const STATUS_LABEL = {
   pending: "승인 대기",
   approved: "승인됨",
