@@ -125,7 +125,9 @@ async function renderMyRecordsPanel(comp) {
   const events = await fetchEvents(comp.id);
   const mine = await Promise.all(events.map(async ev => {
     const p = await fetchMyParticipant(comp.id, ev.id);
-    return p ? { ev, p } : null;
+    if (!p) return null;
+    const scrambles = await fetchScrambles(comp.id, ev.id, true);
+    return { ev, p, scrambles };
   }));
   const registered = mine.filter(Boolean);
 
@@ -136,7 +138,7 @@ async function renderMyRecordsPanel(comp) {
   panel.classList.remove("hidden");
 
   const container = el("my-records-list");
-  container.innerHTML = registered.map(({ ev, p }) => {
+  container.innerHTML = registered.map(({ ev, p, scrambles }) => {
     const format = normalizeFormat(ev.format);
     const solveCount = solveCountForFormat(format);
     const round = 1;
@@ -147,10 +149,17 @@ async function renderMyRecordsPanel(comp) {
     const solveInputs = times.map((t, i) => `
       <input type="text" class="my-record-solve" value="${escapeHtml(t)}" placeholder="${i + 1}회" ${recordsLocked ? "disabled" : ""} />
     `).join("");
+    const roundScrambles = scrambles.filter(s => s.round === round).sort((a, b) => a.index - b.index);
+    const scrambleHtml = roundScrambles.length > 0
+      ? `<div class="my-record-scrambles">${roundScrambles.map(s => `
+          <div class="scramble-row"><span>#${s.index}</span><span class="scramble-text">${escapeHtml(s.scramble)}</span></div>
+        `).join("")}</div>`
+      : `<p class="desc">아직 공개된 스크램블이 없습니다.</p>`;
     return `
       <div class="item-card my-record-row" data-event="${ev.id}" data-participant="${p.id}" data-round="${round}">
         <div class="info">
           <strong>${escapeHtml(ev.name)} (${formatLabel(format)}, 1라운드)</strong>
+          ${scrambleHtml}
           <div class="solves-cell">${solveInputs}</div>
           <span>${resultLabelForFormat(format)}: ${hasAnyEntry ? formatSecondsToTime(average) : "-"}</span>
         </div>
