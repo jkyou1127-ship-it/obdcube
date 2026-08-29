@@ -209,9 +209,10 @@
       <div class="panel">
         <h3>회원 탈퇴</h3>
         <p class="desc">계정을 삭제하면 되돌릴 수 없습니다. 단, 주최 중인 대회·참가 신청·기록은 자동으로 삭제되지 않으니 필요하면 먼저 정리해주세요.</p>
-        <form id="form-delete-account" class="inline-form">
+        <button type="button" class="btn small danger" id="btn-delete-account-start">회원 탈퇴</button>
+        <form id="form-delete-account" class="inline-form hidden">
           <input type="password" id="delete-account-password" placeholder="비밀번호 확인" required autocomplete="current-password" />
-          <button type="submit" class="btn small danger">회원 탈퇴</button>
+          <button type="submit" class="btn small danger">탈퇴 확인</button>
         </form>
       </div>
     </section>

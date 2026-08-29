@@ -207,9 +207,16 @@ el("form-nickname").addEventListener("submit", async (e) => {
   }
 });
 
+el("btn-delete-account-start").addEventListener("click", () => {
+  if (!confirm("정말 회원 탈퇴하시겠습니까? 되돌릴 수 없습니다.")) return;
+  el("delete-account-password").value = "";
+  el("form-delete-account").classList.remove("hidden");
+  el("delete-account-password").focus();
+});
+
 el("form-delete-account").addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!confirm("정말 회원 탈퇴하시겠습니까? 되돌릴 수 없습니다.")) return;
+  if (!confirm("마지막 확인입니다. 정말로 탈퇴하시겠습니까?")) return;
   const password = el("delete-account-password").value;
   try {
     await deleteMyAccount(password);
@@ -221,6 +228,7 @@ el("form-delete-account").addEventListener("submit", async (e) => {
 
 async function renderMyPage() {
   el("mypage-nickname").value = AppState.profile.nickname;
+  el("form-delete-account").classList.add("hidden");
 
   const ONE_HOUR_MS = 60 * 60 * 1000;
   const now = Date.now();
