@@ -80,9 +80,32 @@ function formatSecondsToTime(seconds) {
   return seconds.toFixed(2);
 }
 
-// format: "ao5" (5회 중 최고/최저 제외 평균) 또는 "mo3" (3회 단순 평균)
+// 종목 기록 형식: "ao5"(5회 중 최고/최저 제외 평균), "mo3"(3회 단순 평균), "single"(1회 단일 기록)
+function normalizeFormat(format) {
+  return ["ao5", "mo3", "single"].includes(format) ? format : "ao5";
+}
+
+function solveCountForFormat(format) {
+  if (format === "mo3") return 3;
+  if (format === "single") return 1;
+  return 5;
+}
+
+function formatLabel(format) {
+  if (format === "mo3") return "Mo3";
+  if (format === "single") return "단일";
+  return "Ao5";
+}
+
+function resultLabelForFormat(format) {
+  return format === "single" ? "기록" : "평균";
+}
+
 function computeAverage(times, format) {
   const parsed = (times || []).map(t => parseTimeToSeconds(t));
+  if (format === "single") {
+    return parsed[0] != null ? parsed[0] : Infinity;
+  }
   if (format === "mo3") {
     if (parsed.some(v => v === Infinity)) return Infinity;
     return parsed.reduce((a, b) => a + b, 0) / parsed.length;

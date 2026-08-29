@@ -159,13 +159,18 @@ async function fetchEvents(compId) {
 async function addEvent(compId, name, format) {
   return db.collection("competitions").doc(compId).collection("events").add({
     name,
-    format: format === "mo3" ? "mo3" : "ao5",
+    format: normalizeFormat(format),
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 }
 
 async function deleteEvent(compId, eventId) {
   await db.collection("competitions").doc(compId).collection("events").doc(eventId).delete();
+}
+
+async function updateEventFormat(compId, eventId, format) {
+  await db.collection("competitions").doc(compId).collection("events").doc(eventId)
+    .update({ format: normalizeFormat(format) });
 }
 
 // 종목 추가 신청: 참가자 등 누구나 이 대회에 새 종목을 추가해달라고 요청 가능,
@@ -175,7 +180,7 @@ async function requestNewEvent(compId, name, format) {
     requesterUid: AppState.user.uid,
     requesterNickname: AppState.profile.nickname,
     name,
-    format: format === "mo3" ? "mo3" : "ao5",
+    format: normalizeFormat(format),
     status: "pending",
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
@@ -196,7 +201,7 @@ async function approveEventRequest(compId, req) {
   const eventRef = db.collection("competitions").doc(compId).collection("events").doc();
   batch.set(eventRef, {
     name: req.name,
-    format: req.format === "mo3" ? "mo3" : "ao5",
+    format: normalizeFormat(req.format),
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   await batch.commit();

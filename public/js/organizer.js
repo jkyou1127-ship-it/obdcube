@@ -131,8 +131,8 @@ async function renderMyRecordsPanel(comp) {
 
   const container = el("my-records-list");
   container.innerHTML = registered.map(({ ev, p }) => {
-    const format = ev.format === "mo3" ? "mo3" : "ao5";
-    const solveCount = format === "mo3" ? 3 : 5;
+    const format = normalizeFormat(ev.format);
+    const solveCount = solveCountForFormat(format);
     const round = 1;
     const roundTimes = (p.roundTimes && p.roundTimes[round]) || [];
     const times = Array.isArray(roundTimes) && roundTimes.length === solveCount ? roundTimes : new Array(solveCount).fill("");
@@ -144,9 +144,9 @@ async function renderMyRecordsPanel(comp) {
     return `
       <div class="item-card my-record-row" data-event="${ev.id}" data-participant="${p.id}" data-round="${round}">
         <div class="info">
-          <strong>${escapeHtml(ev.name)} (${format.toUpperCase()}, 1라운드)</strong>
+          <strong>${escapeHtml(ev.name)} (${formatLabel(format)}, 1라운드)</strong>
           <div class="solves-cell">${solveInputs}</div>
-          <span>평균: ${hasAnyEntry ? formatSecondsToTime(average) : "-"}</span>
+          <span>${resultLabelForFormat(format)}: ${hasAnyEntry ? formatSecondsToTime(average) : "-"}</span>
         </div>
         ${recordsLocked ? `<span class='desc'>${lockReason} 기록을 등록할 수 없습니다.</span>` : `<button class="btn small my-record-save">저장</button>`}
       </div>
@@ -222,10 +222,10 @@ async function renderEventRequestPanel(comp) {
   const requests = (await fetchEventRequests(comp.id)).filter(r => r.requesterUid === AppState.user.uid);
   container.innerHTML = requests.map(r => `
     <div class="item-card">
-      <div class="info"><strong>${escapeHtml(r.name)}</strong><span>${r.format === "mo3" ? "Mo3" : "Ao5"}</span></div>
+      <div class="info"><strong>${escapeHtml(r.name)}</strong><span>${formatLabel(r.format)}</span></div>
       <div class="actions">
         <span class="badge ${r.status}">${STATUS_LABEL[r.status] || r.status}</span>
-        ${r.status === "pending" ? `<button class="btn small danger btn-cancel-event-request" data-id="${r.id}">취소</button>` : ""}
+        <button class="btn small danger btn-cancel-event-request" data-id="${r.id}">${r.status === "pending" ? "취소" : "삭제"}</button>
       </div>
     </div>
   `).join("");
@@ -251,7 +251,7 @@ async function renderEventRequestsPending(comp) {
   }
   container.innerHTML = requests.map(r => `
     <div class="item-card">
-      <div class="info"><strong>${escapeHtml(r.name)}</strong><span>${r.format === "mo3" ? "Mo3" : "Ao5"} · 신청자: ${escapeHtml(r.requesterNickname)}</span></div>
+      <div class="info"><strong>${escapeHtml(r.name)}</strong><span>${formatLabel(r.format)} · 신청자: ${escapeHtml(r.requesterNickname)}</span></div>
       <div class="actions">
         <button class="btn small success btn-approve-event-request" data-id="${r.id}">승인</button>
         <button class="btn small danger btn-reject-event-request" data-id="${r.id}">반려</button>
@@ -431,7 +431,14 @@ async function renderEventsList(comp, canManage, isEnded) {
     return `
       <div class="event-block" data-event-id="${ev.id}">
         <h4>${escapeHtml(ev.name)}
-          ${canManage ? `<button class="btn small danger del-event" data-event="${ev.id}">종목 삭제</button>` : ""}
+          ${canManage ? `
+            <select class="event-format-select" data-event="${ev.id}" style="width:auto">
+              <option value="ao5" ${normalizeFormat(ev.format) === "ao5" ? "selected" : ""}>Ao5 (5회 평균)</option>
+              <option value="mo3" ${normalizeFormat(ev.format) === "mo3" ? "selected" : ""}>Mo3 (3회 평균)</option>
+              <option value="single" ${normalizeFormat(ev.format) === "single" ? "selected" : ""}>단일 (1회)</option>
+            </select>
+            <button class="btn small danger del-event" data-event="${ev.id}">종목 삭제</button>
+          ` : `<span class="badge active">${formatLabel(normalizeFormat(ev.format))}</span>`}
         </h4>
         ${roundsHtml}
         ${canAddMore ? `
@@ -456,8 +463,9 @@ async function renderEventsList(comp, canManage, isEnded) {
 
 async function buildParticipantsPanel(compId, ev, isEnded, recordsLocked) {
   const eventId = ev.id;
-  const format = ev.format === "mo3" ? "mo3" : "ao5";
-  const solveCount = format === "mo3" ? 3 : 5;
+  const format = normalizeFormat(ev.format);
+  const solveCount = solveCountForFormat(format);
+  const resultLabel = resultLabelForFormat(format);
   const round = participantRoundByEvent[eventId] || 1;
   let participants = await fetchParticipants(compId, eventId);
 
@@ -486,7 +494,7 @@ async function buildParticipantsPanel(compId, ev, isEnded, recordsLocked) {
       : `<input type="text" class="participant-solve-input" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}" value="${escapeHtml(t)}" placeholder="${i + 1}회" />`
     ).join("");
     const hasAnyEntry = r.times.some(t => t.trim() !== "");
-    const averageLabel = hasAnyEntry ? formatSecondsToTime(r.average) : "-";
+    const resultValueLabel = hasAnyEntry ? formatSecondsToTime(r.average) : "-";
     const rankCell = recordsLocked
       ? (r.average === Infinity ? "-" : idx + 1)
       : `<input type="number" class="participant-rank-input" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}" value="${r.rank != null ? r.rank : ""}" placeholder="${r.average === Infinity ? "-" : idx + 1}" style="max-width:60px" />`;
@@ -501,7 +509,7 @@ async function buildParticipantsPanel(compId, ev, isEnded, recordsLocked) {
       <td>${rankCell}</td>
       <td>${escapeHtml(r.p.nickname)}</td>
       <td class="solves-cell">${solveInputs}</td>
-      <td>${averageLabel}</td>
+      <td>${resultValueLabel}</td>
       <td>${statusCell}</td>
       <td><button class="btn small danger btn-del-participant" data-event="${eventId}" data-participant="${r.p.id}">삭제</button></td>
     </tr>
@@ -512,7 +520,7 @@ async function buildParticipantsPanel(compId, ev, isEnded, recordsLocked) {
 
   return `
     <div class="participants-panel">
-      <h5>참가자 · 순위 · 기록 관리 (${format.toUpperCase()}, ${solveCount}회)${lockReason}</h5>
+      <h5>참가자 · 순위 · 기록 관리 (${formatLabel(format)}, ${solveCount}회)${lockReason}</h5>
       <div class="inline-form">
         <label style="margin:0">라운드</label>
         <input type="number" min="1" class="participant-round-input" data-event="${eventId}" value="${round}" style="max-width:80px" />
@@ -525,7 +533,7 @@ async function buildParticipantsPanel(compId, ev, isEnded, recordsLocked) {
       `}
       <div class="table-scroll">
         <table class="participants-table">
-          <thead><tr><th>순위</th><th>이름</th><th>기록 (${solveCount}회)</th><th>평균</th><th>진출/탈락</th><th></th></tr></thead>
+          <thead><tr><th>순위</th><th>이름</th><th>기록 (${solveCount}회)</th><th>${resultLabel}</th><th>진출/탈락</th><th></th></tr></thead>
           <tbody>${rowsHtml || `<tr><td colspan="6" class="desc">등록된 참가자가 없습니다.</td></tr>`}</tbody>
         </table>
       </div>
@@ -639,6 +647,19 @@ function attachParticipantHandlers(compId) {
 function attachEventBlockHandlers(compId, canManage) {
   if (!canManage) return;
 
+  el("events-list").querySelectorAll(".event-format-select").forEach(sel => {
+    sel.addEventListener("change", async () => {
+      try {
+        await updateEventFormat(compId, sel.dataset.event, sel.value);
+        const comp = await fetchCompetition(compId);
+        await renderEventsList(comp, canManage, comp.status === "ended");
+        showToast("종목 형식을 변경했습니다.", "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+
   el("events-list").querySelectorAll(".gen-scramble").forEach(btn => {
     btn.addEventListener("click", () => {
       const form = btn.closest(".add-scramble-form");
@@ -711,9 +732,7 @@ function initOrganizerToolsForm() {
   const custom = el("event-custom-name");
   const format = el("event-format");
   preset.addEventListener("change", () => {
-    const isCustom = preset.value === "custom";
-    custom.classList.toggle("hidden", !isCustom);
-    format.classList.toggle("hidden", !isCustom);
+    custom.classList.toggle("hidden", preset.value !== "custom");
   });
 
   el("form-add-event").addEventListener("submit", async (e) => {
@@ -722,7 +741,7 @@ function initOrganizerToolsForm() {
     const name = isCustom ? custom.value.trim() : preset.value;
     if (!name) { showToast("종목명을 입력해주세요.", "error"); return; }
     try {
-      await addEvent(currentCompId, name, isCustom ? format.value : "ao5");
+      await addEvent(currentCompId, name, format.value);
       custom.value = "";
       const comp = await fetchCompetition(currentCompId);
       await renderEventsList(comp, isUserOrganizerOf(comp), comp.status === "ended");
