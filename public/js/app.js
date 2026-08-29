@@ -207,6 +207,18 @@ el("form-nickname").addEventListener("submit", async (e) => {
   }
 });
 
+el("form-delete-account").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!confirm("정말 회원 탈퇴하시겠습니까? 되돌릴 수 없습니다.")) return;
+  const password = el("delete-account-password").value;
+  try {
+    await deleteMyAccount(password);
+    showToast("회원 탈퇴가 완료되었습니다.", "success");
+  } catch (err) {
+    showToast(translateAuthError(err), "error");
+  }
+});
+
 async function renderMyPage() {
   el("mypage-nickname").value = AppState.profile.nickname;
 

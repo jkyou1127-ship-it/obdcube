@@ -93,3 +93,22 @@ async function updateNickname(newNickname) {
   AppState.profile.nickname = newNickname;
   await AppState.user.updateProfile({ displayName: newNickname }).catch(() => {});
 }
+
+// 회원 탈퇴: 주최 중인 대회·참가 기록 등은 자동으로 정리하지 않고
+// 계정 자체(로그인 정보·프로필·닉네임 예약)만 삭제한다.
+// Firebase는 오래 전에 로그인한 계정의 삭제를 거부하므로 재인증을 먼저 진행한다.
+async function deleteMyAccount(password) {
+  const user = auth.currentUser;
+  const nickname = AppState.profile ? AppState.profile.nickname : null;
+
+  const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+  await user.reauthenticateWithCredential(credential);
+
+  const batch = db.batch();
+  batch.delete(db.collection("users").doc(user.uid));
+  if (nickname) batch.delete(db.collection("nicknames").doc(nickname));
+  await batch.commit();
+  await db.collection("admins").doc(user.uid).delete().catch(() => {});
+
+  await user.delete();
+}

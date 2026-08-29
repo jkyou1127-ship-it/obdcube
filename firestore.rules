@@ -25,7 +25,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.auth.uid == uid;
       allow update: if isSignedIn() && request.auth.uid == uid;
-      allow delete: if false;
+      allow delete: if isSignedIn() && request.auth.uid == uid;
     }
 
     // 닉네임 중복 확인용 색인 문서 (nicknames/{nickname} = { uid })
