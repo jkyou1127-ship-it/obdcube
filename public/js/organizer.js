@@ -21,17 +21,64 @@ async function openCompetitionDetail(compId) {
   statusEl.textContent = isEnded ? "종료됨" : "진행중";
   statusEl.className = "badge " + (isEnded ? "ended" : "active");
 
-  const isOrganizer = AppState.user && comp.organizerUid === AppState.user.uid;
-  const canManage = isOrganizer || AppState.isAdmin;
+  const canManage = isUserOrganizerOf(comp) || AppState.isAdmin;
   el("organizer-tools").classList.toggle("hidden", !canManage || isEnded);
   el("organizer-actions").classList.toggle("hidden", !canManage);
   el("btn-end-competition").classList.toggle("hidden", isEnded);
   el("btn-close-participation").classList.toggle("hidden", isEnded || comp.participationClosed === true);
+  el("coorganizer-panel").classList.toggle("hidden", !canManage);
 
   await renderEventsList(comp, canManage, isEnded);
   await renderParticipatePanel(comp);
+  if (canManage) await renderCoOrganizers(comp);
   switchView("detail");
 }
+
+async function renderCoOrganizers(comp) {
+  const container = el("coorganizers-list");
+  const uids = comp.coOrganizerUids || [];
+  if (uids.length === 0) {
+    container.innerHTML = "<p class='desc'>공동 주최자가 없습니다.</p>";
+    return;
+  }
+  const profiles = await Promise.all(uids.map(uid => fetchUserProfile(uid)));
+  container.innerHTML = profiles.map((p, i) => `
+    <div class="item-card">
+      <div class="info"><strong>${escapeHtml(p ? p.nickname : uids[i])}</strong></div>
+      <button class="btn small danger btn-remove-coorganizer" data-uid="${uids[i]}">제거</button>
+    </div>
+  `).join("");
+  container.querySelectorAll(".btn-remove-coorganizer").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("이 공동 주최자를 제거할까요?")) return;
+      try {
+        await removeCoOrganizer(currentCompId, btn.dataset.uid);
+        showToast("공동 주최자를 제거했습니다.", "success");
+        await openCompetitionDetail(currentCompId);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+}
+
+el("form-add-coorganizer").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentCompId) return;
+  const nicknameInput = el("coorganizer-nickname");
+  const nickname = nicknameInput.value.trim();
+  if (!nickname) return;
+  try {
+    const user = await findUserByNickname(nickname);
+    if (!user) { showToast("해당 닉네임의 사용자를 찾을 수 없습니다.", "error"); return; }
+    await addCoOrganizer(currentCompId, user.uid);
+    nicknameInput.value = "";
+    showToast(`${nickname}님을 공동 주최자로 추가했습니다.`, "success");
+    await openCompetitionDetail(currentCompId);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
 
 async function renderParticipatePanel(comp) {
   const panel = el("participate-panel");
@@ -431,8 +478,7 @@ function initOrganizerToolsForm() {
       await addEvent(currentCompId, name, isCustom ? format.value : "ao5");
       custom.value = "";
       const comp = await fetchCompetition(currentCompId);
-      const isOrganizer = AppState.user && comp.organizerUid === AppState.user.uid;
-      await renderEventsList(comp, isOrganizer || AppState.isAdmin, comp.status === "ended");
+      await renderEventsList(comp, isUserOrganizerOf(comp) || AppState.isAdmin, comp.status === "ended");
       showToast("종목을 추가했습니다.", "success");
     } catch (err) {
       showToast(err.message, "error");

@@ -71,12 +71,18 @@ service cloud.firestore {
     match /competitions/{compId} {
       allow read: if isSignedIn();
       allow create: if isAdmin();
-      allow update: if isSignedIn() && (isAdmin() || resource.data.organizerUid == request.auth.uid);
-      allow delete: if isSignedIn() && (isAdmin() || resource.data.organizerUid == request.auth.uid);
+      allow update: if isSignedIn() && (isAdmin() || isCompOrganizer(resource.data));
+      allow delete: if isSignedIn() && (isAdmin() || isCompOrganizer(resource.data));
+
+      // 대회 데이터(data)를 받아 주최자 본인 또는 공동 주최자인지 확인
+      function isCompOrganizer(compData) {
+        return isSignedIn() &&
+          (compData.organizerUid == request.auth.uid ||
+           (compData.coOrganizerUids != null && request.auth.uid in compData.coOrganizerUids));
+      }
 
       function isOrganizer() {
-        return isSignedIn() &&
-          get(/databases/$(database)/documents/competitions/$(compId)).data.organizerUid == request.auth.uid;
+        return isCompOrganizer(get(/databases/$(database)/documents/competitions/$(compId)).data);
       }
 
       // 종목 (Events)

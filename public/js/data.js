@@ -64,6 +64,7 @@ async function approveApplication(app) {
     endDate: app.proposedEndDate || app.proposedDate,
     organizerUid: app.applicantUid,
     organizerNickname: app.applicantNickname,
+    coOrganizerUids: [],
     applicationId: app.id,
     status: "active",
     participationClosed: false,
@@ -98,10 +99,26 @@ async function fetchCompetitions() {
 }
 
 async function fetchMyCompetitions() {
-  const snap = await db.collection("competitions").where("organizerUid", "==", AppState.user.uid).get();
-  const list = [];
-  snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-  return list;
+  const [ownSnap, coSnap] = await Promise.all([
+    db.collection("competitions").where("organizerUid", "==", AppState.user.uid).get(),
+    db.collection("competitions").where("coOrganizerUids", "array-contains", AppState.user.uid).get()
+  ]);
+  const map = new Map();
+  ownSnap.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() }));
+  coSnap.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() }));
+  return Array.from(map.values());
+}
+
+async function addCoOrganizer(compId, uid) {
+  await db.collection("competitions").doc(compId).update({
+    coOrganizerUids: firebase.firestore.FieldValue.arrayUnion(uid)
+  });
+}
+
+async function removeCoOrganizer(compId, uid) {
+  await db.collection("competitions").doc(compId).update({
+    coOrganizerUids: firebase.firestore.FieldValue.arrayRemove(uid)
+  });
 }
 
 async function fetchCompetition(compId) {
@@ -227,6 +244,11 @@ async function fetchAdmins() {
   const list = [];
   snap.forEach(doc => list.push({ uid: doc.id, ...doc.data() }));
   return list;
+}
+
+async function fetchUserProfile(uid) {
+  const doc = await db.collection("users").doc(uid).get();
+  return doc.exists ? { uid, ...doc.data() } : null;
 }
 
 async function findUserByNickname(nickname) {

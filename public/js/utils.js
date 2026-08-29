@@ -31,6 +31,12 @@ function formatDateRange(start, end) {
   return `${start} ~ ${end}`;
 }
 
+function isUserOrganizerOf(comp) {
+  if (!AppState.user || !comp) return false;
+  if (comp.organizerUid === AppState.user.uid) return true;
+  return Array.isArray(comp.coOrganizerUids) && comp.coOrganizerUids.includes(AppState.user.uid);
+}
+
 function parseTimeToSeconds(str) {
   if (!str) return Infinity;
   const s = String(str).trim().toUpperCase();

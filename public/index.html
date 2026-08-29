@@ -133,6 +133,15 @@
         <button type="button" class="btn small danger" id="btn-delete-competition">대회 삭제</button>
       </div>
 
+      <div id="coorganizer-panel" class="panel hidden">
+        <h3>공동 주최자 관리</h3>
+        <form id="form-add-coorganizer" class="inline-form">
+          <input type="text" id="coorganizer-nickname" placeholder="닉네임으로 검색" required />
+          <button type="submit" class="btn small">공동 주최자 추가</button>
+        </form>
+        <div id="coorganizers-list" class="card-list"></div>
+      </div>
+
       <div id="participate-panel" class="panel hidden">
         <h3>참가 신청</h3>
         <p class="desc">참가할 종목을 선택하고 신청하세요.</p>
