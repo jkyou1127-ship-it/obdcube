@@ -21,7 +21,7 @@ async function openCompetitionDetail(compId) {
   statusEl.textContent = isEnded ? "종료됨" : "진행중";
   statusEl.className = "badge " + (isEnded ? "ended" : "active");
 
-  const canManage = isUserOrganizerOf(comp) || AppState.isAdmin;
+  const canManage = isUserOrganizerOf(comp);
   el("organizer-tools").classList.toggle("hidden", !canManage || isEnded);
   el("organizer-actions").classList.toggle("hidden", !canManage);
   el("btn-end-competition").classList.toggle("hidden", isEnded);
@@ -478,7 +478,7 @@ function initOrganizerToolsForm() {
       await addEvent(currentCompId, name, isCustom ? format.value : "ao5");
       custom.value = "";
       const comp = await fetchCompetition(currentCompId);
-      await renderEventsList(comp, isUserOrganizerOf(comp) || AppState.isAdmin, comp.status === "ended");
+      await renderEventsList(comp, isUserOrganizerOf(comp), comp.status === "ended");
       showToast("종목을 추가했습니다.", "success");
     } catch (err) {
       showToast(err.message, "error");
