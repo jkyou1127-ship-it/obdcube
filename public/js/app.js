@@ -12,11 +12,13 @@ function switchView(name) {
 function showAuthScreen() {
   el("view-auth").classList.remove("hidden");
   el("view-app").classList.add("hidden");
+  el("theme-toggle").classList.remove("hidden");
 }
 
 function showAppScreen() {
   el("view-auth").classList.add("hidden");
   el("view-app").classList.remove("hidden");
+  el("theme-toggle").classList.add("hidden");
 }
 
 // ---- 로그인/회원가입 탭 ----

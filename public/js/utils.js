@@ -58,18 +58,23 @@ function setStoredTheme(theme) {
 
 function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
-  const btn = el("theme-toggle");
-  if (btn) btn.textContent = theme === "light" ? "🌙" : "☀️";
+  const icon = theme === "light" ? "🌙" : "☀️";
+  ["theme-toggle", "theme-toggle-app"].forEach(id => {
+    const btn = el(id);
+    if (btn) btn.textContent = icon;
+  });
 }
 
 function initThemeToggle() {
   applyTheme(getStoredTheme() === "light" ? "light" : "dark");
-  const btn = el("theme-toggle");
-  if (!btn) return;
-  btn.addEventListener("click", () => {
+  const toggle = () => {
     const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
     setStoredTheme(next);
     applyTheme(next);
+  };
+  ["theme-toggle", "theme-toggle-app"].forEach(id => {
+    const btn = el(id);
+    if (btn) btn.addEventListener("click", toggle);
   });
 }
 
