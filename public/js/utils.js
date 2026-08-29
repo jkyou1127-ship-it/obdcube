@@ -47,6 +47,13 @@ function isUserOrganizerOf(comp) {
   return Array.isArray(comp.coOrganizerUids) && comp.coOrganizerUids.includes(AppState.user.uid);
 }
 
+// 스태프: 종목/스크램블 관리는 가능하지만 그 외 주최자 권한(시작/종료/공동주최자/
+// 참가자 기록·순위 관리)은 없는 보조 역할.
+function isUserStaffOf(comp) {
+  if (!AppState.user || !comp) return false;
+  return Array.isArray(comp.staffUids) && comp.staffUids.includes(AppState.user.uid);
+}
+
 // 대회가 아직 시작되지 않았는지 여부. 개최일이 지나도, 주최자가 "대회 시작" 버튼을
 // 눌러 started를 true로 만들기 전까지는 무조건 참가신청중 상태이며 기록도 입력할 수 없다.
 // (개최일은 더 이상 자동 전환 기준으로 쓰이지 않고 단순 표시용으로만 남는다)

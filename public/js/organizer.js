@@ -24,8 +24,9 @@ async function openCompetitionDetail(compId) {
   statusEl.className = "badge " + statusInfo.cls;
 
   const canManage = isUserOrganizerOf(comp);
+  const canManageEvents = canManage || isUserStaffOf(comp);
   const eventsClosed = isEnded || comp.eventsClosed === true;
-  el("organizer-tools").classList.toggle("hidden", !canManage || eventsClosed);
+  el("organizer-tools").classList.toggle("hidden", !canManageEvents || eventsClosed);
   el("organizer-actions").classList.toggle("hidden", !canManage);
   el("btn-start-competition").classList.toggle("hidden", isEnded || !isNotStarted(comp));
   el("btn-close-participation").classList.toggle("hidden", isEnded || comp.participationClosed === true);
@@ -33,6 +34,7 @@ async function openCompetitionDetail(compId) {
   el("btn-reopen-events").classList.toggle("hidden", isEnded || comp.eventsClosed !== true);
   el("btn-end-competition").classList.toggle("hidden", isEnded);
   el("coorganizer-panel").classList.toggle("hidden", !canManage);
+  el("staff-panel").classList.toggle("hidden", !canManage);
   el("event-request-panel").classList.toggle("hidden", eventsClosed);
 
   // 화면 전환은 기본 정보가 세팅된 시점에 바로 실행 - 아래 각 패널 렌더링 중
@@ -40,7 +42,7 @@ async function openCompetitionDetail(compId) {
   switchView("detail");
 
   try {
-    await renderEventsList(comp, canManage, isEnded);
+    await renderEventsList(comp, isEnded);
   } catch (err) {
     el("events-list").innerHTML = "<p class='desc'>종목 정보를 불러오지 못했습니다.</p>";
   }
@@ -72,6 +74,13 @@ async function openCompetitionDetail(compId) {
     } catch (err) {
       showToast("공동 주최자 정보를 불러오지 못했습니다: " + err.message, "error");
     }
+    try {
+      await renderStaff(comp);
+    } catch (err) {
+      showToast("스태프 정보를 불러오지 못했습니다: " + err.message, "error");
+    }
+  }
+  if (canManageEvents) {
     try {
       await renderEventRequestsPending(comp);
     } catch (err) {
@@ -241,6 +250,52 @@ el("form-add-coorganizer").addEventListener("submit", async (e) => {
     await addCoOrganizer(currentCompId, user.uid);
     nicknameInput.value = "";
     showToast(`${nickname}님을 공동 주최자로 추가했습니다.`, "success");
+    await openCompetitionDetail(currentCompId);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+async function renderStaff(comp) {
+  const container = el("staff-list");
+  const uids = comp.staffUids || [];
+  if (uids.length === 0) {
+    container.innerHTML = "<p class='desc'>스태프가 없습니다.</p>";
+    return;
+  }
+  const profiles = await Promise.all(uids.map(uid => fetchUserProfile(uid)));
+  container.innerHTML = profiles.map((p, i) => `
+    <div class="item-card">
+      <div class="info"><strong>${escapeHtml(p ? p.nickname : uids[i])}</strong></div>
+      <button class="btn small danger btn-remove-staff" data-uid="${uids[i]}">제거</button>
+    </div>
+  `).join("");
+  container.querySelectorAll(".btn-remove-staff").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("이 스태프를 제거할까요?")) return;
+      try {
+        await removeStaff(currentCompId, btn.dataset.uid);
+        showToast("스태프를 제거했습니다.", "success");
+        await openCompetitionDetail(currentCompId);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+}
+
+el("form-add-staff").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentCompId) return;
+  const nicknameInput = el("staff-nickname");
+  const nickname = nicknameInput.value.trim();
+  if (!nickname) return;
+  try {
+    const user = await findUserByNickname(nickname);
+    if (!user) { showToast("해당 닉네임의 사용자를 찾을 수 없습니다.", "error"); return; }
+    await addStaff(currentCompId, user.uid);
+    nicknameInput.value = "";
+    showToast(`${nickname}님을 스태프로 추가했습니다.`, "success");
     await openCompetitionDetail(currentCompId);
   } catch (err) {
     showToast(err.message, "error");
@@ -460,10 +515,14 @@ el("form-participate").addEventListener("submit", async (e) => {
   }
 });
 
-async function renderEventsList(comp, canManage, isEnded) {
+async function renderEventsList(comp, isEnded) {
+  // 종목/스크램블 관리는 주최자(공동 주최자 포함)와 스태프 모두 가능하지만,
+  // 참가자 기록·순위·진출탈락 관리는 주최자만 가능하다.
+  const canManageEvents = isUserOrganizerOf(comp) || isUserStaffOf(comp);
+  const canManageParticipants = isUserOrganizerOf(comp);
   const container = el("events-list");
   container.innerHTML = "<p class='desc'>불러오는 중...</p>";
-  const canAddMore = canManage && !isEnded && comp.eventsClosed !== true;
+  const canAddMore = canManageEvents && !isEnded && comp.eventsClosed !== true;
   const recordsLocked = isRecordsLocked(comp);
 
   const events = await fetchEvents(comp.id);
@@ -473,7 +532,7 @@ async function renderEventsList(comp, canManage, isEnded) {
   }
 
   const blocks = await Promise.all(events.map(async (ev) => {
-    const visibleScrambles = await fetchScrambles(comp.id, ev.id, !canManage);
+    const visibleScrambles = await fetchScrambles(comp.id, ev.id, !canManageEvents);
 
     const rounds = {};
     visibleScrambles.forEach(s => {
@@ -486,7 +545,7 @@ async function renderEventsList(comp, canManage, isEnded) {
         <div class="scramble-row" data-scramble-id="${s.id}">
           <span>#${s.index}</span>
           <span class="scramble-text">${escapeHtml(s.scramble)}</span>
-          ${canManage ? `
+          ${canManageEvents ? `
             <button class="btn small toggle-public" data-event="${ev.id}" data-scramble="${s.id}" data-value="${!s.isPublic}">
               ${s.isPublic ? "공개중" : "비공개"}
             </button>
@@ -497,7 +556,7 @@ async function renderEventsList(comp, canManage, isEnded) {
       return `
         <div class="round-group">
           <strong>${round}라운드</strong>
-          ${canManage ? `
+          ${canManageEvents ? `
             <button class="btn small round-bulk-public" data-event="${ev.id}" data-round="${round}" data-value="true">일괄 공개</button>
             <button class="btn small round-bulk-public" data-event="${ev.id}" data-round="${round}" data-value="false">일괄 비공개</button>
           ` : ""}
@@ -506,12 +565,12 @@ async function renderEventsList(comp, canManage, isEnded) {
       `;
     }).join("") || "<p class='desc'>등록된 스크램블이 없습니다.</p>";
 
-    const participantsHtml = canManage ? await buildParticipantsPanel(comp.id, ev, isEnded, recordsLocked) : "";
+    const participantsHtml = canManageParticipants ? await buildParticipantsPanel(comp.id, ev, isEnded, recordsLocked) : "";
 
     return `
       <div class="event-block" data-event-id="${ev.id}">
         <h4>${escapeHtml(ev.name)}
-          ${canManage ? `
+          ${canManageEvents ? `
             <select class="event-format-select" data-event="${ev.id}" style="width:auto">
               <option value="ao5" ${normalizeFormat(ev.format) === "ao5" ? "selected" : ""}>Ao5 (5회 평균)</option>
               <option value="mo3" ${normalizeFormat(ev.format) === "mo3" ? "selected" : ""}>Mo3 (3회 평균)</option>
@@ -539,8 +598,8 @@ async function renderEventsList(comp, canManage, isEnded) {
   }));
 
   container.innerHTML = blocks.join("");
-  attachEventBlockHandlers(comp.id, canManage);
-  if (canManage) attachParticipantHandlers(comp.id);
+  attachEventBlockHandlers(comp.id, canManageEvents);
+  if (canManageParticipants) attachParticipantHandlers(comp.id);
 }
 
 // ---- 참가자 / 진출·탈락 / 순위 / 기록 (주최자·관리자 전용) ----
@@ -640,7 +699,7 @@ function getRoundDataFromRow(tr) {
 
 async function refreshDetail(compId) {
   const comp = await fetchCompetition(compId);
-  await renderEventsList(comp, true, comp.status === "ended");
+  await renderEventsList(comp, comp.status === "ended");
 }
 
 function attachParticipantHandlers(compId) {
@@ -736,7 +795,7 @@ function attachEventBlockHandlers(compId, canManage) {
       try {
         await updateEventFormat(compId, sel.dataset.event, sel.value);
         const comp = await fetchCompetition(compId);
-        await renderEventsList(comp, canManage, comp.status === "ended");
+        await renderEventsList(comp, comp.status === "ended");
         showToast("종목 형식을 변경했습니다.", "success");
       } catch (err) {
         showToast(err.message, "error");
@@ -750,7 +809,7 @@ function attachEventBlockHandlers(compId, canManage) {
       try {
         await updateEventFinalRound(compId, input.dataset.event, value === "" ? null : parseInt(value, 10));
         const comp = await fetchCompetition(compId);
-        await renderEventsList(comp, canManage, comp.status === "ended");
+        await renderEventsList(comp, comp.status === "ended");
         showToast("결승 라운드를 지정했습니다.", "success");
       } catch (err) {
         showToast(err.message, "error");
@@ -778,7 +837,7 @@ function attachEventBlockHandlers(compId, canManage) {
         const index = existing.filter(s => s.round === round).length + 1;
         await addScramble(compId, eventId, { round, index, scramble: text });
         const comp = await fetchCompetition(compId);
-        await renderEventsList(comp, canManage, comp.status === "ended");
+        await renderEventsList(comp, comp.status === "ended");
         showToast("스크램블을 추가했습니다.", "success");
       } catch (err) {
         showToast(err.message, "error");
@@ -791,7 +850,7 @@ function attachEventBlockHandlers(compId, canManage) {
       try {
         await toggleScrambleVisibility(compId, btn.dataset.event, btn.dataset.scramble, btn.dataset.value === "true");
         const comp = await fetchCompetition(compId);
-        await renderEventsList(comp, canManage, comp.status === "ended");
+        await renderEventsList(comp, comp.status === "ended");
       } catch (err) {
         showToast(err.message, "error");
       }
@@ -805,7 +864,7 @@ function attachEventBlockHandlers(compId, canManage) {
       try {
         await setRoundScramblesVisibility(compId, btn.dataset.event, Number(btn.dataset.round), isPublic);
         const comp = await fetchCompetition(compId);
-        await renderEventsList(comp, canManage, comp.status === "ended");
+        await renderEventsList(comp, comp.status === "ended");
         showToast(`라운드를 일괄 ${isPublic ? "공개" : "비공개"} 처리했습니다.`, "success");
       } catch (err) {
         showToast(err.message, "error");
@@ -819,7 +878,7 @@ function attachEventBlockHandlers(compId, canManage) {
       try {
         await deleteScramble(compId, btn.dataset.event, btn.dataset.scramble);
         const comp = await fetchCompetition(compId);
-        await renderEventsList(comp, canManage, comp.status === "ended");
+        await renderEventsList(comp, comp.status === "ended");
       } catch (err) {
         showToast(err.message, "error");
       }
@@ -832,7 +891,7 @@ function attachEventBlockHandlers(compId, canManage) {
       try {
         await deleteEvent(compId, btn.dataset.event);
         const comp = await fetchCompetition(compId);
-        await renderEventsList(comp, canManage, comp.status === "ended");
+        await renderEventsList(comp, comp.status === "ended");
       } catch (err) {
         showToast(err.message, "error");
       }
@@ -857,7 +916,7 @@ function initOrganizerToolsForm() {
       await addEvent(currentCompId, name, format.value);
       custom.value = "";
       const comp = await fetchCompetition(currentCompId);
-      await renderEventsList(comp, isUserOrganizerOf(comp), comp.status === "ended");
+      await renderEventsList(comp, comp.status === "ended");
       showToast("종목을 추가했습니다.", "success");
     } catch (err) {
       showToast(err.message, "error");

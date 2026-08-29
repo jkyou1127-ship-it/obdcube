@@ -65,6 +65,7 @@ async function approveApplication(app) {
     organizerUid: app.applicantUid,
     organizerNickname: app.applicantNickname,
     coOrganizerUids: [],
+    staffUids: [],
     applicationId: app.id,
     status: "active",
     participationClosed: false,
@@ -119,6 +120,20 @@ async function addCoOrganizer(compId, uid) {
 async function removeCoOrganizer(compId, uid) {
   await db.collection("competitions").doc(compId).update({
     coOrganizerUids: firebase.firestore.FieldValue.arrayRemove(uid)
+  });
+}
+
+// 스태프: 종목·스크램블 관리는 가능하지만 대회 시작/종료·공동주최자·참가자
+// 기록/순위 관리 권한은 없는 보조 역할 (주최자만 추가/제거 가능)
+async function addStaff(compId, uid) {
+  await db.collection("competitions").doc(compId).update({
+    staffUids: firebase.firestore.FieldValue.arrayUnion(uid)
+  });
+}
+
+async function removeStaff(compId, uid) {
+  await db.collection("competitions").doc(compId).update({
+    staffUids: firebase.firestore.FieldValue.arrayRemove(uid)
   });
 }
 

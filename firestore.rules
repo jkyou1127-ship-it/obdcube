@@ -123,15 +123,25 @@ service cloud.firestore {
         return isCompOrganizer(get(/databases/$(database)/documents/competitions/$(compId)).data);
       }
 
-      // 종목 추가 신청 - 누구나 신청 가능, 주최자/관리자가 승인하면 실제 종목(events)이 생성됨
+      // 스태프: 종목/스크램블 관리는 가능하지만 그 외 주최자 권한은 없는 보조 역할
+      function isCompStaff(compData) {
+        return isSignedIn() &&
+          compData.staffUids != null && request.auth.uid in compData.staffUids;
+      }
+
+      function isStaff() {
+        return isCompStaff(get(/databases/$(database)/documents/competitions/$(compId)).data);
+      }
+
+      // 종목 추가 신청 - 누구나 신청 가능, 주최자/스태프/관리자가 승인하면 실제 종목(events)이 생성됨
       match /eventRequests/{requestId} {
         allow read: if isSignedIn();
         allow create: if isSignedIn() &&
                           request.resource.data.requesterUid == request.auth.uid &&
                           request.resource.data.status == 'pending';
-        allow update: if isSignedIn() && (isAdmin() || isOrganizer());
+        allow update: if isSignedIn() && (isAdmin() || isOrganizer() || isStaff());
         allow delete: if isSignedIn() && (
-                          isAdmin() || isOrganizer() ||
+                          isAdmin() || isOrganizer() || isStaff() ||
                           resource.data.requesterUid == request.auth.uid
                         );
       }
@@ -139,16 +149,17 @@ service cloud.firestore {
       // 종목 (Events)
       match /events/{eventId} {
         allow read: if isSignedIn();
-        allow write: if isSignedIn() && (isAdmin() || isOrganizer());
+        allow write: if isSignedIn() && (isAdmin() || isOrganizer() || isStaff());
 
         // 스크램블
         match /scrambles/{scrambleId} {
           allow read: if isSignedIn() && (
                           resource.data.isPublic == true ||
                           isAdmin() ||
-                          isOrganizer()
+                          isOrganizer() ||
+                          isStaff()
                         );
-          allow write: if isSignedIn() && (isAdmin() || isOrganizer());
+          allow write: if isSignedIn() && (isAdmin() || isOrganizer() || isStaff());
         }
 
         // 대회가 종료(ended)되면 더 이상 기록을 등록/수정할 수 없음
