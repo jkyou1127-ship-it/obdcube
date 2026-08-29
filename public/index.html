@@ -81,27 +81,67 @@
       <div id="competitions-list" class="card-list"></div>
     </section>
 
-    <!-- 심심풀이 (연습용, 대회와 무관) -->
+    <!-- 심심풀이 (대회와 무관한 미니게임) -->
     <section id="view-practice" class="view hidden">
       <h2>심심풀이</h2>
-      <p class="desc">대회와 무관하게 자유롭게 스크램블을 돌리고 시간을 재보세요. 기록은 이 브라우저에만 저장됩니다.</p>
-      <div class="panel">
-        <div class="inline-form">
-          <select id="practice-event"></select>
-          <button type="button" class="btn small" id="btn-practice-scramble">새 스크램블</button>
-        </div>
-        <p id="practice-scramble-text" class="practice-scramble">-</p>
-        <div class="inline-form">
-          <span id="practice-timer" class="practice-timer">0.00</span>
-          <button type="button" class="btn primary" id="btn-practice-toggle">시작</button>
-        </div>
-        <p class="desc">스페이스바를 눌러도 시작/정지할 수 있습니다.</p>
+      <div class="tabs">
+        <button class="tab-btn game-tab-btn active" data-game="2048">2048</button>
+        <button class="tab-btn game-tab-btn" data-game="tictactoe">틱택토</button>
       </div>
-      <div class="panel">
-        <h3>내 기록 (이 브라우저 저장)</h3>
-        <p class="meta">최고기록: <span id="practice-best">-</span> · 평균(최근 5회): <span id="practice-avg">-</span> · 횟수: <span id="practice-count">0</span></p>
-        <button type="button" class="btn small danger" id="btn-practice-clear">기록 초기화</button>
-        <div id="practice-times-list" class="card-list"></div>
+
+      <!-- 2048 -->
+      <div id="game-2048" class="game-panel">
+        <div class="panel">
+          <div class="inline-form">
+            <span>점수: <strong id="g2048-score">0</strong></span>
+            <span>최고점수: <strong id="g2048-best">0</strong></span>
+            <button type="button" class="btn small" id="btn-2048-restart">새 게임</button>
+          </div>
+          <div id="g2048-board" class="g2048-board"></div>
+          <p class="desc">방향키(← ↑ → ↓)로 밀 수 있고, 아래 버튼으로도 조작할 수 있습니다.</p>
+          <div class="g2048-controls">
+            <button type="button" class="btn small" data-dir="up">↑</button>
+            <div>
+              <button type="button" class="btn small" data-dir="left">←</button>
+              <button type="button" class="btn small" data-dir="down">↓</button>
+              <button type="button" class="btn small" data-dir="right">→</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 틱택토 -->
+      <div id="game-tictactoe" class="game-panel hidden">
+        <div class="panel">
+          <div class="tabs">
+            <button class="tab-btn ttt-mode-btn active" data-ttt-mode="local">같은 화면 2인</button>
+            <button class="tab-btn ttt-mode-btn" data-ttt-mode="cpu">컴퓨터와 대전</button>
+            <button class="tab-btn ttt-mode-btn" data-ttt-mode="online">온라인 대전</button>
+          </div>
+
+          <div id="ttt-offline-panel">
+            <p id="ttt-status" class="desc">X 차례입니다.</p>
+            <div id="ttt-board" class="ttt-board"></div>
+            <button type="button" class="btn small" id="btn-ttt-restart">새 게임</button>
+          </div>
+
+          <div id="ttt-online-panel" class="hidden">
+            <div id="ttt-online-lobby">
+              <div class="inline-form">
+                <button type="button" class="btn small" id="btn-ttt-create-room">방 만들기</button>
+                <input type="text" id="ttt-join-code" placeholder="방 코드 입력" maxlength="6" />
+                <button type="button" class="btn small" id="btn-ttt-join-room">참가하기</button>
+              </div>
+              <p class="desc">방을 만들면 나오는 코드를 상대방에게 알려주고, 상대방은 그 코드로 참가하면 됩니다.</p>
+            </div>
+            <div id="ttt-online-room" class="hidden">
+              <p class="desc">방 코드: <strong id="ttt-room-code"></strong> · 나: <strong id="ttt-my-mark"></strong></p>
+              <p id="ttt-online-status" class="desc">-</p>
+              <div id="ttt-online-board" class="ttt-board"></div>
+              <button type="button" class="btn small danger" id="btn-ttt-leave-room">나가기</button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -232,7 +272,7 @@
     <!-- 입상 내역 -->
     <section id="view-awards" class="view hidden">
       <h2>입상 내역</h2>
-      <p class="desc">종료된 대회에서 주최자가 순위를 지정한 종목만 표시됩니다.</p>
+      <p class="desc">종료된 대회에서 주최자가 순위를 지정한 종목 중 3등 이내만 표시됩니다.</p>
       <div id="awards-list" class="card-list"></div>
     </section>
 

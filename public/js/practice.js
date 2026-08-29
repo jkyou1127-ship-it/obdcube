@@ -1,147 +1,409 @@
-// 심심풀이 연습 탭: 대회와 무관하게 스크램블 + 타이머로 자유 연습.
-// 기록은 서버(Firestore) 없이 이 브라우저의 localStorage에만 저장된다.
-
-const PRACTICE_STORAGE_KEY = "obdcube-practice-times";
+// 심심풀이 탭: 대회와 무관한 미니게임 (2048, 틱택토).
 
 let practiceInitialized = false;
-let practiceRunning = false;
-let practiceStartTime = 0;
-let practiceIntervalId = null;
 
-function loadPracticeStore() {
-  try {
-    return JSON.parse(localStorage.getItem(PRACTICE_STORAGE_KEY)) || {};
-  } catch (e) {
-    return {};
-  }
-}
+// ==================== 게임 탭 전환 ====================
 
-function savePracticeStore(store) {
-  try {
-    localStorage.setItem(PRACTICE_STORAGE_KEY, JSON.stringify(store));
-  } catch (e) {}
-}
-
-function currentPracticeEvent() {
-  return el("practice-event").value;
-}
-
-// 최근 5회 중 최고/최저를 뺀 Ao5 스타일 평균 (5회 미만이면 null)
-function practiceAo5(times) {
-  if (times.length < 5) return null;
-  const last5 = times.slice(-5);
-  const sorted = [...last5].sort((a, b) => a - b);
-  const trimmed = sorted.slice(1, 4);
-  return trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
-}
-
-function newPracticeScramble() {
-  el("practice-scramble-text").textContent = generateScramble(currentPracticeEvent()) || "-";
-}
-
-function renderPracticeList() {
-  const store = loadPracticeStore();
-  const list = store[currentPracticeEvent()] || [];
-  const times = list.map(r => r.time);
-
-  el("practice-count").textContent = String(list.length);
-  el("practice-best").textContent = times.length ? formatSecondsToTime(Math.min(...times)) : "-";
-  const ao5 = practiceAo5(times);
-  el("practice-avg").textContent = ao5 != null ? formatSecondsToTime(ao5) : "-";
-
-  const container = el("practice-times-list");
-  if (list.length === 0) {
-    container.innerHTML = "<p class='desc'>아직 기록이 없습니다.</p>";
-    return;
-  }
-  container.innerHTML = [...list].reverse().map(r => `
-    <div class="item-card">
-      <div class="info">
-        <strong>${formatSecondsToTime(r.time)}</strong>
-        <span class="practice-scramble small">${escapeHtml(r.scramble)}</span>
-      </div>
-    </div>
-  `).join("");
-}
-
-function recordPracticeSolve(seconds) {
-  const store = loadPracticeStore();
-  const eventName = currentPracticeEvent();
-  const list = store[eventName] || (store[eventName] = []);
-  list.push({
-    time: seconds,
-    scramble: el("practice-scramble-text").textContent,
-    ts: Date.now()
+function switchGameTab(name) {
+  document.querySelectorAll(".game-tab-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.game === name);
   });
-  savePracticeStore(store);
-  renderPracticeList();
+  el("game-2048").classList.toggle("hidden", name !== "2048");
+  el("game-tictactoe").classList.toggle("hidden", name !== "tictactoe");
 }
 
-function updatePracticeTimerDisplay() {
-  const elapsed = (performance.now() - practiceStartTime) / 1000;
-  el("practice-timer").textContent = formatSecondsToTime(elapsed);
+// ==================== 2048 ====================
+
+const G2048_SIZE = 4;
+let g2048Board = [];
+let g2048Score = 0;
+
+function g2048Best() {
+  return parseInt(localStorage.getItem("obdcube-2048-best") || "0", 10);
 }
 
-function startPracticeTimer() {
-  if (practiceRunning) return;
-  practiceRunning = true;
-  practiceStartTime = performance.now();
-  el("btn-practice-toggle").textContent = "정지";
-  practiceIntervalId = setInterval(updatePracticeTimerDisplay, 30);
+function g2048SaveBest(score) {
+  if (score > g2048Best()) {
+    try { localStorage.setItem("obdcube-2048-best", String(score)); } catch (e) {}
+  }
 }
 
-function stopPracticeTimer() {
-  if (!practiceRunning) return;
-  practiceRunning = false;
-  clearInterval(practiceIntervalId);
-  const elapsed = (performance.now() - practiceStartTime) / 1000;
-  el("practice-timer").textContent = formatSecondsToTime(elapsed);
-  el("btn-practice-toggle").textContent = "시작";
-  recordPracticeSolve(elapsed);
-  newPracticeScramble();
+function g2048EmptyCells() {
+  const cells = [];
+  for (let i = 0; i < g2048Board.length; i++) {
+    if (g2048Board[i] === 0) cells.push(i);
+  }
+  return cells;
 }
 
-function togglePracticeTimer() {
-  if (practiceRunning) stopPracticeTimer();
-  else startPracticeTimer();
+function g2048AddRandomTile() {
+  const empty = g2048EmptyCells();
+  if (empty.length === 0) return;
+  const idx = empty[Math.floor(Math.random() * empty.length)];
+  g2048Board[idx] = Math.random() < 0.9 ? 2 : 4;
 }
+
+function g2048Restart() {
+  g2048Board = new Array(G2048_SIZE * G2048_SIZE).fill(0);
+  g2048Score = 0;
+  g2048AddRandomTile();
+  g2048AddRandomTile();
+  g2048Render();
+}
+
+function g2048SlideAndMergeLine(line) {
+  const nonZero = line.filter(v => v !== 0);
+  const merged = [];
+  let scoreGained = 0;
+  for (let i = 0; i < nonZero.length; i++) {
+    if (i < nonZero.length - 1 && nonZero[i] === nonZero[i + 1]) {
+      const value = nonZero[i] * 2;
+      merged.push(value);
+      scoreGained += value;
+      i++;
+    } else {
+      merged.push(nonZero[i]);
+    }
+  }
+  while (merged.length < line.length) merged.push(0);
+  return { line: merged, scoreGained };
+}
+
+function g2048GetLine(index, direction) {
+  const line = [];
+  for (let i = 0; i < G2048_SIZE; i++) {
+    if (direction === "left" || direction === "right") {
+      line.push(g2048Board[index * G2048_SIZE + i]);
+    } else {
+      line.push(g2048Board[i * G2048_SIZE + index]);
+    }
+  }
+  return line;
+}
+
+function g2048SetLine(index, direction, line) {
+  for (let i = 0; i < G2048_SIZE; i++) {
+    if (direction === "left" || direction === "right") {
+      g2048Board[index * G2048_SIZE + i] = line[i];
+    } else {
+      g2048Board[i * G2048_SIZE + index] = line[i];
+    }
+  }
+}
+
+function g2048Move(direction) {
+  let moved = false;
+  let scoreGained = 0;
+  for (let i = 0; i < G2048_SIZE; i++) {
+    const original = g2048GetLine(i, direction);
+    const reversed = direction === "right" || direction === "down";
+    let line = reversed ? [...original].reverse() : original;
+    const result = g2048SlideAndMergeLine(line);
+    let finalLine = result.line;
+    if (reversed) finalLine = finalLine.reverse();
+    if (JSON.stringify(original) !== JSON.stringify(finalLine)) moved = true;
+    scoreGained += result.scoreGained;
+    g2048SetLine(i, direction, finalLine);
+  }
+  if (moved) {
+    g2048Score += scoreGained;
+    g2048AddRandomTile();
+    g2048SaveBest(g2048Score);
+    g2048Render();
+    if (g2048IsGameOver()) {
+      showToast("더 이상 움직일 수 없습니다. 게임 오버!", "error");
+    }
+  }
+}
+
+function g2048IsGameOver() {
+  if (g2048EmptyCells().length > 0) return false;
+  for (let r = 0; r < G2048_SIZE; r++) {
+    for (let c = 0; c < G2048_SIZE; c++) {
+      const v = g2048Board[r * G2048_SIZE + c];
+      if (c < G2048_SIZE - 1 && v === g2048Board[r * G2048_SIZE + c + 1]) return false;
+      if (r < G2048_SIZE - 1 && v === g2048Board[(r + 1) * G2048_SIZE + c]) return false;
+    }
+  }
+  return true;
+}
+
+function g2048Render() {
+  el("g2048-score").textContent = String(g2048Score);
+  el("g2048-best").textContent = String(g2048Best());
+  el("g2048-board").innerHTML = g2048Board.map(v => `<div class="g2048-tile" data-value="${v}">${v || ""}</div>`).join("");
+}
+
+function initG2048() {
+  el("btn-2048-restart").addEventListener("click", g2048Restart);
+  document.querySelectorAll("#game-2048 [data-dir]").forEach(btn => {
+    btn.addEventListener("click", () => g2048Move(btn.dataset.dir));
+  });
+  document.addEventListener("keydown", (e) => {
+    if (el("view-practice").classList.contains("hidden")) return;
+    if (el("game-2048").classList.contains("hidden")) return;
+    const map = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
+    if (!map[e.key]) return;
+    e.preventDefault();
+    g2048Move(map[e.key]);
+  });
+  g2048Restart();
+}
+
+// ==================== 틱택토 공통 ====================
+
+const TTT_LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+
+function tttWinner(board) {
+  for (const [a, b, c] of TTT_LINES) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
+  }
+  return null;
+}
+
+function tttIsFull(board) {
+  return board.every(c => c !== "");
+}
+
+// 완벽하게 플레이하는(항상 이기거나 최소 비기는) O 차례 미니맥스
+function tttMinimax(board, player) {
+  const winner = tttWinner(board);
+  if (winner === "O") return { score: 1 };
+  if (winner === "X") return { score: -1 };
+  if (tttIsFull(board)) return { score: 0 };
+
+  const moves = [];
+  for (let i = 0; i < 9; i++) {
+    if (board[i] === "") {
+      board[i] = player;
+      const result = tttMinimax(board, player === "O" ? "X" : "O");
+      moves.push({ index: i, score: result.score });
+      board[i] = "";
+    }
+  }
+  const pick = player === "O"
+    ? moves.reduce((best, m) => (m.score > best.score ? m : best), moves[0])
+    : moves.reduce((best, m) => (m.score < best.score ? m : best), moves[0]);
+  return pick;
+}
+
+function renderTttBoardInto(container, board, clickable, onClick) {
+  container.innerHTML = board.map((v, i) => `
+    <button type="button" class="ttt-cell" data-index="${i}" ${clickable && !v ? "" : "disabled"}>${v}</button>
+  `).join("");
+  if (clickable) {
+    container.querySelectorAll(".ttt-cell").forEach(btn => {
+      if (btn.disabled) return;
+      btn.addEventListener("click", () => onClick(Number(btn.dataset.index)));
+    });
+  }
+}
+
+// ==================== 틱택토: 같은 화면 2인 / 컴퓨터 대전 ====================
+
+let tttOfflineBoard = new Array(9).fill("");
+let tttOfflineTurn = "X";
+let tttOfflineMode = "local"; // "local" | "cpu"
+let tttOfflineFinished = false;
+
+function tttOfflineStatusText() {
+  if (tttOfflineFinished) {
+    const winner = tttWinner(tttOfflineBoard);
+    return winner ? `${winner} 승리!` : "무승부입니다.";
+  }
+  return `${tttOfflineTurn} 차례입니다.`;
+}
+
+function renderTttOffline() {
+  const clickable = !tttOfflineFinished && !(tttOfflineMode === "cpu" && tttOfflineTurn === "O");
+  el("ttt-status").textContent = tttOfflineStatusText();
+  renderTttBoardInto(el("ttt-board"), tttOfflineBoard, clickable, tttOfflineHandleCellClick);
+}
+
+function tttOfflineFinishIfOver() {
+  const winner = tttWinner(tttOfflineBoard);
+  if (winner || tttIsFull(tttOfflineBoard)) {
+    tttOfflineFinished = true;
+    return true;
+  }
+  return false;
+}
+
+function tttOfflineHandleCellClick(index) {
+  if (tttOfflineFinished || tttOfflineBoard[index] !== "") return;
+  tttOfflineBoard[index] = tttOfflineTurn;
+  if (!tttOfflineFinishIfOver()) {
+    tttOfflineTurn = tttOfflineTurn === "X" ? "O" : "X";
+  }
+  renderTttOffline();
+  if (!tttOfflineFinished && tttOfflineMode === "cpu" && tttOfflineTurn === "O") {
+    setTimeout(tttCpuMove, 300);
+  }
+}
+
+function tttCpuMove() {
+  if (tttOfflineFinished) return;
+  const best = tttMinimax(tttOfflineBoard, "O");
+  tttOfflineBoard[best.index] = "O";
+  if (!tttOfflineFinishIfOver()) {
+    tttOfflineTurn = "X";
+  }
+  renderTttOffline();
+}
+
+function tttOfflineRestart() {
+  tttOfflineBoard = new Array(9).fill("");
+  tttOfflineTurn = "X";
+  tttOfflineFinished = false;
+  renderTttOffline();
+}
+
+// ==================== 틱택토: 온라인 대전 ====================
+
+let tttOnlineCode = null;
+let tttOnlineUnsub = null;
+let tttOnlineRoom = null;
+
+async function tttCreateRoom() {
+  try {
+    const code = await createTttRoom();
+    tttEnterRoom(code);
+    showToast(`방을 만들었습니다. 상대방에게 코드 "${code}"를 알려주세요.`, "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function tttJoinRoom() {
+  const codeInput = el("ttt-join-code");
+  const code = codeInput.value.trim().toUpperCase();
+  if (!code) return;
+  try {
+    await joinTttRoom(code);
+    tttEnterRoom(code);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+function tttEnterRoom(code) {
+  tttOnlineCode = code;
+  el("ttt-online-lobby").classList.add("hidden");
+  el("ttt-online-room").classList.remove("hidden");
+  el("ttt-room-code").textContent = code;
+  if (tttOnlineUnsub) tttOnlineUnsub();
+  tttOnlineUnsub = watchTttRoom(code, (snap) => {
+    if (!snap.exists) {
+      showToast("방이 종료되었습니다.", "error");
+      tttResetOnlineUi();
+      return;
+    }
+    tttOnlineRoom = snap.data();
+    renderTttOnlineRoom();
+  });
+}
+
+function tttResetOnlineUi() {
+  if (tttOnlineUnsub) { tttOnlineUnsub(); tttOnlineUnsub = null; }
+  tttOnlineCode = null;
+  tttOnlineRoom = null;
+  el("ttt-online-room").classList.add("hidden");
+  el("ttt-online-lobby").classList.remove("hidden");
+  el("ttt-join-code").value = "";
+}
+
+async function tttLeaveRoom() {
+  const code = tttOnlineCode;
+  tttResetOnlineUi();
+  if (code) {
+    try { await leaveTttRoom(code); } catch (e) {}
+  }
+}
+
+function tttMyMark(room) {
+  if (room.playerX.uid === AppState.user.uid) return "X";
+  if (room.playerO && room.playerO.uid === AppState.user.uid) return "O";
+  return null;
+}
+
+async function tttOnlineHandleCellClick(index) {
+  const room = tttOnlineRoom;
+  if (!room || room.status !== "playing") return;
+  const myMark = tttMyMark(room);
+  if (myMark !== room.turn || room.board[index] !== "") return;
+
+  const newBoard = [...room.board];
+  newBoard[index] = myMark;
+  const winner = tttWinner(newBoard);
+  const full = tttIsFull(newBoard);
+  const newStatus = (winner || full) ? "finished" : "playing";
+  const newTurn = myMark === "X" ? "O" : "X";
+  try {
+    await makeTttMove(tttOnlineCode, newBoard, newTurn, winner || (full ? "draw" : null), newStatus);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+function renderTttOnlineRoom() {
+  const room = tttOnlineRoom;
+  if (!room) return;
+  const myMark = tttMyMark(room);
+  el("ttt-my-mark").textContent = myMark || "관전";
+
+  let statusText;
+  if (room.status === "waiting") {
+    statusText = "상대방을 기다리는 중...";
+  } else if (room.status === "playing") {
+    const turnNickname = room.turn === "X" ? room.playerX.nickname : (room.playerO ? room.playerO.nickname : "상대");
+    statusText = room.turn === myMark ? "내 차례입니다." : `${turnNickname}님 차례입니다.`;
+  } else {
+    if (room.winner === "draw") statusText = "무승부입니다.";
+    else if (room.winner === myMark) statusText = "승리했습니다!";
+    else if (room.winner) statusText = "패배했습니다.";
+    else statusText = "게임이 종료되었습니다.";
+  }
+  el("ttt-online-status").textContent = statusText;
+
+  const clickable = room.status === "playing" && room.turn === myMark;
+  renderTttBoardInto(el("ttt-online-board"), room.board, clickable, tttOnlineHandleCellClick);
+}
+
+// ==================== 틱택토 모드 전환 ====================
+
+function switchTttMode(mode) {
+  tttOfflineMode = mode === "cpu" ? "cpu" : "local";
+  document.querySelectorAll(".ttt-mode-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.tttMode === mode);
+  });
+  el("ttt-offline-panel").classList.toggle("hidden", mode === "online");
+  el("ttt-online-panel").classList.toggle("hidden", mode !== "online");
+  if (mode !== "online") {
+    tttOfflineRestart();
+  }
+}
+
+function initTicTacToe() {
+  el("btn-ttt-restart").addEventListener("click", tttOfflineRestart);
+  document.querySelectorAll(".ttt-mode-btn").forEach(btn => {
+    btn.addEventListener("click", () => switchTttMode(btn.dataset.tttMode));
+  });
+  el("btn-ttt-create-room").addEventListener("click", tttCreateRoom);
+  el("btn-ttt-join-room").addEventListener("click", tttJoinRoom);
+  el("btn-ttt-leave-room").addEventListener("click", tttLeaveRoom);
+  tttOfflineRestart();
+}
+
+// ==================== 초기화 ====================
 
 function initPracticeTab() {
-  if (!practiceInitialized) {
-    practiceInitialized = true;
+  if (practiceInitialized) return;
+  practiceInitialized = true;
 
-    el("practice-event").innerHTML = Object.keys(SCRAMBLE_PRESETS).map(name =>
-      `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`
-    ).join("");
+  document.querySelectorAll(".game-tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => switchGameTab(btn.dataset.game));
+  });
 
-    el("practice-event").addEventListener("change", () => {
-      el("practice-timer").textContent = "0.00";
-      newPracticeScramble();
-      renderPracticeList();
-    });
-
-    el("btn-practice-scramble").addEventListener("click", newPracticeScramble);
-    el("btn-practice-toggle").addEventListener("click", togglePracticeTimer);
-
-    el("btn-practice-clear").addEventListener("click", () => {
-      const eventName = currentPracticeEvent();
-      if (!confirm(`'${eventName}' 연습 기록을 모두 삭제할까요?`)) return;
-      const store = loadPracticeStore();
-      delete store[eventName];
-      savePracticeStore(store);
-      renderPracticeList();
-    });
-
-    document.addEventListener("keydown", (e) => {
-      if (e.code !== "Space") return;
-      if (el("view-practice").classList.contains("hidden")) return;
-      const tag = document.activeElement && document.activeElement.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      e.preventDefault();
-      togglePracticeTimer();
-    });
-
-    newPracticeScramble();
-  }
-  renderPracticeList();
+  initG2048();
+  initTicTacToe();
 }

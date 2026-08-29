@@ -369,3 +369,62 @@ async function grantAdmin(targetUid, targetEmail) {
     grantedBy: AppState.profile.nickname
   });
 }
+
+// ---- 심심풀이: 틱택토 온라인 대전 ----
+
+function randomTttRoomCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 헷갈리는 문자(0/O, 1/I) 제외
+  let code = "";
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+async function createTttRoom() {
+  const code = randomTttRoomCode();
+  await db.collection("tictactoeGames").doc(code).set({
+    board: new Array(9).fill(""),
+    turn: "X",
+    status: "waiting",
+    playerX: { uid: AppState.user.uid, nickname: AppState.profile.nickname },
+    playerO: null,
+    winner: null,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  return code;
+}
+
+async function joinTttRoom(code) {
+  const ref = db.collection("tictactoeGames").doc(code);
+  const snap = await ref.get();
+  if (!snap.exists) throw new Error("존재하지 않는 방 코드입니다.");
+  const data = snap.data();
+  if (data.status !== "waiting" || data.playerO) throw new Error("이미 게임이 시작된 방입니다.");
+  if (data.playerX.uid === AppState.user.uid) throw new Error("자신이 만든 방에는 참가할 수 없습니다.");
+  await ref.update({
+    playerO: { uid: AppState.user.uid, nickname: AppState.profile.nickname },
+    status: "playing",
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+function watchTttRoom(code, callback) {
+  return db.collection("tictactoeGames").doc(code).onSnapshot(callback);
+}
+
+async function makeTttMove(code, board, nextTurn, winner, status) {
+  await db.collection("tictactoeGames").doc(code).update({
+    board,
+    turn: nextTurn,
+    winner: winner || null,
+    status,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+async function leaveTttRoom(code) {
+  const ref = db.collection("tictactoeGames").doc(code);
+  const snap = await ref.get();
+  if (!snap.exists || snap.data().status === "finished") return;
+  await ref.update({ status: "finished", updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+}

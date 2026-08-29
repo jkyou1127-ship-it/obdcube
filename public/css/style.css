@@ -147,30 +147,63 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 }
 .panel h3 { margin-top: 0; font-size: 15px; }
 
-.practice-scramble {
-  font-family: "Courier New", monospace;
-  font-size: 18px;
-  letter-spacing: 0.5px;
+.game-panel.hidden { display: none; }
+
+.g2048-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  max-width: 340px;
+  margin: 14px 0;
   background: var(--bg-soft);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 16px;
-  margin: 12px 0;
+  padding: 8px;
 }
-.practice-scramble.small {
-  font-size: 13px;
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  color: var(--text-dim);
+.g2048-tile {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 20px;
+  background: var(--card);
+  color: var(--text);
 }
-.practice-timer {
-  font-family: "Courier New", monospace;
-  font-size: 40px;
-  font-weight: bold;
-  min-width: 160px;
+.g2048-tile[data-value="0"] { background: transparent; color: transparent; }
+.g2048-tile[data-value="2"] { background: #eee4da; color: #776e65; }
+.g2048-tile[data-value="4"] { background: #ede0c8; color: #776e65; }
+.g2048-tile[data-value="8"] { background: #f2b179; color: #fff; }
+.g2048-tile[data-value="16"] { background: #f59563; color: #fff; }
+.g2048-tile[data-value="32"] { background: #f67c5f; color: #fff; }
+.g2048-tile[data-value="64"] { background: #f65e3b; color: #fff; }
+.g2048-tile[data-value="128"] { background: #edcf72; color: #fff; font-size: 17px; }
+.g2048-tile[data-value="256"] { background: #edcc61; color: #fff; font-size: 17px; }
+.g2048-tile[data-value="512"] { background: #edc850; color: #fff; font-size: 17px; }
+.g2048-tile[data-value="1024"] { background: #edc53f; color: #fff; font-size: 15px; }
+.g2048-tile[data-value="2048"] { background: #edc22e; color: #fff; font-size: 15px; }
+.g2048-controls { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 220px; }
+.g2048-controls > div { display: flex; gap: 6px; }
+
+.ttt-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  max-width: 260px;
+  margin: 14px 0;
 }
+.ttt-cell {
+  aspect-ratio: 1 / 1;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: pointer;
+}
+.ttt-cell:disabled { cursor: default; }
 
 .card-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .item-card {

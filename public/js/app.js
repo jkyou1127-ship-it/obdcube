@@ -128,7 +128,7 @@ async function renderAwardsPanel() {
       const p = await fetchMyParticipant(comp.id, ev.id);
       if (!p) continue;
       const placement = extractPlacement(p);
-      if (!placement) continue;
+      if (!placement || placement.rank > 3) continue;
       const format = normalizeFormat(ev.format);
       const times = (p.roundTimes && p.roundTimes[placement.round]) || [];
       const best = bestSingleFromTimes(times);
