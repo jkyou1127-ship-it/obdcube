@@ -1,0 +1,41 @@
+{
+  "name": "obdcube",
+  "productName": "OBD Cube",
+  "version": "1.0.0",
+  "description": "온라인 큐브 대회 앱 - 웹앱 + 데스크톱(exe) 겸용",
+  "main": "electron/main.js",
+  "author": "obdcube",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis",
+    "dist:win:portable": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^31.3.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.obdcube.app",
+    "productName": "OBD Cube",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}

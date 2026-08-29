@@ -1,0 +1,106 @@
+# 🧊 OBD Cube - 온라인 큐브 대회 앱
+
+큐브(루빅스 큐브 등) 온라인 대회를 운영하는 앱입니다. **웹앱**(GitHub Pages)과 **Windows 데스크톱 앱(.exe)** 두 가지 형태로 동일한 기능을 제공합니다.
+
+- 웹앱: https://jkyou1127-ship-it.github.io/obdcube/
+- exe: GitHub Actions가 자동 빌드 (아래 "exe 다운로드" 참고)
+
+## 주요 기능
+
+- 이메일/비밀번호 회원가입·로그인, **닉네임** 설정 및 변경
+- 아무 로그인 사용자나 **대회 주최 신청** 가능
+- **관리자**가 신청을 승인/반려 → 승인되면 신청자가 해당 대회의 **주최자**가 됨
+- 주최자는 자신의 대회에 **종목(3x3, 2x2, 피라밍크스 등)** 과 **스크램블**을 등록
+  - 스크램블은 자동 생성 버튼 또는 직접 입력 가능
+  - 스크램블 공개/비공개 전환 가능 (기본 비공개)
+- 주최자는 종목별로 **참가자를 등록**하고, 라운드별 **기록을 직접 입력**하며 **다음 라운드 진출/탈락 여부**를 지정
+  - 입력된 기록을 기준으로 **순위**가 자동 정렬되어 주최자/관리자에게만 표시됨
+- 관리자는 다른 사용자를 닉네임으로 검색해 관리자로 추가 지정 가능
+
+이 앱은 서버 없이 동작하도록 **Firebase(Authentication + Firestore)** 를 사용합니다. 따라서 실제로 동작시키려면 본인 소유의 무료 Firebase 프로젝트를 하나 만들어 연결해야 합니다. (최초 1회만 설정하면 됩니다.)
+
+---
+
+## 1. Firebase 프로젝트 설정 (최초 1회, 필수)
+
+1. https://console.firebase.google.com 에서 새 프로젝트를 생성합니다.
+2. 좌측 메뉴 **Authentication** → "시작하기" → **Sign-in method** 탭에서 **이메일/비밀번호** 제공업체를 활성화합니다.
+3. 좌측 메뉴 **Firestore Database** → "데이터베이스 만들기" → 프로덕션 모드로 생성합니다 (지역은 아무 곳이나 선택, 예: `asia-northeast3`).
+4. Firestore **규칙(Rules)** 탭을 열고, 이 저장소의 [`firestore.rules`](./firestore.rules) 파일 내용을 그대로 복사해 붙여넣은 뒤 **게시(Publish)** 합니다.
+5. 프로젝트 개요 옆 톱니바퀴 → **프로젝트 설정** → 하단 "내 앱"에서 **웹 앱(</>) 추가**를 클릭해 앱을 하나 등록합니다.
+6. 표시되는 `firebaseConfig` 값을 복사하여 [`public/js/firebase-config.js`](./public/js/firebase-config.js) 파일의 `FIREBASE_CONFIG` 객체에 붙여넣습니다.
+
+```js
+const FIREBASE_CONFIG = {
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "..."
+};
+```
+
+> Firebase 웹 config 값은 비밀키가 아니라 공개 식별자입니다 (실제 접근 제어는 Firestore 규칙이 담당). 커밋해도 안전합니다.
+
+7. 수정 후 커밋·푸시하면 GitHub Pages(웹앱)와 exe 모두 새 설정으로 동작합니다.
+
+## 2. 관리자 계정 안내
+
+로그인 시스템에는 **최초 관리자 자동 부여** 기능이 내장되어 있습니다.
+
+- `public/js/firebase-config.js` 의 `ADMIN_BOOTSTRAP_EMAIL` 값 (`firestore.rules` 의 값과 동일해야 함)
+- 현재 기본값: **jkyou1127@gmail.com**
+
+이 이메일로 회원가입 후 로그인하면, 앱이 자동으로 해당 계정에 관리자 권한을 부여합니다. 이후 관리자 페이지의 "관리자 추가" 기능으로 다른 사용자를 닉네임 검색을 통해 추가 관리자로 지정할 수 있습니다.
+
+관리자만 대회 주최 신청을 승인/반려할 수 있습니다.
+
+## 3. GitHub Pages(웹앱) 활성화
+
+1. GitHub 저장소 **Settings → Pages** 에서 Source를 **GitHub Actions** 로 설정합니다.
+2. `main` 브랜치에 (혹은 지금 작업 브랜치가 머지된 후) 푸시되면 `.github/workflows/deploy-pages.yml` 워크플로가 자동으로 `public/` 폴더를 배포합니다.
+3. 배포가 끝나면 https://jkyou1127-ship-it.github.io/obdcube/ 에서 바로 접속 가능합니다.
+
+## 4. exe(Windows 데스크톱 앱) 받기
+
+`.github/workflows/build-electron.yml` 워크플로가 `windows-latest` 러너에서 자동으로 설치 파일(.exe, NSIS)과 포터블(.exe) 두 가지를 빌드합니다.
+
+- **Actions 탭 → Build Windows desktop app (exe) → 최근 실행 → Artifacts** 에서 `obdcube-windows.zip` 을 다운로드하면 됩니다.
+- 버전 태그(`v1.0.0` 등)를 푸시하면 자동으로 GitHub Release 에도 exe 파일이 첨부됩니다.
+
+### 로컬에서 직접 빌드하기
+
+```bash
+npm install
+npm run start        # Electron 앱 실행 (개발용)
+npm run dist:win      # Windows 설치 파일(nsis) + 포터블 exe 빌드 → release/ 폴더
+```
+
+> Windows용 exe는 Windows 환경(또는 CI의 windows-latest 러너)에서 빌드하는 것을 권장합니다.
+
+## 5. 폴더 구조
+
+```
+public/                 웹앱 소스 (웹/Electron 공용, 순수 HTML/CSS/JS)
+  index.html
+  css/style.css
+  js/
+    firebase-config.js   Firebase 프로젝트 연결 설정 (직접 입력 필요)
+    auth.js              로그인/회원가입/닉네임/관리자 부트스트랩
+    data.js               Firestore CRUD (신청/대회/종목/스크램블)
+    scramble-generator.js 랜덤 무브 스크램블 생성기
+    organizer.js           대회 상세/주최자 관리 도구
+    admin.js               관리자 승인/반려/관리자 지정
+    app.js                 라우팅 및 화면 렌더링
+electron/
+  main.js               Electron 메인 프로세스 (public/index.html 로드)
+  preload.js
+firestore.rules          Firestore 보안 규칙
+.github/workflows/       GitHub Pages 배포 + Windows exe 빌드 자동화
+```
+
+## 6. 참고 / 제한사항
+
+- 스크램블 자동 생성기는 랜덤 무브 방식으로, WCA 공식 대회에서 쓰이는 랜덤 스테이트(TNoodle) 방식이 아닙니다. 캐주얼한 온라인 대회용으로만 사용하세요.
+- 무료 Firebase(Spark) 요금제로 소규모 대회 운영에 충분합니다.

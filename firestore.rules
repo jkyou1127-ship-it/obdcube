@@ -1,0 +1,101 @@
+rules_version = '2';
+
+// OBD Cube - Firestore 보안 규칙
+// Firebase 콘솔 > Firestore Database > 규칙(Rules) 탭에 이 내용을 그대로 붙여넣으세요.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // 최초 관리자 부트스트랩 이메일.
+    // 이 이메일로 로그인하면 앱이 자동으로 admins/{uid} 문서를 만들어 관리자 권한을 부여합니다.
+    function isBootstrapAdminEmail() {
+      return isSignedIn() && request.auth.token.email == "jkyou1127@gmail.com";
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // 사용자 프로필 (닉네임 등)
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    // 닉네임 중복 확인용 색인 문서 (nicknames/{nickname} = { uid })
+    match /nicknames/{nickname} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // 관리자 목록
+    match /admins/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (
+                        (request.auth.uid == uid && isBootstrapAdminEmail()) ||
+                        isAdmin()
+                      );
+      allow delete: if isAdmin();
+      allow update: if false;
+    }
+
+    // 대회 주최 신청
+    match /applications/{appId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+                        request.resource.data.applicantUid == request.auth.uid &&
+                        request.resource.data.status == 'pending';
+      // 관리자는 승인/반려 가능. 신청자 본인은 반려된 신청을 취소만 가능.
+      allow update: if isSignedIn() && (
+                        isAdmin() ||
+                        (resource.data.applicantUid == request.auth.uid &&
+                         resource.data.status == 'pending' &&
+                         request.resource.data.status == 'cancelled')
+                      );
+      allow delete: if isAdmin();
+    }
+
+    // 승인된 대회
+    match /competitions/{compId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      allow update: if isSignedIn() && (isAdmin() || resource.data.organizerUid == request.auth.uid);
+      allow delete: if isAdmin();
+
+      function isOrganizer() {
+        return isSignedIn() &&
+          get(/databases/$(database)/documents/competitions/$(compId)).data.organizerUid == request.auth.uid;
+      }
+
+      // 종목 (Events)
+      match /events/{eventId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && (isAdmin() || isOrganizer());
+
+        // 스크램블
+        match /scrambles/{scrambleId} {
+          allow read: if isSignedIn() && (
+                          resource.data.isPublic == true ||
+                          isAdmin() ||
+                          isOrganizer()
+                        );
+          allow write: if isSignedIn() && (isAdmin() || isOrganizer());
+        }
+
+        // 참가자 (라운드별 기록/진출·탈락 여부) - 주최자/관리자만 열람·관리
+        match /participants/{participantId} {
+          allow read: if isSignedIn() && (isAdmin() || isOrganizer());
+          allow write: if isSignedIn() && (isAdmin() || isOrganizer());
+        }
+      }
+    }
+  }
+}

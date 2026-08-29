@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OBD Cube - 온라인 큐브 대회</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="toast" class="toast hidden"></div>
+
+<!-- 로그인 / 회원가입 -->
+<div id="view-auth" class="auth-wrap hidden">
+  <div class="auth-card">
+    <h1 class="brand">🧊 OBD Cube</h1>
+    <p class="sub">온라인 큐브 대회 플랫폼</p>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="login">로그인</button>
+      <button class="tab-btn" data-tab="signup">회원가입</button>
+    </div>
+
+    <form id="form-login" class="auth-form">
+      <label>이메일</label>
+      <input type="email" id="login-email" required autocomplete="email" />
+      <label>비밀번호</label>
+      <input type="password" id="login-password" required autocomplete="current-password" />
+      <button type="submit" class="btn primary">로그인</button>
+    </form>
+
+    <form id="form-signup" class="auth-form hidden">
+      <label>닉네임</label>
+      <input type="text" id="signup-nickname" required maxlength="16" placeholder="2~16자" />
+      <label>이메일</label>
+      <input type="email" id="signup-email" required autocomplete="email" />
+      <label>비밀번호</label>
+      <input type="password" id="signup-password" required minlength="6" autocomplete="new-password" placeholder="6자 이상" />
+      <button type="submit" class="btn primary">회원가입</button>
+    </form>
+
+    <p class="hint">관리자 계정은 대표 이메일로 최초 로그인 시 자동 부여됩니다.</p>
+  </div>
+</div>
+
+<!-- 메인 앱 -->
+<div id="view-app" class="app-wrap hidden">
+  <header class="topbar">
+    <div class="brand-mini">🧊 OBD Cube</div>
+    <nav class="nav">
+      <button class="nav-btn" data-nav="competitions">대회 목록</button>
+      <button class="nav-btn" data-nav="apply">대회 주최 신청</button>
+      <button class="nav-btn" data-nav="mypage">마이페이지</button>
+      <button class="nav-btn hidden" id="nav-admin" data-nav="admin">관리자</button>
+    </nav>
+    <div class="user-box">
+      <span id="user-nickname">-</span>
+      <button id="btn-logout" class="btn small">로그아웃</button>
+    </div>
+  </header>
+
+  <main class="content">
+
+    <!-- 대회 목록 -->
+    <section id="view-competitions" class="view">
+      <h2>승인된 대회</h2>
+      <div id="competitions-list" class="card-list"></div>
+    </section>
+
+    <!-- 대회 주최 신청 -->
+    <section id="view-apply" class="view hidden">
+      <h2>대회 주최 신청</h2>
+      <p class="desc">신청 후 관리자의 승인을 받으면 대회를 주최할 수 있습니다.</p>
+      <form id="form-apply" class="plain-form">
+        <label>대회명</label>
+        <input type="text" id="apply-title" required maxlength="40" />
+        <label>대회 소개</label>
+        <textarea id="apply-desc" rows="4" maxlength="500"></textarea>
+        <label>희망 개최일</label>
+        <input type="date" id="apply-date" required />
+        <button type="submit" class="btn primary">신청하기</button>
+      </form>
+    </section>
+
+    <!-- 마이페이지 -->
+    <section id="view-mypage" class="view hidden">
+      <h2>마이페이지</h2>
+      <div class="panel">
+        <h3>닉네임 변경</h3>
+        <form id="form-nickname" class="inline-form">
+          <input type="text" id="mypage-nickname" maxlength="16" required />
+          <button type="submit" class="btn">변경</button>
+        </form>
+      </div>
+      <div class="panel">
+        <h3>내 대회 주최 신청 현황</h3>
+        <div id="my-applications" class="card-list"></div>
+      </div>
+      <div class="panel">
+        <h3>내가 주최하는 대회</h3>
+        <div id="my-competitions" class="card-list"></div>
+      </div>
+    </section>
+
+    <!-- 대회 상세 -->
+    <section id="view-detail" class="view hidden">
+      <button class="btn small" id="btn-back-to-list">← 목록으로</button>
+      <h2 id="detail-title">-</h2>
+      <p id="detail-desc" class="desc"></p>
+      <p class="meta">개최일: <span id="detail-date"></span> · 주최자: <span id="detail-organizer"></span></p>
+
+      <div id="organizer-tools" class="panel hidden">
+        <h3>종목 추가 (주최자 전용)</h3>
+        <form id="form-add-event" class="inline-form">
+          <select id="event-preset">
+            <option value="3x3x3 큐브">3x3x3 큐브</option>
+            <option value="2x2x2 큐브">2x2x2 큐브</option>
+            <option value="4x4x4 큐브">4x4x4 큐브</option>
+            <option value="5x5x5 큐브">5x5x5 큐브</option>
+            <option value="한손(OH) 3x3x3">한손(OH) 3x3x3</option>
+            <option value="피라밍크스">피라밍크스</option>
+            <option value="스큐브">스큐브</option>
+            <option value="custom">직접 입력...</option>
+          </select>
+          <input type="text" id="event-custom-name" class="hidden" placeholder="종목명 입력" maxlength="30" />
+          <button type="submit" class="btn">종목 추가</button>
+        </form>
+      </div>
+
+      <div id="events-list"></div>
+    </section>
+
+    <!-- 관리자 -->
+    <section id="view-admin" class="view hidden">
+      <h2>관리자 페이지</h2>
+      <div class="panel">
+        <h3>대회 주최 신청 승인 대기</h3>
+        <div id="admin-pending-list" class="card-list"></div>
+      </div>
+      <div class="panel">
+        <h3>처리된 신청 내역</h3>
+        <div id="admin-history-list" class="card-list"></div>
+      </div>
+      <div class="panel">
+        <h3>관리자 추가</h3>
+        <form id="form-add-admin" class="inline-form">
+          <input type="text" id="admin-target-nickname" placeholder="닉네임으로 검색" required />
+          <button type="submit" class="btn">관리자로 지정</button>
+        </form>
+        <div id="admins-list" class="card-list"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Firebase SDK (compat, classic script - Electron file:// 환경에서도 안전) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/scramble-generator.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/data.js"></script>
+<script src="js/organizer.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
