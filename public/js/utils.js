@@ -25,6 +25,12 @@ function formatDate(value) {
   }
 }
 
+function formatDateRange(start, end) {
+  if (!start) return "-";
+  if (!end || end === start) return start;
+  return `${start} ~ ${end}`;
+}
+
 function parseTimeToSeconds(str) {
   if (!str) return Infinity;
   const s = String(str).trim().toUpperCase();

@@ -62,7 +62,9 @@ service cloud.firestore {
                          resource.data.status == 'pending' &&
                          request.resource.data.status == 'cancelled')
                       );
-      allow delete: if isAdmin();
+      // 관리자, 또는 본인 신청 건은 신청자 스스로도 삭제 가능
+      // (대회 삭제 시 연결된 신청 기록도 함께 정리하기 위함)
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.applicantUid == request.auth.uid);
     }
 
     // 승인된 대회

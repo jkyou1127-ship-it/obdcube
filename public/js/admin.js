@@ -16,7 +16,7 @@ async function renderPendingApplications() {
     <div class="item-card" data-id="${app.id}">
       <div class="info">
         <strong>${escapeHtml(app.title)}</strong>
-        <span>신청자: ${escapeHtml(app.applicantNickname)} · 희망일: ${escapeHtml(app.proposedDate)}</span>
+        <span>신청자: ${escapeHtml(app.applicantNickname)} · 희망일: ${escapeHtml(formatDateRange(app.proposedDate, app.proposedEndDate))}</span>
         <span>${escapeHtml(app.description || "")}</span>
       </div>
       <div class="actions">

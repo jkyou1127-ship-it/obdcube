@@ -95,7 +95,7 @@ async function renderCompetitionsList() {
     <div class="item-card">
       <div class="info">
         <strong>${escapeHtml(c.title)}</strong>
-        <span>개최일: ${escapeHtml(c.startDate)} · 주최자: ${escapeHtml(c.organizerNickname)}</span>
+        <span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))} · 주최자: ${escapeHtml(c.organizerNickname)}</span>
       </div>
       <div class="actions">
         <button class="btn small btn-open-comp" data-id="${c.id}">보기</button>
@@ -124,11 +124,18 @@ el("form-apply").addEventListener("submit", async (e) => {
     showToast("종목을 1개 이상 선택해주세요.", "error");
     return;
   }
+  const date = el("apply-date").value;
+  const endDate = el("apply-end-date").value;
+  if (endDate && endDate < date) {
+    showToast("종료일은 시작일보다 빠를 수 없습니다.", "error");
+    return;
+  }
   try {
     await submitApplication({
       title: el("apply-title").value.trim(),
       description: el("apply-desc").value.trim(),
-      date: el("apply-date").value,
+      date,
+      endDate,
       events
     });
     el("form-apply").reset();
@@ -165,7 +172,7 @@ async function renderMyPage() {
     <div class="item-card" data-id="${app.id}">
       <div class="info">
         <strong>${escapeHtml(app.title)}</strong>
-        <span>희망일: ${escapeHtml(app.proposedDate)}</span>
+        <span>희망일: ${escapeHtml(formatDateRange(app.proposedDate, app.proposedEndDate))}</span>
         ${app.status === "rejected" && app.rejectReason ? `<span>반려 사유: ${escapeHtml(app.rejectReason)}</span>` : ""}
       </div>
       <div class="actions">
@@ -190,7 +197,7 @@ async function renderMyPage() {
   const compsContainer = el("my-competitions");
   compsContainer.innerHTML = myComps.length === 0 ? "<p class='desc'>주최 중인 대회가 없습니다.</p>" : myComps.map(c => `
     <div class="item-card">
-      <div class="info"><strong>${escapeHtml(c.title)}</strong><span>개최일: ${escapeHtml(c.startDate)}</span></div>
+      <div class="info"><strong>${escapeHtml(c.title)}</strong><span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))}</span></div>
       <div class="actions"><button class="btn small btn-manage-comp" data-id="${c.id}">관리</button></div>
     </div>
   `).join("");

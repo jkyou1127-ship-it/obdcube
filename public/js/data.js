@@ -1,12 +1,13 @@
 // Firestore 데이터 접근 헬퍼: 대회 주최 신청 / 대회 / 종목 / 스크램블
 
-async function submitApplication({ title, description, date, events }) {
+async function submitApplication({ title, description, date, endDate, events }) {
   return db.collection("applications").add({
     applicantUid: AppState.user.uid,
     applicantNickname: AppState.profile.nickname,
     title,
     description: description || "",
     proposedDate: date,
+    proposedEndDate: endDate || date,
     events: events || [],
     status: "pending",
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -56,10 +57,12 @@ async function approveApplication(app) {
     title: app.title,
     description: app.description || "",
     startDate: app.proposedDate,
+    endDate: app.proposedEndDate || app.proposedDate,
     organizerUid: app.applicantUid,
     organizerNickname: app.applicantNickname,
     applicationId: app.id,
     status: "active",
+    participationClosed: false,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   (app.events || []).forEach(eventName => {
@@ -108,8 +111,20 @@ async function endCompetition(compId) {
   });
 }
 
+async function closeParticipation(compId) {
+  await db.collection("competitions").doc(compId).update({
+    participationClosed: true,
+    participationClosedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
 async function deleteCompetition(compId) {
-  await db.collection("competitions").doc(compId).delete();
+  // 대회와 연결된 주최 신청 기록(같은 id)도 함께 삭제해
+  // 마이페이지/관리자 패널에 남아있지 않도록 한다.
+  const batch = db.batch();
+  batch.delete(db.collection("competitions").doc(compId));
+  batch.delete(db.collection("applications").doc(compId));
+  await batch.commit();
 }
 
 async function fetchEvents(compId) {
