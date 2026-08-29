@@ -28,6 +28,10 @@ async function cancelApplication(appId) {
   await db.collection("applications").doc(appId).update({ status: "cancelled" });
 }
 
+async function deleteApplication(appId) {
+  await db.collection("applications").doc(appId).delete();
+}
+
 async function fetchPendingApplications() {
   const snap = await db.collection("applications").where("status", "==", "pending").get();
   const list = [];

@@ -179,6 +179,7 @@ async function renderMyPage() {
         <span class="badge ${app.status}">${STATUS_LABEL[app.status] || app.status}</span>
         ${app.status === "pending" ? `<button class="btn small danger btn-cancel-app" data-id="${app.id}">신청 취소</button>` : ""}
         ${app.status === "approved" ? `<button class="btn small danger btn-delete-my-comp" data-id="${app.id}">대회 삭제</button>` : ""}
+        ${app.status === "rejected" ? `<button class="btn small danger btn-delete-app" data-id="${app.id}">삭제</button>` : ""}
       </div>
     </div>
   `).join("");
@@ -187,6 +188,18 @@ async function renderMyPage() {
       try {
         await cancelApplication(btn.dataset.id);
         showToast("신청을 취소했습니다.", "success");
+        await renderMyPage();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+  appsContainer.querySelectorAll(".btn-delete-app").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("이 신청 내역을 삭제할까요?")) return;
+      try {
+        await deleteApplication(btn.dataset.id);
+        showToast("삭제했습니다.", "success");
         await renderMyPage();
       } catch (err) {
         showToast(err.message, "error");
