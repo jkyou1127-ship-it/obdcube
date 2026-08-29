@@ -164,8 +164,12 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 .item-card .actions { display: flex; gap: 8px; }
 
 .badge {
-  display: inline-block;
-  padding: 2px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1;
+  padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
