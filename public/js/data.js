@@ -158,6 +158,13 @@ async function closeEventAdditions(compId) {
   });
 }
 
+// 종목추가 종료를 번복하고 종목·스크램블 추가를 다시 열어준다.
+async function reopenEventAdditions(compId) {
+  await db.collection("competitions").doc(compId).update({
+    eventsClosed: false
+  });
+}
+
 async function deleteCompetition(compId) {
   // 대회와 연결된 주최 신청 기록(같은 id)도 함께 삭제해
   // 마이페이지/관리자 패널에 남아있지 않도록 한다.

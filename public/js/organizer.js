@@ -30,6 +30,7 @@ async function openCompetitionDetail(compId) {
   el("btn-start-competition").classList.toggle("hidden", isEnded || !isNotStarted(comp));
   el("btn-close-participation").classList.toggle("hidden", isEnded || comp.participationClosed === true);
   el("btn-close-events").classList.toggle("hidden", eventsClosed);
+  el("btn-reopen-events").classList.toggle("hidden", isEnded || comp.eventsClosed !== true);
   el("btn-end-competition").classList.toggle("hidden", isEnded);
   el("coorganizer-panel").classList.toggle("hidden", !canManage);
   el("event-request-panel").classList.toggle("hidden", eventsClosed);
@@ -397,6 +398,18 @@ el("btn-close-events").addEventListener("click", async () => {
   try {
     await closeEventAdditions(currentCompId);
     showToast("종목추가를 마감했습니다.", "success");
+    await openCompetitionDetail(currentCompId);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+el("btn-reopen-events").addEventListener("click", async () => {
+  if (!currentCompId) return;
+  if (!confirm("종목추가 종료를 번복하고 종목·스크램블 추가를 다시 열까요?")) return;
+  try {
+    await reopenEventAdditions(currentCompId);
+    showToast("종목추가를 다시 열었습니다.", "success");
     await openCompetitionDetail(currentCompId);
   } catch (err) {
     showToast(err.message, "error");
