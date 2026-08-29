@@ -11,7 +11,7 @@ const FIREBASE_CONFIG = {
 };
 
 // 최초 관리자로 자동 지정될 이메일 (firestore.rules 의 isBootstrapAdminEmail 과 반드시 동일해야 합니다)
-const ADMIN_BOOTSTRAP_EMAIL = "jkyou1127@gmail.com";
+const ADMIN_BOOTSTRAP_EMAIL = "sycovy0706@naver.com";
 
 firebase.initializeApp(FIREBASE_CONFIG);
 const auth = firebase.auth();

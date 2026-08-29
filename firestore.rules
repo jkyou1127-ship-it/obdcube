@@ -12,7 +12,7 @@ service cloud.firestore {
     // 최초 관리자 부트스트랩 이메일.
     // 이 이메일로 로그인하면 앱이 자동으로 admins/{uid} 문서를 만들어 관리자 권한을 부여합니다.
     function isBootstrapAdminEmail() {
-      return isSignedIn() && request.auth.token.email == "jkyou1127@gmail.com";
+      return isSignedIn() && request.auth.token.email == "sycovy0706@naver.com";
     }
 
     function isAdmin() {

@@ -50,11 +50,13 @@ const FIREBASE_CONFIG = {
 로그인 시스템에는 **최초 관리자 자동 부여** 기능이 내장되어 있습니다.
 
 - `public/js/firebase-config.js` 의 `ADMIN_BOOTSTRAP_EMAIL` 값 (`firestore.rules` 의 값과 동일해야 함)
-- 현재 기본값: **jkyou1127@gmail.com**
+- 현재 기본값: **sycovy0706@naver.com**
 
 이 이메일로 회원가입 후 로그인하면, 앱이 자동으로 해당 계정에 관리자 권한을 부여합니다. 이후 관리자 페이지의 "관리자 추가" 기능으로 다른 사용자를 닉네임 검색을 통해 추가 관리자로 지정할 수 있습니다.
 
 관리자만 대회 주최 신청을 승인/반려할 수 있습니다.
+
+> ⚠️ 관리자 부트스트랩 이메일을 바꿀 때마다 `firestore.rules`도 함께 바뀝니다. Firebase 콘솔 → Firestore Database → 규칙 탭에 최신 `firestore.rules` 내용을 다시 붙여넣고 게시해야 실제로 반영됩니다.
 
 ## 3. GitHub Pages(웹앱) 활성화
 
@@ -84,6 +86,7 @@ npm run dist:win      # Windows 설치 파일(nsis) + 포터블 exe 빌드 → r
 ```
 public/                 웹앱 소스 (웹/Electron 공용, 순수 HTML/CSS/JS)
   index.html
+  privacy.html          개인정보처리방침
   css/style.css
   js/
     firebase-config.js   Firebase 프로젝트 연결 설정 (직접 입력 필요)
