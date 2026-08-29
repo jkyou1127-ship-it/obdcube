@@ -215,9 +215,14 @@ async function cancelEventRequest(compId, requestId) {
   await db.collection("competitions").doc(compId).collection("eventRequests").doc(requestId).delete();
 }
 
-async function fetchScrambles(compId, eventId) {
-  const snap = await db.collection("competitions").doc(compId)
-    .collection("events").doc(eventId).collection("scrambles").get();
+// onlyPublic=true일 때는 쿼리 자체에 isPublic 조건을 걸어야 한다.
+// 그렇지 않으면(비주최자가 필터 없이 전체를 조회하면) 비공개 스크램블이 하나라도
+// 섞여 있는 순간 Firestore 보안 규칙상 "list" 요청 전체가 거부되어 버린다.
+async function fetchScrambles(compId, eventId, onlyPublic) {
+  let ref = db.collection("competitions").doc(compId)
+    .collection("events").doc(eventId).collection("scrambles");
+  if (onlyPublic) ref = ref.where("isPublic", "==", true);
+  const snap = await ref.get();
   const list = [];
   snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
   list.sort((a, b) => (a.round - b.round) || (a.index - b.index));
@@ -408,8 +413,13 @@ async function joinTttRoom(code) {
   });
 }
 
-function watchTttRoom(code, callback) {
-  return db.collection("tictactoeGames").doc(code).onSnapshot(callback);
+function watchTttRoom(code, onNext, onError) {
+  return db.collection("tictactoeGames").doc(code).onSnapshot(onNext, onError);
+}
+
+async function fetchTttRoomOnce(code) {
+  const snap = await db.collection("tictactoeGames").doc(code).get();
+  return snap.exists ? snap.data() : null;
 }
 
 async function makeTttMove(code, board, nextTurn, winner, status) {

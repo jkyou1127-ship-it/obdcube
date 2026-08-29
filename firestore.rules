@@ -67,15 +67,15 @@ service cloud.firestore {
                         (resource.data.status == 'waiting' &&
                          resource.data.playerO == null &&
                          request.resource.data.playerO.uid == request.auth.uid &&
-                         request.resource.data.playerX == resource.data.playerX &&
+                         request.resource.data.playerX.uid == resource.data.playerX.uid &&
                          request.resource.data.board == resource.data.board &&
                          request.resource.data.status == 'playing') ||
                         // 턴에 따른 착수 (승리/무승부로 인한 종료 포함)
                         (resource.data.status == 'playing' &&
                          ((resource.data.turn == 'X' && resource.data.playerX.uid == request.auth.uid) ||
                           (resource.data.turn == 'O' && resource.data.playerO.uid == request.auth.uid)) &&
-                         request.resource.data.playerX == resource.data.playerX &&
-                         request.resource.data.playerO == resource.data.playerO &&
+                         request.resource.data.playerX.uid == resource.data.playerX.uid &&
+                         request.resource.data.playerO.uid == resource.data.playerO.uid &&
                          request.resource.data.turn != resource.data.turn) ||
                         // 나가기(기권)
                         (resource.data.status != 'finished' &&

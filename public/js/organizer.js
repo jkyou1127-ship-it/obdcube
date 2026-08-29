@@ -38,7 +38,7 @@ async function openCompetitionDetail(compId) {
   try {
     await renderEventsList(comp, canManage, isEnded);
   } catch (err) {
-    showToast("종목 정보를 불러오지 못했습니다: " + err.message, "error");
+    el("events-list").innerHTML = "<p class='desc'>종목 정보를 불러오지 못했습니다.</p>";
   }
   try {
     await renderParticipatePanel(comp);
@@ -420,8 +420,7 @@ async function renderEventsList(comp, canManage, isEnded) {
   }
 
   const blocks = await Promise.all(events.map(async (ev) => {
-    const scrambles = await fetchScrambles(comp.id, ev.id);
-    const visibleScrambles = canManage ? scrambles : scrambles.filter(s => s.isPublic);
+    const visibleScrambles = await fetchScrambles(comp.id, ev.id, !canManage);
 
     const rounds = {};
     visibleScrambles.forEach(s => {

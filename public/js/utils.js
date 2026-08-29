@@ -47,15 +47,27 @@ function isUserOrganizerOf(comp) {
   return Array.isArray(comp.coOrganizerUids) && comp.coOrganizerUids.includes(AppState.user.uid);
 }
 
+// 오늘 날짜(로컬 기준 YYYY-MM-DD). UTC 기준(toISOString)으로 계산하면 한국(UTC+9) 등에서는
+// 자정 이후 몇 시간 동안 날짜가 하루 전으로 계산되어 개최일 당일인데도 "참가신청중"으로
+// 잘못 표시되는 문제가 있어, 반드시 브라우저 로컬 시간대 기준으로 계산해야 한다.
+function todayLocalDateString() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 // 개최일(startDate, "YYYY-MM-DD") 이전인지 여부 - 이 기간에는 참가 신청만 받고 기록은 입력하지 않음
 function isBeforeStartDate(comp) {
   if (!comp || !comp.startDate) return false;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocalDateString();
   return today < comp.startDate;
 }
 
 function getCompetitionStatusInfo(comp) {
   if (comp.status === "ended") return { label: "종료됨", cls: "ended" };
+  if (comp.participationClosed === true) return { label: "신청마감", cls: "closed" };
   if (isBeforeStartDate(comp)) return { label: "참가신청중", cls: "upcoming" };
   return { label: "진행중", cls: "active" };
 }

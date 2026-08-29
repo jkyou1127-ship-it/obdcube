@@ -292,15 +292,42 @@ function tttEnterRoom(code) {
   el("ttt-online-room").classList.remove("hidden");
   el("ttt-room-code").textContent = code;
   if (tttOnlineUnsub) tttOnlineUnsub();
-  tttOnlineUnsub = watchTttRoom(code, (snap) => {
-    if (!snap.exists) {
+  tttOnlineUnsub = watchTttRoom(
+    code,
+    (snap) => {
+      if (!snap.exists) {
+        showToast("방이 종료되었습니다.", "error");
+        tttResetOnlineUi();
+        return;
+      }
+      try {
+        tttOnlineRoom = snap.data();
+        renderTttOnlineRoom();
+      } catch (err) {
+        showToast("게임 화면 갱신 중 오류: " + err.message, "error");
+      }
+    },
+    (err) => {
+      showToast("실시간 연결 오류: " + err.message + " - 새로고침을 눌러보세요.", "error");
+    }
+  );
+}
+
+// 실시간 갱신이 늦거나 끊겼을 때를 대비한 수동 새로고침
+async function tttRefreshRoom() {
+  if (!tttOnlineCode) return;
+  try {
+    const room = await fetchTttRoomOnce(tttOnlineCode);
+    if (!room) {
       showToast("방이 종료되었습니다.", "error");
       tttResetOnlineUi();
       return;
     }
-    tttOnlineRoom = snap.data();
+    tttOnlineRoom = room;
     renderTttOnlineRoom();
-  });
+  } catch (err) {
+    showToast(err.message, "error");
+  }
 }
 
 function tttResetOnlineUi() {
@@ -391,6 +418,7 @@ function initTicTacToe() {
   el("btn-ttt-create-room").addEventListener("click", tttCreateRoom);
   el("btn-ttt-join-room").addEventListener("click", tttJoinRoom);
   el("btn-ttt-leave-room").addEventListener("click", tttLeaveRoom);
+  el("btn-ttt-refresh-room").addEventListener("click", tttRefreshRoom);
   tttOfflineRestart();
 }
 
