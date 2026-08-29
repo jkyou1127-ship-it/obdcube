@@ -207,28 +207,42 @@ el("form-nickname").addEventListener("submit", async (e) => {
   }
 });
 
+// 브라우저의 confirm()은 같은 페이지에서 여러 번 뜨면 이후 호출을 조용히
+// 막아버리는 경우가 있어(추가 대화상자 차단), 회원 탈퇴처럼 중요한 동작은
+// 네이티브 confirm 대신 화면 안에서 단계별로 다시 확인하는 방식을 사용한다.
+let pendingDeleteAccountPassword = null;
+
 el("btn-delete-account-start").addEventListener("click", () => {
-  if (!confirm("정말 회원 탈퇴하시겠습니까? 되돌릴 수 없습니다.")) return;
   el("delete-account-password").value = "";
   el("form-delete-account").classList.remove("hidden");
+  el("delete-account-final").classList.add("hidden");
   el("delete-account-password").focus();
 });
 
-el("form-delete-account").addEventListener("submit", async (e) => {
+el("form-delete-account").addEventListener("submit", (e) => {
   e.preventDefault();
-  if (!confirm("마지막 확인입니다. 정말로 탈퇴하시겠습니까?")) return;
-  const password = el("delete-account-password").value;
+  pendingDeleteAccountPassword = el("delete-account-password").value;
+  el("form-delete-account").classList.add("hidden");
+  el("delete-account-final").classList.remove("hidden");
+});
+
+el("btn-delete-account-final").addEventListener("click", async () => {
+  const password = pendingDeleteAccountPassword;
+  pendingDeleteAccountPassword = null;
   try {
     await deleteMyAccount(password);
     showToast("회원 탈퇴가 완료되었습니다.", "success");
   } catch (err) {
     showToast(translateAuthError(err), "error");
+    el("delete-account-final").classList.add("hidden");
   }
 });
 
 async function renderMyPage() {
   el("mypage-nickname").value = AppState.profile.nickname;
   el("form-delete-account").classList.add("hidden");
+  el("delete-account-final").classList.add("hidden");
+  pendingDeleteAccountPassword = null;
 
   const ONE_HOUR_MS = 60 * 60 * 1000;
   const now = Date.now();
