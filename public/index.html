@@ -78,6 +78,10 @@
         <textarea id="apply-desc" rows="4" maxlength="500"></textarea>
         <label>희망 개최일</label>
         <input type="date" id="apply-date" required />
+        <label>종목 선택 (최소 1개)</label>
+        <div id="apply-events-checkboxes" class="checkbox-grid"></div>
+        <label>기타 종목 (쉼표로 구분, 선택)</label>
+        <input type="text" id="apply-events-custom" placeholder="예: 마카오, 시계" />
         <button type="submit" class="btn primary">신청하기</button>
       </form>
     </section>
@@ -107,7 +111,21 @@
       <button class="btn small" id="btn-back-to-list">← 목록으로</button>
       <h2 id="detail-title">-</h2>
       <p id="detail-desc" class="desc"></p>
-      <p class="meta">개최일: <span id="detail-date"></span> · 주최자: <span id="detail-organizer"></span></p>
+      <p class="meta">개최일: <span id="detail-date"></span> · 주최자: <span id="detail-organizer"></span> · 상태: <span id="detail-status" class="badge"></span></p>
+
+      <div id="organizer-actions" class="inline-form hidden">
+        <button type="button" class="btn small" id="btn-end-competition">대회 종료</button>
+        <button type="button" class="btn small danger" id="btn-delete-competition">대회 삭제</button>
+      </div>
+
+      <div id="participate-panel" class="panel hidden">
+        <h3>참가 신청</h3>
+        <p class="desc">참가할 종목을 선택하고 신청하세요.</p>
+        <form id="form-participate" class="inline-form">
+          <div id="participate-events-checkboxes" class="checkbox-grid"></div>
+          <button type="submit" class="btn primary">참가 신청</button>
+        </form>
+      </div>
 
       <div id="organizer-tools" class="panel hidden">
         <h3>종목 추가 (주최자 전용)</h3>

@@ -56,7 +56,8 @@ async function renderPendingApplications() {
 
 async function renderReviewedApplications() {
   const container = el("admin-history-list");
-  const list = await fetchReviewedApplications();
+  // 반려된 신청은 처리 즉시 관리자 화면에서 보이지 않도록 제외 (승인 내역만 표시)
+  const list = (await fetchReviewedApplications()).filter(app => app.status !== "rejected");
   if (list.length === 0) {
     container.innerHTML = "<p class='desc'>처리 내역이 없습니다.</p>";
     return;

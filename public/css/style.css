@@ -159,6 +159,24 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 .badge.approved { background: rgba(55,200,119,.15); color: var(--success); }
 .badge.rejected { background: rgba(255,91,110,.15); color: var(--danger); }
 .badge.cancelled { background: rgba(163,168,201,.15); color: var(--text-dim); }
+.badge.active { background: rgba(91,124,255,.15); color: var(--primary); }
+.badge.ended { background: rgba(163,168,201,.15); color: var(--text-dim); }
+
+.checkbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 6px 0 4px;
+}
+.checkbox-grid label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: 14px;
+  margin: 0;
+}
+.checkbox-grid input[type="checkbox"] { width: auto; }
 
 .event-block {
   background: var(--card);

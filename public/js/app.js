@@ -106,13 +106,28 @@ async function renderCompetitionsList() {
 }
 
 // ---- 대회 주최 신청 ----
+function initApplyEventsCheckboxes() {
+  const container = el("apply-events-checkboxes");
+  container.innerHTML = Object.keys(SCRAMBLE_PRESETS).map(name => `
+    <label><input type="checkbox" value="${escapeHtml(name)}" /> ${escapeHtml(name)}</label>
+  `).join("");
+}
+
 el("form-apply").addEventListener("submit", async (e) => {
   e.preventDefault();
+  const checked = Array.from(el("apply-events-checkboxes").querySelectorAll("input:checked")).map(cb => cb.value);
+  const custom = el("apply-events-custom").value.split(",").map(s => s.trim()).filter(Boolean);
+  const events = [...checked, ...custom];
+  if (events.length === 0) {
+    showToast("종목을 1개 이상 선택해주세요.", "error");
+    return;
+  }
   try {
     await submitApplication({
       title: el("apply-title").value.trim(),
       description: el("apply-desc").value.trim(),
-      date: el("apply-date").value
+      date: el("apply-date").value,
+      events
     });
     el("form-apply").reset();
     showToast("대회 주최 신청이 접수되었습니다. 관리자 승인을 기다려주세요.", "success");
@@ -136,7 +151,13 @@ el("form-nickname").addEventListener("submit", async (e) => {
 async function renderMyPage() {
   el("mypage-nickname").value = AppState.profile.nickname;
 
-  const apps = await fetchMyApplications();
+  const ONE_HOUR_MS = 60 * 60 * 1000;
+  const now = Date.now();
+  const apps = (await fetchMyApplications()).filter(app => {
+    if (app.status !== "rejected") return true;
+    if (!app.reviewedAt) return true;
+    return now - app.reviewedAt.toMillis() < ONE_HOUR_MS;
+  });
   const appsContainer = el("my-applications");
   appsContainer.innerHTML = apps.length === 0 ? "<p class='desc'>신청 내역이 없습니다.</p>" : apps.map(app => `
     <div class="item-card" data-id="${app.id}">
@@ -177,6 +198,7 @@ async function renderMyPage() {
 }
 
 // ---- 초기화 ----
+initApplyEventsCheckboxes();
 initOrganizerToolsForm();
 initAdminForm();
 

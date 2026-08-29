@@ -70,7 +70,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isAdmin();
       allow update: if isSignedIn() && (isAdmin() || resource.data.organizerUid == request.auth.uid);
-      allow delete: if isAdmin();
+      allow delete: if isSignedIn() && (isAdmin() || resource.data.organizerUid == request.auth.uid);
 
       function isOrganizer() {
         return isSignedIn() &&
@@ -92,10 +92,15 @@ service cloud.firestore {
           allow write: if isSignedIn() && (isAdmin() || isOrganizer());
         }
 
-        // 참가자 (라운드별 기록/진출·탈락 여부) - 주최자/관리자만 열람·관리
+        // 참가자 (라운드별 기록/진출·탈락 여부) - 열람·수정은 주최자/관리자만.
+        // 단, 등록(참가 신청)은 본인 uid로 스스로도 가능.
         match /participants/{participantId} {
           allow read: if isSignedIn() && (isAdmin() || isOrganizer());
-          allow write: if isSignedIn() && (isAdmin() || isOrganizer());
+          allow create: if isSignedIn() && (
+                            isAdmin() || isOrganizer() ||
+                            request.resource.data.uid == request.auth.uid
+                          );
+          allow update, delete: if isSignedIn() && (isAdmin() || isOrganizer());
         }
       }
     }

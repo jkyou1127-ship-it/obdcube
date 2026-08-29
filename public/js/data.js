@@ -1,12 +1,13 @@
 // Firestore 데이터 접근 헬퍼: 대회 주최 신청 / 대회 / 종목 / 스크램블
 
-async function submitApplication({ title, description, date }) {
+async function submitApplication({ title, description, date, events }) {
   return db.collection("applications").add({
     applicantUid: AppState.user.uid,
     applicantNickname: AppState.profile.nickname,
     title,
     description: description || "",
     proposedDate: date,
+    events: events || [],
     status: "pending",
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
@@ -58,7 +59,15 @@ async function approveApplication(app) {
     organizerUid: app.applicantUid,
     organizerNickname: app.applicantNickname,
     applicationId: app.id,
+    status: "active",
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  (app.events || []).forEach(eventName => {
+    const eventRef = compRef.collection("events").doc();
+    batch.set(eventRef, {
+      name: eventName,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
   });
   await batch.commit();
 }
@@ -90,6 +99,17 @@ async function fetchMyCompetitions() {
 async function fetchCompetition(compId) {
   const doc = await db.collection("competitions").doc(compId).get();
   return doc.exists ? { id: doc.id, ...doc.data() } : null;
+}
+
+async function endCompetition(compId) {
+  await db.collection("competitions").doc(compId).update({
+    status: "ended",
+    endedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+async function deleteCompetition(compId) {
+  await db.collection("competitions").doc(compId).delete();
 }
 
 async function fetchEvents(compId) {
@@ -140,6 +160,16 @@ async function deleteScramble(compId, eventId, scrambleId) {
   await db.collection("competitions").doc(compId)
     .collection("events").doc(eventId).collection("scrambles").doc(scrambleId)
     .delete();
+}
+
+async function applyToParticipate(compId, eventId) {
+  return db.collection("competitions").doc(compId)
+    .collection("events").doc(eventId).collection("participants").add({
+      nickname: AppState.profile.nickname,
+      uid: AppState.user.uid,
+      rounds: {},
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
 }
 
 async function fetchParticipants(compId, eventId) {

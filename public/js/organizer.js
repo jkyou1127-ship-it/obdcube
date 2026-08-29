@@ -16,13 +16,77 @@ async function openCompetitionDetail(compId) {
   el("detail-date").textContent = comp.startDate || "-";
   el("detail-organizer").textContent = comp.organizerNickname || "-";
 
+  const isEnded = comp.status === "ended";
+  const statusEl = el("detail-status");
+  statusEl.textContent = isEnded ? "종료됨" : "진행중";
+  statusEl.className = "badge " + (isEnded ? "ended" : "active");
+
   const isOrganizer = AppState.user && comp.organizerUid === AppState.user.uid;
   const canManage = isOrganizer || AppState.isAdmin;
   el("organizer-tools").classList.toggle("hidden", !canManage);
+  el("organizer-actions").classList.toggle("hidden", !canManage);
 
   await renderEventsList(comp, canManage);
+  await renderParticipatePanel(comp);
   switchView("detail");
 }
+
+async function renderParticipatePanel(comp) {
+  const panel = el("participate-panel");
+  const isEnded = comp.status === "ended";
+  if (isEnded) {
+    panel.classList.add("hidden");
+    return;
+  }
+  panel.classList.remove("hidden");
+
+  const events = await fetchEvents(comp.id);
+  const container = el("participate-events-checkboxes");
+  container.innerHTML = events.length === 0
+    ? "<p class='desc'>등록된 종목이 없습니다.</p>"
+    : events.map(ev => `<label><input type="checkbox" value="${ev.id}" /> ${escapeHtml(ev.name)}</label>`).join("");
+}
+
+el("btn-end-competition").addEventListener("click", async () => {
+  if (!currentCompId) return;
+  if (!confirm("이 대회를 종료할까요? 종료 후에는 참가 신청을 받을 수 없습니다.")) return;
+  try {
+    await endCompetition(currentCompId);
+    showToast("대회를 종료했습니다.", "success");
+    await openCompetitionDetail(currentCompId);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+el("btn-delete-competition").addEventListener("click", async () => {
+  if (!currentCompId) return;
+  if (!confirm("이 대회를 완전히 삭제할까요? 되돌릴 수 없습니다.")) return;
+  try {
+    await deleteCompetition(currentCompId);
+    showToast("대회를 삭제했습니다.", "success");
+    onNavigate("competitions");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+el("form-participate").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentCompId) return;
+  const checked = Array.from(el("participate-events-checkboxes").querySelectorAll("input:checked")).map(cb => cb.value);
+  if (checked.length === 0) {
+    showToast("참가할 종목을 1개 이상 선택해주세요.", "error");
+    return;
+  }
+  try {
+    await Promise.all(checked.map(eventId => applyToParticipate(currentCompId, eventId)));
+    showToast("참가 신청이 완료되었습니다.", "success");
+    el("form-participate").reset();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
 
 async function renderEventsList(comp, canManage) {
   const container = el("events-list");
