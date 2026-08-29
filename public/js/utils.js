@@ -31,6 +31,16 @@ function formatDateRange(start, end) {
   return `${start} ~ ${end}`;
 }
 
+// 주최자 표시용 문자열: 공동 주최자가 있으면 함께 표시한다.
+async function organizerDisplayText(comp) {
+  const uids = comp.coOrganizerUids || [];
+  if (uids.length === 0) return comp.organizerNickname || "-";
+  const profiles = await Promise.all(uids.map(uid => fetchUserProfile(uid).catch(() => null)));
+  const coNames = profiles.map((p, i) => (p ? p.nickname : null)).filter(Boolean);
+  if (coNames.length === 0) return comp.organizerNickname || "-";
+  return `${comp.organizerNickname || "-"} (공동주최: ${coNames.join(", ")})`;
+}
+
 function isUserOrganizerOf(comp) {
   if (!AppState.user || !comp) return false;
   if (comp.organizerUid === AppState.user.uid) return true;
@@ -114,6 +124,19 @@ function computeAverage(times, format) {
   const trimmed = sorted.slice(1, sorted.length - 1);
   if (trimmed.length === 0 || trimmed.some(v => v === Infinity)) return Infinity;
   return trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
+}
+
+// 참가자 문서에서 주최자가 직접 지정한 최종 순위를 찾는다.
+// 여러 라운드 중 순위가 지정된 가장 마지막(높은) 라운드를 최종 순위로 본다.
+function extractPlacement(participant) {
+  const meta = participant.roundMeta || {};
+  const rankedRounds = Object.keys(meta)
+    .map(Number)
+    .filter(round => meta[round] && meta[round].rank != null && meta[round].rank !== "")
+    .sort((a, b) => b - a);
+  if (rankedRounds.length === 0) return null;
+  const round = rankedRounds[0];
+  return { round, rank: meta[round].rank };
 }
 
 const STATUS_LABEL = {

@@ -15,6 +15,7 @@ async function openCompetitionDetail(compId) {
   el("detail-desc").textContent = comp.description || "";
   el("detail-date").textContent = formatDateRange(comp.startDate, comp.endDate);
   el("detail-organizer").textContent = comp.organizerNickname || "-";
+  organizerDisplayText(comp).then(text => { el("detail-organizer").textContent = text; }).catch(() => {});
 
   const isEnded = comp.status === "ended";
   const statusInfo = getCompetitionStatusInfo(comp);

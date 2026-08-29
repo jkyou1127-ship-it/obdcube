@@ -77,6 +77,7 @@ async function onNavigate(name) {
   switchView(name);
   if (name === "competitions") await renderCompetitionsList();
   if (name === "mypage") await renderMyPage();
+  if (name === "awards") await renderAwardsPanel();
   if (name === "admin") await renderAdminView();
 }
 
@@ -91,13 +92,14 @@ async function renderCompetitionsList() {
     container.innerHTML = "<p class='desc'>아직 승인된 대회가 없습니다.</p>";
     return;
   }
-  container.innerHTML = list.map(c => {
+  const cards = await Promise.all(list.map(async c => {
     const statusInfo = getCompetitionStatusInfo(c);
+    const organizerText = await organizerDisplayText(c);
     return `
     <div class="item-card">
       <div class="info">
         <strong>${escapeHtml(c.title)}</strong>
-        <span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))} · 주최자: ${escapeHtml(c.organizerNickname)}</span>
+        <span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))} · 주최자: ${escapeHtml(organizerText)}</span>
       </div>
       <div class="actions">
         <span class="badge ${statusInfo.cls}">${statusInfo.label}</span>
@@ -105,10 +107,47 @@ async function renderCompetitionsList() {
       </div>
     </div>
   `;
-  }).join("");
+  }));
+  container.innerHTML = cards.join("");
   container.querySelectorAll(".btn-open-comp").forEach(btn => {
     btn.addEventListener("click", () => openCompetitionDetail(btn.dataset.id));
   });
+}
+
+// ---- 입상 내역 ----
+async function renderAwardsPanel() {
+  const container = el("awards-list");
+  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+
+  const comps = (await fetchCompetitions()).filter(c => c.status === "ended");
+  const awards = [];
+  for (const comp of comps) {
+    const events = await fetchEvents(comp.id);
+    for (const ev of events) {
+      const p = await fetchMyParticipant(comp.id, ev.id);
+      if (!p) continue;
+      const placement = extractPlacement(p);
+      if (!placement) continue;
+      awards.push({ comp, ev, ...placement });
+    }
+  }
+  awards.sort((a, b) => a.rank - b.rank);
+
+  if (awards.length === 0) {
+    container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
+    return;
+  }
+  container.innerHTML = awards.map(a => `
+    <div class="item-card">
+      <div class="info">
+        <strong>${escapeHtml(a.comp.title)} - ${escapeHtml(a.ev.name)}</strong>
+        <span>${escapeHtml(formatDateRange(a.comp.startDate, a.comp.endDate))}</span>
+      </div>
+      <div class="actions">
+        <span class="badge active">${a.rank}등</span>
+      </div>
+    </div>
+  `).join("");
 }
 
 // ---- 대회 주최 신청 ----
