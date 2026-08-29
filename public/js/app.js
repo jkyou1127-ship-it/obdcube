@@ -91,17 +91,21 @@ async function renderCompetitionsList() {
     container.innerHTML = "<p class='desc'>아직 승인된 대회가 없습니다.</p>";
     return;
   }
-  container.innerHTML = list.map(c => `
+  container.innerHTML = list.map(c => {
+    const isEnded = c.status === "ended";
+    return `
     <div class="item-card">
       <div class="info">
         <strong>${escapeHtml(c.title)}</strong>
         <span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))} · 주최자: ${escapeHtml(c.organizerNickname)}</span>
       </div>
       <div class="actions">
+        <span class="badge ${isEnded ? "ended" : "active"}">${isEnded ? "종료됨" : "진행중"}</span>
         <button class="btn small btn-open-comp" data-id="${c.id}">보기</button>
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
   container.querySelectorAll(".btn-open-comp").forEach(btn => {
     btn.addEventListener("click", () => openCompetitionDetail(btn.dataset.id));
   });
@@ -221,15 +225,19 @@ async function renderMyPage() {
 
   const myComps = await fetchMyCompetitions();
   const compsContainer = el("my-competitions");
-  compsContainer.innerHTML = myComps.length === 0 ? "<p class='desc'>주최 중인 대회가 없습니다.</p>" : myComps.map(c => `
+  compsContainer.innerHTML = myComps.length === 0 ? "<p class='desc'>주최 중인 대회가 없습니다.</p>" : myComps.map(c => {
+    const isEnded = c.status === "ended";
+    return `
     <div class="item-card">
       <div class="info"><strong>${escapeHtml(c.title)}</strong><span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))}</span></div>
       <div class="actions">
+        <span class="badge ${isEnded ? "ended" : "active"}">${isEnded ? "종료됨" : "진행중"}</span>
         <button class="btn small btn-manage-comp" data-id="${c.id}">관리</button>
         <button class="btn small danger btn-delete-comp-card" data-id="${c.id}">삭제</button>
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
   compsContainer.querySelectorAll(".btn-manage-comp").forEach(btn => {
     btn.addEventListener("click", () => openCompetitionDetail(btn.dataset.id));
   });

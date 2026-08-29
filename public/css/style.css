@@ -239,7 +239,14 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 }
 .table-scroll { overflow-x: auto; }
 .solves-cell { display: flex; gap: 4px; flex-wrap: nowrap; }
-.solves-cell input.participant-solve-input { width: 64px; flex: none; }
+.solves-cell input.participant-solve-input,
+.solves-cell input.my-record-solve { width: 64px; flex: none; }
+.solve-readonly {
+  display: inline-block;
+  width: 64px;
+  color: var(--text-dim);
+  font-family: "Courier New", monospace;
+}
 
 .toast {
   position: fixed;

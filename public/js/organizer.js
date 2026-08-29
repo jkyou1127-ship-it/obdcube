@@ -28,10 +28,127 @@ async function openCompetitionDetail(compId) {
   el("btn-close-participation").classList.toggle("hidden", isEnded || comp.participationClosed === true);
   el("coorganizer-panel").classList.toggle("hidden", !canManage);
 
-  await renderEventsList(comp, canManage, isEnded);
-  await renderParticipatePanel(comp);
-  if (canManage) await renderCoOrganizers(comp);
+  // 화면 전환은 기본 정보가 세팅된 시점에 바로 실행 - 아래 각 패널 렌더링 중
+  // 하나가 실패해도(예: 권한 오류) 상세 화면 자체는 항상 열리도록 한다.
   switchView("detail");
+
+  try {
+    await renderEventsList(comp, canManage, isEnded);
+  } catch (err) {
+    showToast("종목 정보를 불러오지 못했습니다: " + err.message, "error");
+  }
+  try {
+    await renderParticipatePanel(comp);
+  } catch (err) {
+    showToast("참가 신청 정보를 불러오지 못했습니다: " + err.message, "error");
+  }
+  try {
+    await renderCompetitionRoster(comp);
+  } catch (err) {
+    el("competition-roster").innerHTML = "<p class='desc'>참가자 명단을 불러오지 못했습니다.</p>";
+  }
+  try {
+    await renderMyRecordsPanel(comp);
+  } catch (err) {
+    el("my-records-panel").classList.add("hidden");
+  }
+  if (canManage) {
+    try {
+      await renderCoOrganizers(comp);
+    } catch (err) {
+      showToast("공동 주최자 정보를 불러오지 못했습니다: " + err.message, "error");
+    }
+  }
+}
+
+async function renderCompetitionRoster(comp) {
+  const container = el("competition-roster");
+  const events = await fetchEvents(comp.id);
+  const rosterLists = await Promise.all(events.map(ev =>
+    fetchRoster(comp.id, ev.id)
+      .then(list => ({ ev, list }))
+      .catch(() => ({ ev, list: [] }))
+  ));
+
+  const byUid = new Map();
+  rosterLists.forEach(({ ev, list }) => {
+    list.forEach(r => {
+      if (!byUid.has(r.uid)) byUid.set(r.uid, { nickname: r.nickname, events: [] });
+      byUid.get(r.uid).events.push(ev.name);
+    });
+  });
+
+  const entries = Array.from(byUid.values());
+  container.innerHTML = `
+    <h3>참가자 명단 (${entries.length}명)</h3>
+    ${entries.length === 0 ? "<p class='desc'>아직 참가 신청한 사람이 없습니다.</p>" : `
+      <div class="card-list">
+        ${entries.map(e => `
+          <div class="item-card">
+            <div class="info"><strong>${escapeHtml(e.nickname)}</strong><span>${e.events.map(n => escapeHtml(n)).join(", ")}</span></div>
+          </div>
+        `).join("")}
+      </div>
+    `}
+  `;
+}
+
+async function renderMyRecordsPanel(comp) {
+  const panel = el("my-records-panel");
+  const isEnded = comp.status === "ended";
+  const events = await fetchEvents(comp.id);
+  const mine = await Promise.all(events.map(async ev => {
+    const p = await fetchMyParticipant(comp.id, ev.id);
+    return p ? { ev, p } : null;
+  }));
+  const registered = mine.filter(Boolean);
+
+  if (registered.length === 0) {
+    panel.classList.add("hidden");
+    return;
+  }
+  panel.classList.remove("hidden");
+
+  const container = el("my-records-list");
+  container.innerHTML = registered.map(({ ev, p }) => {
+    const format = ev.format === "mo3" ? "mo3" : "ao5";
+    const solveCount = format === "mo3" ? 3 : 5;
+    const round = 1;
+    const rd = (p.rounds && p.rounds[round]) || {};
+    const times = Array.isArray(rd.times) && rd.times.length === solveCount ? rd.times : new Array(solveCount).fill("");
+    const average = computeAverage(times, format);
+    const hasAnyEntry = times.some(t => t.trim() !== "");
+    const solveInputs = times.map((t, i) => `
+      <input type="text" class="my-record-solve" value="${escapeHtml(t)}" placeholder="${i + 1}회" ${isEnded ? "disabled" : ""} />
+    `).join("");
+    return `
+      <div class="item-card my-record-row" data-event="${ev.id}" data-participant="${p.id}" data-round="${round}" data-status="${rd.status || ""}" data-rank="${rd.rank != null ? rd.rank : ""}">
+        <div class="info">
+          <strong>${escapeHtml(ev.name)} (${format.toUpperCase()}, 1라운드)</strong>
+          <div class="solves-cell">${solveInputs}</div>
+          <span>평균: ${hasAnyEntry ? formatSecondsToTime(average) : "-"}</span>
+        </div>
+        ${isEnded ? "<span class='desc'>대회가 종료되어 더 이상 기록을 등록할 수 없습니다.</span>" : `<button class="btn small my-record-save">저장</button>`}
+      </div>
+    `;
+  }).join("");
+
+  if (isEnded) return;
+  container.querySelectorAll(".my-record-save").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const row = btn.closest(".my-record-row");
+      const times = Array.from(row.querySelectorAll(".my-record-solve")).map(inp => inp.value.trim());
+      const status = row.dataset.status || "";
+      const rank = row.dataset.rank === "" ? null : Number(row.dataset.rank);
+      try {
+        await updateParticipantRound(comp.id, row.dataset.event, row.dataset.participant, row.dataset.round, { times, status, rank });
+        showToast("기록을 저장했습니다.", "success");
+        await renderMyRecordsPanel(comp);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
 }
 
 async function renderCoOrganizers(comp) {
@@ -191,14 +308,7 @@ async function renderEventsList(comp, canManage, isEnded) {
       return `<div class="round-group"><strong>${round}라운드</strong>${rows}</div>`;
     }).join("") || "<p class='desc'>등록된 스크램블이 없습니다.</p>";
 
-    const participantsHtml = canManage ? await buildParticipantsPanel(comp.id, ev) : "";
-    const roster = await fetchRoster(comp.id, ev.id);
-    const rosterHtml = `
-      <div class="roster-block">
-        <strong>참가자 명단 (${roster.length}명)</strong>
-        <p class="desc">${roster.length === 0 ? "아직 참가 신청한 사람이 없습니다." : roster.map(r => escapeHtml(r.nickname)).join(", ")}</p>
-      </div>
-    `;
+    const participantsHtml = canManage ? await buildParticipantsPanel(comp.id, ev, isEnded) : "";
 
     return `
       <div class="event-block" data-event-id="${ev.id}">
@@ -214,7 +324,6 @@ async function renderEventsList(comp, canManage, isEnded) {
             <button type="submit" class="btn small">추가</button>
           </form>
         ` : ""}
-        ${rosterHtml}
         ${participantsHtml}
       </div>
     `;
@@ -227,7 +336,7 @@ async function renderEventsList(comp, canManage, isEnded) {
 
 // ---- 참가자 / 진출·탈락 / 순위 / 기록 (주최자·관리자 전용) ----
 
-async function buildParticipantsPanel(compId, ev) {
+async function buildParticipantsPanel(compId, ev, isEnded) {
   const eventId = ev.id;
   const format = ev.format === "mo3" ? "mo3" : "ao5";
   const solveCount = format === "mo3" ? 3 : 5;
@@ -253,21 +362,28 @@ async function buildParticipantsPanel(compId, ev) {
   }).sort((a, b) => a.sortKey - b.sortKey);
 
   const rowsHtml = rows.map((r, idx) => {
-    const solveInputs = r.times.map((t, i) => `
-      <input type="text" class="participant-solve-input" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}" value="${escapeHtml(t)}" placeholder="${i + 1}회" />
-    `).join("");
+    const solveInputs = r.times.map((t, i) => isEnded
+      ? `<span class="solve-readonly">${escapeHtml(t) || "-"}</span>`
+      : `<input type="text" class="participant-solve-input" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}" value="${escapeHtml(t)}" placeholder="${i + 1}회" />`
+    ).join("");
     const hasAnyEntry = r.times.some(t => t.trim() !== "");
     const averageLabel = hasAnyEntry ? formatSecondsToTime(r.average) : "-";
+    const rankCell = isEnded
+      ? (r.average === Infinity ? "-" : idx + 1)
+      : `<input type="number" class="participant-rank-input" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}" value="${r.rank != null ? r.rank : ""}" placeholder="${r.average === Infinity ? "-" : idx + 1}" style="max-width:60px" />`;
+    const statusCell = isEnded
+      ? ({ advanced: "진출", eliminated: "탈락" }[r.status] || "-")
+      : `
+        <button class="btn small ${r.status === "advanced" ? "success" : ""} btn-advance" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}">진출</button>
+        <button class="btn small ${r.status === "eliminated" ? "danger" : ""} btn-eliminate" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}">탈락</button>
+      `;
     return `
     <tr>
-      <td><input type="number" class="participant-rank-input" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}" value="${r.rank != null ? r.rank : ""}" placeholder="${r.average === Infinity ? "-" : idx + 1}" style="max-width:60px" /></td>
+      <td>${rankCell}</td>
       <td>${escapeHtml(r.p.nickname)}</td>
       <td class="solves-cell">${solveInputs}</td>
       <td>${averageLabel}</td>
-      <td>
-        <button class="btn small ${r.status === "advanced" ? "success" : ""} btn-advance" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}">진출</button>
-        <button class="btn small ${r.status === "eliminated" ? "danger" : ""} btn-eliminate" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}">탈락</button>
-      </td>
+      <td>${statusCell}</td>
       <td><button class="btn small danger btn-del-participant" data-event="${eventId}" data-participant="${r.p.id}">삭제</button></td>
     </tr>
   `;
@@ -275,15 +391,17 @@ async function buildParticipantsPanel(compId, ev) {
 
   return `
     <div class="participants-panel">
-      <h5>참가자 · 순위 · 기록 관리 (${format.toUpperCase()}, ${solveCount}회)</h5>
+      <h5>참가자 · 순위 · 기록 관리 (${format.toUpperCase()}, ${solveCount}회)${isEnded ? " - 대회 종료로 기록 등록 불가" : ""}</h5>
       <div class="inline-form">
         <label style="margin:0">라운드</label>
         <input type="number" min="1" class="participant-round-input" data-event="${eventId}" value="${round}" style="max-width:80px" />
       </div>
-      <form class="inline-form add-participant-form" data-event="${eventId}">
-        <input type="text" class="participant-name-input" placeholder="참가자 이름" required />
-        <button type="submit" class="btn small">참가자 추가</button>
-      </form>
+      ${isEnded ? "" : `
+        <form class="inline-form add-participant-form" data-event="${eventId}">
+          <input type="text" class="participant-name-input" placeholder="참가자 이름" required />
+          <button type="submit" class="btn small">참가자 추가</button>
+        </form>
+      `}
       <div class="table-scroll">
         <table class="participants-table">
           <thead><tr><th>순위</th><th>이름</th><th>기록 (${solveCount}회)</th><th>평균</th><th>진출/탈락</th><th></th></tr></thead>

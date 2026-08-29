@@ -127,6 +127,8 @@
       <p id="detail-desc" class="desc"></p>
       <p class="meta">개최일: <span id="detail-date"></span> · 주최자: <span id="detail-organizer"></span> · 상태: <span id="detail-status" class="badge"></span></p>
 
+      <div id="competition-roster" class="panel"></div>
+
       <div id="organizer-actions" class="inline-form hidden">
         <button type="button" class="btn small" id="btn-end-competition">대회 종료</button>
         <button type="button" class="btn small" id="btn-close-participation">참가 신청 마감</button>
@@ -150,6 +152,11 @@
           <div id="participate-events-checkboxes" class="checkbox-grid"></div>
           <button type="submit" class="btn primary">참가 신청</button>
         </form>
+      </div>
+
+      <div id="my-records-panel" class="panel hidden">
+        <h3>내 기록</h3>
+        <div id="my-records-list" class="card-list"></div>
       </div>
 
       <div id="organizer-tools" class="panel hidden">

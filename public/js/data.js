@@ -243,6 +243,15 @@ async function fetchParticipants(compId, eventId) {
   return list;
 }
 
+async function fetchMyParticipant(compId, eventId) {
+  const snap = await db.collection("competitions").doc(compId)
+    .collection("events").doc(eventId).collection("participants")
+    .where("uid", "==", AppState.user.uid).get();
+  if (snap.empty) return null;
+  const doc = snap.docs[0];
+  return { id: doc.id, ...doc.data() };
+}
+
 async function addParticipant(compId, eventId, name) {
   return db.collection("competitions").doc(compId)
     .collection("events").doc(eventId).collection("participants").add({
