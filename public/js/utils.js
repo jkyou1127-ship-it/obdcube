@@ -37,6 +37,24 @@ function isUserOrganizerOf(comp) {
   return Array.isArray(comp.coOrganizerUids) && comp.coOrganizerUids.includes(AppState.user.uid);
 }
 
+// 개최일(startDate, "YYYY-MM-DD") 이전인지 여부 - 이 기간에는 참가 신청만 받고 기록은 입력하지 않음
+function isBeforeStartDate(comp) {
+  if (!comp || !comp.startDate) return false;
+  const today = new Date().toISOString().slice(0, 10);
+  return today < comp.startDate;
+}
+
+function getCompetitionStatusInfo(comp) {
+  if (comp.status === "ended") return { label: "종료됨", cls: "ended" };
+  if (isBeforeStartDate(comp)) return { label: "참가신청중", cls: "upcoming" };
+  return { label: "진행중", cls: "active" };
+}
+
+// 기록 등록이 잠겨야 하는 상태인지: 대회 종료 후, 또는 개최일 이전
+function isRecordsLocked(comp) {
+  return comp.status === "ended" || isBeforeStartDate(comp);
+}
+
 function parseTimeToSeconds(str) {
   if (!str) return Infinity;
   const s = String(str).trim().toUpperCase();

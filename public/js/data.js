@@ -222,7 +222,8 @@ async function applyToParticipate(compId, eventId) {
   return eventRef.collection("participants").add({
     nickname: AppState.profile.nickname,
     uid,
-    rounds: { 1: { times: [], status: "", rank: null } },
+    roundTimes: { 1: [] },
+    roundMeta: { 1: { status: "", rank: null } },
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 }
@@ -256,15 +257,27 @@ async function addParticipant(compId, eventId, name) {
   return db.collection("competitions").doc(compId)
     .collection("events").doc(eventId).collection("participants").add({
       nickname: name,
-      rounds: { 1: { times: [], status: "", rank: null } },
+      roundTimes: { 1: [] },
+      roundMeta: { 1: { status: "", rank: null } },
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 }
 
+// 주최자/관리자용: 기록·순위·진출탈락을 한 번에 갱신
 async function updateParticipantRound(compId, eventId, participantId, round, data) {
   const ref = db.collection("competitions").doc(compId)
     .collection("events").doc(eventId).collection("participants").doc(participantId);
-  await ref.update({ [`rounds.${round}`]: data });
+  await ref.update({
+    [`roundTimes.${round}`]: data.times,
+    [`roundMeta.${round}`]: { status: data.status || "", rank: data.rank != null ? data.rank : null }
+  });
+}
+
+// 참가자 본인용: 기록(시간)만 수정 가능 - 진출/탈락·순위는 손댈 수 없음
+async function updateMyTimes(compId, eventId, participantId, round, times) {
+  const ref = db.collection("competitions").doc(compId)
+    .collection("events").doc(eventId).collection("participants").doc(participantId);
+  await ref.update({ [`roundTimes.${round}`]: times });
 }
 
 async function deleteParticipant(compId, eventId, participantId) {

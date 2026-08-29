@@ -92,7 +92,7 @@ async function renderCompetitionsList() {
     return;
   }
   container.innerHTML = list.map(c => {
-    const isEnded = c.status === "ended";
+    const statusInfo = getCompetitionStatusInfo(c);
     return `
     <div class="item-card">
       <div class="info">
@@ -100,7 +100,7 @@ async function renderCompetitionsList() {
         <span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))} · 주최자: ${escapeHtml(c.organizerNickname)}</span>
       </div>
       <div class="actions">
-        <span class="badge ${isEnded ? "ended" : "active"}">${isEnded ? "종료됨" : "진행중"}</span>
+        <span class="badge ${statusInfo.cls}">${statusInfo.label}</span>
         <button class="btn small btn-open-comp" data-id="${c.id}">보기</button>
       </div>
     </div>
@@ -226,12 +226,12 @@ async function renderMyPage() {
   const myComps = await fetchMyCompetitions();
   const compsContainer = el("my-competitions");
   compsContainer.innerHTML = myComps.length === 0 ? "<p class='desc'>주최 중인 대회가 없습니다.</p>" : myComps.map(c => {
-    const isEnded = c.status === "ended";
+    const statusInfo = getCompetitionStatusInfo(c);
     return `
     <div class="item-card">
       <div class="info"><strong>${escapeHtml(c.title)}</strong><span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))}</span></div>
       <div class="actions">
-        <span class="badge ${isEnded ? "ended" : "active"}">${isEnded ? "종료됨" : "진행중"}</span>
+        <span class="badge ${statusInfo.cls}">${statusInfo.label}</span>
         <button class="btn small btn-manage-comp" data-id="${c.id}">관리</button>
         <button class="btn small danger btn-delete-comp-card" data-id="${c.id}">삭제</button>
       </div>

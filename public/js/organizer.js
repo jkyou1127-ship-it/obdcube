@@ -17,9 +17,10 @@ async function openCompetitionDetail(compId) {
   el("detail-organizer").textContent = comp.organizerNickname || "-";
 
   const isEnded = comp.status === "ended";
+  const statusInfo = getCompetitionStatusInfo(comp);
   const statusEl = el("detail-status");
-  statusEl.textContent = isEnded ? "종료됨" : "진행중";
-  statusEl.className = "badge " + (isEnded ? "ended" : "active");
+  statusEl.textContent = statusInfo.label;
+  statusEl.className = "badge " + statusInfo.cls;
 
   const canManage = isUserOrganizerOf(comp);
   el("organizer-tools").classList.toggle("hidden", !canManage || isEnded);
@@ -95,7 +96,8 @@ async function renderCompetitionRoster(comp) {
 
 async function renderMyRecordsPanel(comp) {
   const panel = el("my-records-panel");
-  const isEnded = comp.status === "ended";
+  const recordsLocked = isRecordsLocked(comp);
+  const lockReason = comp.status === "ended" ? "대회가 종료되어" : "개최일 전이라";
   const events = await fetchEvents(comp.id);
   const mine = await Promise.all(events.map(async ev => {
     const p = await fetchMyParticipant(comp.id, ev.id);
@@ -114,34 +116,32 @@ async function renderMyRecordsPanel(comp) {
     const format = ev.format === "mo3" ? "mo3" : "ao5";
     const solveCount = format === "mo3" ? 3 : 5;
     const round = 1;
-    const rd = (p.rounds && p.rounds[round]) || {};
-    const times = Array.isArray(rd.times) && rd.times.length === solveCount ? rd.times : new Array(solveCount).fill("");
+    const roundTimes = (p.roundTimes && p.roundTimes[round]) || [];
+    const times = Array.isArray(roundTimes) && roundTimes.length === solveCount ? roundTimes : new Array(solveCount).fill("");
     const average = computeAverage(times, format);
     const hasAnyEntry = times.some(t => t.trim() !== "");
     const solveInputs = times.map((t, i) => `
-      <input type="text" class="my-record-solve" value="${escapeHtml(t)}" placeholder="${i + 1}회" ${isEnded ? "disabled" : ""} />
+      <input type="text" class="my-record-solve" value="${escapeHtml(t)}" placeholder="${i + 1}회" ${recordsLocked ? "disabled" : ""} />
     `).join("");
     return `
-      <div class="item-card my-record-row" data-event="${ev.id}" data-participant="${p.id}" data-round="${round}" data-status="${rd.status || ""}" data-rank="${rd.rank != null ? rd.rank : ""}">
+      <div class="item-card my-record-row" data-event="${ev.id}" data-participant="${p.id}" data-round="${round}">
         <div class="info">
           <strong>${escapeHtml(ev.name)} (${format.toUpperCase()}, 1라운드)</strong>
           <div class="solves-cell">${solveInputs}</div>
           <span>평균: ${hasAnyEntry ? formatSecondsToTime(average) : "-"}</span>
         </div>
-        ${isEnded ? "<span class='desc'>대회가 종료되어 더 이상 기록을 등록할 수 없습니다.</span>" : `<button class="btn small my-record-save">저장</button>`}
+        ${recordsLocked ? `<span class='desc'>${lockReason} 기록을 등록할 수 없습니다.</span>` : `<button class="btn small my-record-save">저장</button>`}
       </div>
     `;
   }).join("");
 
-  if (isEnded) return;
+  if (recordsLocked) return;
   container.querySelectorAll(".my-record-save").forEach(btn => {
     btn.addEventListener("click", async () => {
       const row = btn.closest(".my-record-row");
       const times = Array.from(row.querySelectorAll(".my-record-solve")).map(inp => inp.value.trim());
-      const status = row.dataset.status || "";
-      const rank = row.dataset.rank === "" ? null : Number(row.dataset.rank);
       try {
-        await updateParticipantRound(comp.id, row.dataset.event, row.dataset.participant, row.dataset.round, { times, status, rank });
+        await updateMyTimes(comp.id, row.dataset.event, row.dataset.participant, row.dataset.round, times);
         showToast("기록을 저장했습니다.", "success");
         await renderMyRecordsPanel(comp);
       } catch (err) {
@@ -275,6 +275,7 @@ async function renderEventsList(comp, canManage, isEnded) {
   const container = el("events-list");
   container.innerHTML = "<p class='desc'>불러오는 중...</p>";
   const canAddMore = canManage && !isEnded;
+  const recordsLocked = isRecordsLocked(comp);
 
   const events = await fetchEvents(comp.id);
   if (events.length === 0) {
@@ -308,7 +309,7 @@ async function renderEventsList(comp, canManage, isEnded) {
       return `<div class="round-group"><strong>${round}라운드</strong>${rows}</div>`;
     }).join("") || "<p class='desc'>등록된 스크램블이 없습니다.</p>";
 
-    const participantsHtml = canManage ? await buildParticipantsPanel(comp.id, ev, isEnded) : "";
+    const participantsHtml = canManage ? await buildParticipantsPanel(comp.id, ev, isEnded, recordsLocked) : "";
 
     return `
       <div class="event-block" data-event-id="${ev.id}">
@@ -336,7 +337,7 @@ async function renderEventsList(comp, canManage, isEnded) {
 
 // ---- 참가자 / 진출·탈락 / 순위 / 기록 (주최자·관리자 전용) ----
 
-async function buildParticipantsPanel(compId, ev, isEnded) {
+async function buildParticipantsPanel(compId, ev, isEnded, recordsLocked) {
   const eventId = ev.id;
   const format = ev.format === "mo3" ? "mo3" : "ao5";
   const solveCount = format === "mo3" ? 3 : 5;
@@ -346,32 +347,33 @@ async function buildParticipantsPanel(compId, ev, isEnded) {
   // 직전 라운드에서 탈락 처리된 참가자는 다음 라운드 명단에서 제외
   if (round > 1) {
     participants = participants.filter(p => {
-      const prev = p.rounds && p.rounds[round - 1];
-      return !prev || prev.status !== "eliminated";
+      const prevMeta = p.roundMeta && p.roundMeta[round - 1];
+      return !prevMeta || prevMeta.status !== "eliminated";
     });
   }
 
   const rows = participants.map(p => {
-    const rd = (p.rounds && p.rounds[round]) || {};
-    const times = Array.isArray(rd.times) && rd.times.length === solveCount ? rd.times : new Array(solveCount).fill("");
+    const roundTimes = (p.roundTimes && p.roundTimes[round]) || [];
+    const times = Array.isArray(roundTimes) && roundTimes.length === solveCount ? roundTimes : new Array(solveCount).fill("");
+    const meta = (p.roundMeta && p.roundMeta[round]) || {};
     const average = computeAverage(times, format);
-    const rank = rd.rank != null && rd.rank !== "" ? Number(rd.rank) : null;
+    const rank = meta.rank != null && meta.rank !== "" ? Number(meta.rank) : null;
     // 수동 지정 순위가 있으면 우선, 없으면 평균 기록 순으로 정렬 (미지정은 항상 뒤로)
     const sortKey = rank != null ? rank : 100000 + average;
-    return { p, times, status: rd.status || "", rank, average, sortKey };
+    return { p, times, status: meta.status || "", rank, average, sortKey };
   }).sort((a, b) => a.sortKey - b.sortKey);
 
   const rowsHtml = rows.map((r, idx) => {
-    const solveInputs = r.times.map((t, i) => isEnded
+    const solveInputs = r.times.map((t, i) => recordsLocked
       ? `<span class="solve-readonly">${escapeHtml(t) || "-"}</span>`
       : `<input type="text" class="participant-solve-input" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}" value="${escapeHtml(t)}" placeholder="${i + 1}회" />`
     ).join("");
     const hasAnyEntry = r.times.some(t => t.trim() !== "");
     const averageLabel = hasAnyEntry ? formatSecondsToTime(r.average) : "-";
-    const rankCell = isEnded
+    const rankCell = recordsLocked
       ? (r.average === Infinity ? "-" : idx + 1)
       : `<input type="number" class="participant-rank-input" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}" value="${r.rank != null ? r.rank : ""}" placeholder="${r.average === Infinity ? "-" : idx + 1}" style="max-width:60px" />`;
-    const statusCell = isEnded
+    const statusCell = recordsLocked
       ? ({ advanced: "진출", eliminated: "탈락" }[r.status] || "-")
       : `
         <button class="btn small ${r.status === "advanced" ? "success" : ""} btn-advance" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}">진출</button>
@@ -389,9 +391,11 @@ async function buildParticipantsPanel(compId, ev, isEnded) {
   `;
   }).join("");
 
+  const lockReason = !recordsLocked ? "" : (isEnded ? " - 대회 종료로 기록 등록 불가" : " - 개최일 이전에는 기록 등록 불가");
+
   return `
     <div class="participants-panel">
-      <h5>참가자 · 순위 · 기록 관리 (${format.toUpperCase()}, ${solveCount}회)${isEnded ? " - 대회 종료로 기록 등록 불가" : ""}</h5>
+      <h5>참가자 · 순위 · 기록 관리 (${format.toUpperCase()}, ${solveCount}회)${lockReason}</h5>
       <div class="inline-form">
         <label style="margin:0">라운드</label>
         <input type="number" min="1" class="participant-round-input" data-event="${eventId}" value="${round}" style="max-width:80px" />
