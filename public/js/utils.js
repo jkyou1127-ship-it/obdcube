@@ -139,6 +139,11 @@ function extractPlacement(participant) {
   return { round, rank: meta[round].rank };
 }
 
+function bestSingleFromTimes(times) {
+  const parsed = (times || []).map(t => parseTimeToSeconds(t)).filter(v => v !== Infinity);
+  return parsed.length === 0 ? Infinity : Math.min(...parsed);
+}
+
 const STATUS_LABEL = {
   pending: "승인 대기",
   approved: "승인됨",

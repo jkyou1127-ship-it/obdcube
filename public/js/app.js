@@ -128,7 +128,11 @@ async function renderAwardsPanel() {
       if (!p) continue;
       const placement = extractPlacement(p);
       if (!placement) continue;
-      awards.push({ comp, ev, ...placement });
+      const format = normalizeFormat(ev.format);
+      const times = (p.roundTimes && p.roundTimes[placement.round]) || [];
+      const best = bestSingleFromTimes(times);
+      const average = computeAverage(times, format);
+      awards.push({ comp, ev, format, best, average, ...placement });
     }
   }
   awards.sort((a, b) => a.rank - b.rank);
@@ -141,7 +145,8 @@ async function renderAwardsPanel() {
     <div class="item-card">
       <div class="info">
         <strong>${escapeHtml(a.comp.title)} - ${escapeHtml(a.ev.name)}</strong>
-        <span>${escapeHtml(formatDateRange(a.comp.startDate, a.comp.endDate))}</span>
+        <span>${escapeHtml(formatDateRange(a.comp.startDate, a.comp.endDate))} (결승 ${a.round}라운드 기준)</span>
+        <span>최고기록: ${a.best === Infinity ? "-" : formatSecondsToTime(a.best)} · 평균기록: ${a.average === Infinity ? "-" : formatSecondsToTime(a.average)}</span>
       </div>
       <div class="actions">
         <span class="badge active">${a.rank}등</span>
