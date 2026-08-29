@@ -178,6 +178,7 @@ async function renderMyPage() {
       <div class="actions">
         <span class="badge ${app.status}">${STATUS_LABEL[app.status] || app.status}</span>
         ${app.status === "pending" ? `<button class="btn small danger btn-cancel-app" data-id="${app.id}">신청 취소</button>` : ""}
+        ${app.status === "approved" ? `<button class="btn small danger btn-delete-my-comp" data-id="${app.id}">대회 삭제</button>` : ""}
       </div>
     </div>
   `).join("");
@@ -192,17 +193,44 @@ async function renderMyPage() {
       }
     });
   });
+  appsContainer.querySelectorAll(".btn-delete-my-comp").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("이 대회를 완전히 삭제할까요? 되돌릴 수 없습니다.")) return;
+      try {
+        await deleteCompetition(btn.dataset.id);
+        showToast("대회를 삭제했습니다.", "success");
+        await renderMyPage();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
 
   const myComps = await fetchMyCompetitions();
   const compsContainer = el("my-competitions");
   compsContainer.innerHTML = myComps.length === 0 ? "<p class='desc'>주최 중인 대회가 없습니다.</p>" : myComps.map(c => `
     <div class="item-card">
       <div class="info"><strong>${escapeHtml(c.title)}</strong><span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))}</span></div>
-      <div class="actions"><button class="btn small btn-manage-comp" data-id="${c.id}">관리</button></div>
+      <div class="actions">
+        <button class="btn small btn-manage-comp" data-id="${c.id}">관리</button>
+        <button class="btn small danger btn-delete-comp-card" data-id="${c.id}">삭제</button>
+      </div>
     </div>
   `).join("");
   compsContainer.querySelectorAll(".btn-manage-comp").forEach(btn => {
     btn.addEventListener("click", () => openCompetitionDetail(btn.dataset.id));
+  });
+  compsContainer.querySelectorAll(".btn-delete-comp-card").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("이 대회를 완전히 삭제할까요? 되돌릴 수 없습니다.")) return;
+      try {
+        await deleteCompetition(btn.dataset.id);
+        showToast("대회를 삭제했습니다.", "success");
+        await renderMyPage();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
   });
 }
 

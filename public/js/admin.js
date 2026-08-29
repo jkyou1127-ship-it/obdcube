@@ -63,14 +63,30 @@ async function renderReviewedApplications() {
     return;
   }
   container.innerHTML = list.map(app => `
-    <div class="item-card">
+    <div class="item-card" data-id="${app.id}">
       <div class="info">
         <strong>${escapeHtml(app.title)}</strong>
         <span>신청자: ${escapeHtml(app.applicantNickname)} · 처리자: ${escapeHtml(app.reviewedByNickname || "-")}</span>
       </div>
-      <span class="badge ${app.status}">${STATUS_LABEL[app.status] || app.status}</span>
+      <div class="actions">
+        <span class="badge ${app.status}">${STATUS_LABEL[app.status] || app.status}</span>
+        <button class="btn small danger btn-delete-comp" data-id="${app.id}">대회 삭제</button>
+      </div>
     </div>
   `).join("");
+
+  container.querySelectorAll(".btn-delete-comp").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("이 대회를 완전히 삭제할까요? 되돌릴 수 없습니다.")) return;
+      try {
+        await deleteCompetition(btn.dataset.id);
+        showToast("대회를 삭제했습니다.", "success");
+        await renderReviewedApplications();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
 }
 
 async function renderAdminsList() {
