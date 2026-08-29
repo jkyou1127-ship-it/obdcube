@@ -28,6 +28,7 @@ async function openCompetitionDetail(compId) {
   el("btn-end-competition").classList.toggle("hidden", isEnded);
   el("btn-close-participation").classList.toggle("hidden", isEnded || comp.participationClosed === true);
   el("coorganizer-panel").classList.toggle("hidden", !canManage);
+  el("event-request-panel").classList.toggle("hidden", isEnded);
 
   // 화면 전환은 기본 정보가 세팅된 시점에 바로 실행 - 아래 각 패널 렌더링 중
   // 하나가 실패해도(예: 권한 오류) 상세 화면 자체는 항상 열리도록 한다.
@@ -53,11 +54,23 @@ async function openCompetitionDetail(compId) {
   } catch (err) {
     el("my-records-panel").classList.add("hidden");
   }
+  if (!isEnded) {
+    try {
+      await renderEventRequestPanel(comp);
+    } catch (err) {
+      el("my-event-requests").innerHTML = "<p class='desc'>신청 내역을 불러오지 못했습니다.</p>";
+    }
+  }
   if (canManage) {
     try {
       await renderCoOrganizers(comp);
     } catch (err) {
       showToast("공동 주최자 정보를 불러오지 못했습니다: " + err.message, "error");
+    }
+    try {
+      await renderEventRequestsPending(comp);
+    } catch (err) {
+      el("event-requests-pending").innerHTML = "<p class='desc'>신청 내역을 불러오지 못했습니다.</p>";
     }
   }
 }
@@ -65,10 +78,11 @@ async function openCompetitionDetail(compId) {
 async function renderCompetitionRoster(comp) {
   const container = el("competition-roster");
   const events = await fetchEvents(comp.id);
+  let hadError = false;
   const rosterLists = await Promise.all(events.map(ev =>
     fetchRoster(comp.id, ev.id)
       .then(list => ({ ev, list }))
-      .catch(() => ({ ev, list: [] }))
+      .catch(() => { hadError = true; return { ev, list: [] }; })
   ));
 
   const byUid = new Map();
@@ -80,6 +94,10 @@ async function renderCompetitionRoster(comp) {
   });
 
   const entries = Array.from(byUid.values());
+  if (entries.length === 0 && hadError) {
+    container.innerHTML = "<h3>참가자 명단</h3><p class='desc'>명단을 불러오지 못했습니다 (권한 오류). Firestore 규칙이 최신 상태로 게시되었는지 확인해주세요.</p>";
+    return;
+  }
   container.innerHTML = `
     <h3>참가자 명단 (${entries.length}명)</h3>
     ${entries.length === 0 ? "<p class='desc'>아직 참가 신청한 사람이 없습니다.</p>" : `
@@ -192,6 +210,93 @@ el("form-add-coorganizer").addEventListener("submit", async (e) => {
     nicknameInput.value = "";
     showToast(`${nickname}님을 공동 주최자로 추가했습니다.`, "success");
     await openCompetitionDetail(currentCompId);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+// ---- 종목 추가 신청 (누구나 신청 가능, 주최자가 승인/반려) ----
+
+async function renderEventRequestPanel(comp) {
+  const container = el("my-event-requests");
+  const requests = (await fetchEventRequests(comp.id)).filter(r => r.requesterUid === AppState.user.uid);
+  container.innerHTML = requests.map(r => `
+    <div class="item-card">
+      <div class="info"><strong>${escapeHtml(r.name)}</strong><span>${r.format === "mo3" ? "Mo3" : "Ao5"}</span></div>
+      <div class="actions">
+        <span class="badge ${r.status}">${STATUS_LABEL[r.status] || r.status}</span>
+        ${r.status === "pending" ? `<button class="btn small danger btn-cancel-event-request" data-id="${r.id}">취소</button>` : ""}
+      </div>
+    </div>
+  `).join("");
+  container.querySelectorAll(".btn-cancel-event-request").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      try {
+        await cancelEventRequest(comp.id, btn.dataset.id);
+        showToast("신청을 취소했습니다.", "success");
+        await renderEventRequestPanel(comp);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+}
+
+async function renderEventRequestsPending(comp) {
+  const container = el("event-requests-pending");
+  const requests = (await fetchEventRequests(comp.id)).filter(r => r.status === "pending");
+  if (requests.length === 0) {
+    container.innerHTML = "<p class='desc'>대기 중인 종목 추가 신청이 없습니다.</p>";
+    return;
+  }
+  container.innerHTML = requests.map(r => `
+    <div class="item-card">
+      <div class="info"><strong>${escapeHtml(r.name)}</strong><span>${r.format === "mo3" ? "Mo3" : "Ao5"} · 신청자: ${escapeHtml(r.requesterNickname)}</span></div>
+      <div class="actions">
+        <button class="btn small success btn-approve-event-request" data-id="${r.id}">승인</button>
+        <button class="btn small danger btn-reject-event-request" data-id="${r.id}">반려</button>
+      </div>
+    </div>
+  `).join("");
+
+  container.querySelectorAll(".btn-approve-event-request").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const req = requests.find(r => r.id === btn.dataset.id);
+      try {
+        await approveEventRequest(comp.id, req);
+        showToast("종목 추가 신청을 승인했습니다.", "success");
+        await openCompetitionDetail(comp.id);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+  container.querySelectorAll(".btn-reject-event-request").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      try {
+        await rejectEventRequest(comp.id, btn.dataset.id);
+        showToast("반려했습니다.", "success");
+        await renderEventRequestsPending(comp);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+}
+
+el("form-event-request").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentCompId) return;
+  const nameInput = el("event-request-name");
+  const name = nameInput.value.trim();
+  if (!name) return;
+  const format = el("event-request-format").value;
+  try {
+    await requestNewEvent(currentCompId, name, format);
+    nameInput.value = "";
+    showToast("종목 추가를 신청했습니다. 주최자 승인을 기다려주세요.", "success");
+    const comp = await fetchCompetition(currentCompId);
+    await renderEventRequestPanel(comp);
   } catch (err) {
     showToast(err.message, "error");
   }

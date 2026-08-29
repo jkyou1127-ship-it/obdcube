@@ -168,6 +168,48 @@ async function deleteEvent(compId, eventId) {
   await db.collection("competitions").doc(compId).collection("events").doc(eventId).delete();
 }
 
+// 종목 추가 신청: 참가자 등 누구나 이 대회에 새 종목을 추가해달라고 요청 가능,
+// 주최자/관리자가 승인하면 실제 종목으로 생성됨.
+async function requestNewEvent(compId, name, format) {
+  return db.collection("competitions").doc(compId).collection("eventRequests").add({
+    requesterUid: AppState.user.uid,
+    requesterNickname: AppState.profile.nickname,
+    name,
+    format: format === "mo3" ? "mo3" : "ao5",
+    status: "pending",
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+async function fetchEventRequests(compId) {
+  const snap = await db.collection("competitions").doc(compId).collection("eventRequests").get();
+  const list = [];
+  snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+  list.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+  return list;
+}
+
+async function approveEventRequest(compId, req) {
+  const batch = db.batch();
+  const reqRef = db.collection("competitions").doc(compId).collection("eventRequests").doc(req.id);
+  batch.update(reqRef, { status: "approved" });
+  const eventRef = db.collection("competitions").doc(compId).collection("events").doc();
+  batch.set(eventRef, {
+    name: req.name,
+    format: req.format === "mo3" ? "mo3" : "ao5",
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  await batch.commit();
+}
+
+async function rejectEventRequest(compId, requestId) {
+  await db.collection("competitions").doc(compId).collection("eventRequests").doc(requestId).update({ status: "rejected" });
+}
+
+async function cancelEventRequest(compId, requestId) {
+  await db.collection("competitions").doc(compId).collection("eventRequests").doc(requestId).delete();
+}
+
 async function fetchScrambles(compId, eventId) {
   const snap = await db.collection("competitions").doc(compId)
     .collection("events").doc(eventId).collection("scrambles").get();

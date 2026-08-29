@@ -85,6 +85,19 @@ service cloud.firestore {
         return isCompOrganizer(get(/databases/$(database)/documents/competitions/$(compId)).data);
       }
 
+      // 종목 추가 신청 - 누구나 신청 가능, 주최자/관리자가 승인하면 실제 종목(events)이 생성됨
+      match /eventRequests/{requestId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() &&
+                          request.resource.data.requesterUid == request.auth.uid &&
+                          request.resource.data.status == 'pending';
+        allow update: if isSignedIn() && (isAdmin() || isOrganizer());
+        allow delete: if isSignedIn() && (
+                          isAdmin() || isOrganizer() ||
+                          resource.data.requesterUid == request.auth.uid
+                        );
+      }
+
       // 종목 (Events)
       match /events/{eventId} {
         allow read: if isSignedIn();

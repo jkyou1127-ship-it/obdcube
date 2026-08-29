@@ -159,8 +159,25 @@
         <div id="my-records-list" class="card-list"></div>
       </div>
 
+      <div id="event-request-panel" class="panel hidden">
+        <h3>종목 추가 신청</h3>
+        <p class="desc">이 대회에 없는 종목을 추가해달라고 주최자에게 요청할 수 있습니다.</p>
+        <form id="form-event-request" class="inline-form">
+          <input type="text" id="event-request-name" placeholder="종목명" required maxlength="30" />
+          <select id="event-request-format">
+            <option value="ao5">Ao5 (5회 평균)</option>
+            <option value="mo3">Mo3 (3회 평균)</option>
+          </select>
+          <button type="submit" class="btn small">신청</button>
+        </form>
+        <div id="my-event-requests" class="card-list"></div>
+      </div>
+
       <div id="organizer-tools" class="panel hidden">
-        <h3>종목 추가 (주최자 전용)</h3>
+        <h3>종목 추가 신청 승인 대기 (주최자 전용)</h3>
+        <div id="event-requests-pending" class="card-list"></div>
+
+        <h3>종목 직접 추가 (주최자 전용)</h3>
         <form id="form-add-event" class="inline-form">
           <select id="event-preset">
             <option value="3x3x3 큐브">3x3x3 큐브</option>
