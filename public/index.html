@@ -60,6 +60,7 @@
     <div class="brand-mini">🧊 OBD Cube</div>
     <nav class="nav">
       <button class="nav-btn" data-nav="competitions">대회 목록</button>
+      <button class="nav-btn" data-nav="practice">심심풀이</button>
       <button class="nav-btn" data-nav="apply">대회 주최 신청</button>
       <button class="nav-btn" data-nav="mypage">마이페이지</button>
       <button class="nav-btn" data-nav="awards">입상 내역</button>
@@ -78,6 +79,30 @@
     <section id="view-competitions" class="view">
       <h2>승인된 대회</h2>
       <div id="competitions-list" class="card-list"></div>
+    </section>
+
+    <!-- 심심풀이 (연습용, 대회와 무관) -->
+    <section id="view-practice" class="view hidden">
+      <h2>심심풀이</h2>
+      <p class="desc">대회와 무관하게 자유롭게 스크램블을 돌리고 시간을 재보세요. 기록은 이 브라우저에만 저장됩니다.</p>
+      <div class="panel">
+        <div class="inline-form">
+          <select id="practice-event"></select>
+          <button type="button" class="btn small" id="btn-practice-scramble">새 스크램블</button>
+        </div>
+        <p id="practice-scramble-text" class="practice-scramble">-</p>
+        <div class="inline-form">
+          <span id="practice-timer" class="practice-timer">0.00</span>
+          <button type="button" class="btn primary" id="btn-practice-toggle">시작</button>
+        </div>
+        <p class="desc">스페이스바를 눌러도 시작/정지할 수 있습니다.</p>
+      </div>
+      <div class="panel">
+        <h3>내 기록 (이 브라우저 저장)</h3>
+        <p class="meta">최고기록: <span id="practice-best">-</span> · 평균(최근 5회): <span id="practice-avg">-</span> · 횟수: <span id="practice-count">0</span></p>
+        <button type="button" class="btn small danger" id="btn-practice-clear">기록 초기화</button>
+        <div id="practice-times-list" class="card-list"></div>
+      </div>
     </section>
 
     <!-- 대회 주최 신청 -->
@@ -249,6 +274,7 @@
 <script src="js/auth.js"></script>
 <script src="js/data.js"></script>
 <script src="js/organizer.js"></script>
+<script src="js/practice.js"></script>
 <script src="js/admin.js"></script>
 <script src="js/app.js"></script>
 </body>
