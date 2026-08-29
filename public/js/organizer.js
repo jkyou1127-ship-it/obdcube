@@ -317,10 +317,20 @@ async function renderParticipatePanel(comp) {
   if (closed) return;
 
   const events = await fetchEvents(comp.id);
+  const myEntries = await Promise.all(events.map(async ev => ({
+    ev,
+    mine: await fetchMyParticipant(comp.id, ev.id).catch(() => null)
+  })));
+
   const container = el("participate-events-checkboxes");
   container.innerHTML = events.length === 0
     ? "<p class='desc'>등록된 종목이 없습니다.</p>"
-    : events.map(ev => `<label><input type="checkbox" value="${ev.id}" /> ${escapeHtml(ev.name)}</label>`).join("");
+    : myEntries.map(({ ev, mine }) => `
+        <label>
+          <input type="checkbox" value="${ev.id}" ${mine ? "checked disabled" : ""} />
+          ${escapeHtml(ev.name)}${mine ? " (신청완료)" : ""}
+        </label>
+      `).join("");
 }
 
 el("btn-end-competition").addEventListener("click", async () => {
@@ -362,15 +372,17 @@ el("btn-delete-competition").addEventListener("click", async () => {
 el("form-participate").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!currentCompId) return;
-  const checked = Array.from(el("participate-events-checkboxes").querySelectorAll("input:checked")).map(cb => cb.value);
+  // 이미 신청한 종목은 체크되어 있지만 disabled 처리되어 있으므로 제외하고,
+  // 새로 체크한(=아직 신청하지 않은) 종목만 신청 처리한다.
+  const checked = Array.from(el("participate-events-checkboxes").querySelectorAll("input:checked:not(:disabled)")).map(cb => cb.value);
   if (checked.length === 0) {
-    showToast("참가할 종목을 1개 이상 선택해주세요.", "error");
+    showToast("새로 신청할 종목을 1개 이상 선택해주세요.", "error");
     return;
   }
   try {
     await Promise.all(checked.map(eventId => applyToParticipate(currentCompId, eventId)));
     showToast("참가 신청이 완료되었습니다.", "success");
-    el("form-participate").reset();
+    await openCompetitionDetail(currentCompId);
   } catch (err) {
     showToast(err.message, "error");
   }
