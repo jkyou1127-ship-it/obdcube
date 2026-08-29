@@ -237,15 +237,33 @@ async function fetchScrambles(compId, eventId, onlyPublic) {
   return list;
 }
 
+// 스크램블을 등록하면서, 해당 종목의 "마지막으로 등록된 라운드"(maxScrambleRound)도
+// 함께 갱신한다. 이 값은 입상 내역에서 결승 라운드를 자동으로 판단하는 기준이 된다
+// (주최자가 결승 라운드를 직접 지정하지 않았을 때의 기본값).
 async function addScramble(compId, eventId, { round, index, scramble }) {
-  return db.collection("competitions").doc(compId)
-    .collection("events").doc(eventId).collection("scrambles").add({
-      round,
-      index,
-      scramble,
-      isPublic: false,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+  const eventRef = db.collection("competitions").doc(compId).collection("events").doc(eventId);
+  const scrambleRef = eventRef.collection("scrambles").doc();
+  const eventSnap = await eventRef.get();
+  const currentMax = (eventSnap.exists && eventSnap.data().maxScrambleRound) || 0;
+
+  const batch = db.batch();
+  batch.set(scrambleRef, {
+    round,
+    index,
+    scramble,
+    isPublic: false,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  if (round > currentMax) {
+    batch.update(eventRef, { maxScrambleRound: round });
+  }
+  await batch.commit();
+  return scrambleRef;
+}
+
+async function updateEventFinalRound(compId, eventId, finalRound) {
+  await db.collection("competitions").doc(compId).collection("events").doc(eventId)
+    .update({ finalRoundOverride: finalRound });
 }
 
 async function toggleScrambleVisibility(compId, eventId, scrambleId, isPublic) {

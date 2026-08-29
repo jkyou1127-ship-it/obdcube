@@ -128,17 +128,19 @@ function computeAverage(times, format) {
   return trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
 }
 
-// 참가자 문서에서 주최자가 직접 지정한 최종 순위를 찾는다.
-// 여러 라운드 중 순위가 지정된 가장 마지막(높은) 라운드를 최종 순위로 본다.
-function extractPlacement(participant) {
-  const meta = participant.roundMeta || {};
-  const rankedRounds = Object.keys(meta)
-    .map(Number)
-    .filter(round => meta[round] && meta[round].rank != null && meta[round].rank !== "")
-    .sort((a, b) => b - a);
-  if (rankedRounds.length === 0) return null;
-  const round = rankedRounds[0];
-  return { round, rank: meta[round].rank };
+// 결승(입상 기준) 라운드: 주최자가 직접 지정했으면 그 값, 아니면 그 종목에
+// 스크램블이 마지막으로 등록된 라운드(maxScrambleRound)를 자동으로 사용한다.
+function effectiveFinalRound(ev) {
+  if (ev.finalRoundOverride != null && ev.finalRoundOverride !== "") return Number(ev.finalRoundOverride);
+  return ev.maxScrambleRound || 1;
+}
+
+// 참가자 문서에서 특정(결승) 라운드의 순위를 찾는다. 주최자가 그 라운드에
+// 순위를 지정하지 않았다면 입상으로 보지 않는다(null).
+function placementAtRound(participant, round) {
+  const meta = (participant.roundMeta && participant.roundMeta[round]) || {};
+  if (meta.rank == null || meta.rank === "") return null;
+  return { round, rank: Number(meta.rank) };
 }
 
 function bestSingleFromTimes(times) {

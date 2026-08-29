@@ -468,6 +468,10 @@ async function renderEventsList(comp, canManage, isEnded) {
               <option value="mo3" ${normalizeFormat(ev.format) === "mo3" ? "selected" : ""}>Mo3 (3회 평균)</option>
               <option value="single" ${normalizeFormat(ev.format) === "single" ? "selected" : ""}>단일 (1회)</option>
             </select>
+            <input type="number" min="1" class="event-final-round-input" data-event="${ev.id}"
+                   value="${ev.finalRoundOverride != null ? ev.finalRoundOverride : ""}"
+                   placeholder="결승 ${ev.maxScrambleRound || 1}R(자동)" style="max-width:130px"
+                   title="입상 내역 기준이 될 결승 라운드. 비워두면 스크램블이 마지막으로 등록된 라운드가 자동 적용됩니다." />
             <button class="btn small danger del-event" data-event="${ev.id}">종목 삭제</button>
           ` : `<span class="badge active">${formatLabel(normalizeFormat(ev.format))}</span>`}
         </h4>
@@ -685,6 +689,20 @@ function attachEventBlockHandlers(compId, canManage) {
         const comp = await fetchCompetition(compId);
         await renderEventsList(comp, canManage, comp.status === "ended");
         showToast("종목 형식을 변경했습니다.", "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+
+  el("events-list").querySelectorAll(".event-final-round-input").forEach(input => {
+    input.addEventListener("change", async () => {
+      const value = input.value.trim();
+      try {
+        await updateEventFinalRound(compId, input.dataset.event, value === "" ? null : parseInt(value, 10));
+        const comp = await fetchCompetition(compId);
+        await renderEventsList(comp, canManage, comp.status === "ended");
+        showToast("결승 라운드를 지정했습니다.", "success");
       } catch (err) {
         showToast(err.message, "error");
       }
