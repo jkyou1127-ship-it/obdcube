@@ -10,6 +10,7 @@ function switchGameTab(name) {
   });
   el("game-2048").classList.toggle("hidden", name !== "2048");
   el("game-tictactoe").classList.toggle("hidden", name !== "tictactoe");
+  el("game-minesweeper").classList.toggle("hidden", name !== "minesweeper");
 }
 
 // ==================== 2048 ====================
@@ -214,16 +215,50 @@ function tttOfflineStatusText() {
   return `${tttOfflineTurn} 차례입니다.`;
 }
 
+// 같은 화면 2인 / 컴퓨터 대전 전적을 모드별로 브라우저에 따로 저장한다.
+function tttStatsKey() {
+  return tttOfflineMode === "cpu" ? "obdcube-ttt-cpu-stats" : "obdcube-ttt-local-stats";
+}
+
+function loadTttStats() {
+  try {
+    return JSON.parse(localStorage.getItem(tttStatsKey())) || { win: 0, lose: 0, draw: 0 };
+  } catch (e) {
+    return { win: 0, lose: 0, draw: 0 };
+  }
+}
+
+function saveTttStats(stats) {
+  try { localStorage.setItem(tttStatsKey(), JSON.stringify(stats)); } catch (e) {}
+}
+
+function tttRecordResult(winner) {
+  const stats = loadTttStats();
+  if (!winner) stats.draw++;
+  else if (winner === "X") stats.win++;
+  else stats.lose++;
+  saveTttStats(stats);
+}
+
+function renderTttStats() {
+  const stats = loadTttStats();
+  const winLabel = tttOfflineMode === "cpu" ? "내(X) 승" : "X 승";
+  const loseLabel = tttOfflineMode === "cpu" ? "컴퓨터(O) 승" : "O 승";
+  el("ttt-stats").textContent = `${winLabel}: ${stats.win} · ${loseLabel}: ${stats.lose} · 무승부: ${stats.draw}`;
+}
+
 function renderTttOffline() {
   const clickable = !tttOfflineFinished && !(tttOfflineMode === "cpu" && tttOfflineTurn === "O");
   el("ttt-status").textContent = tttOfflineStatusText();
   renderTttBoardInto(el("ttt-board"), tttOfflineBoard, clickable, tttOfflineHandleCellClick);
+  renderTttStats();
 }
 
 function tttOfflineFinishIfOver() {
   const winner = tttWinner(tttOfflineBoard);
   if (winner || tttIsFull(tttOfflineBoard)) {
     tttOfflineFinished = true;
+    tttRecordResult(winner);
     return true;
   }
   return false;
@@ -412,6 +447,11 @@ function switchTttMode(mode) {
 
 function initTicTacToe() {
   el("btn-ttt-restart").addEventListener("click", tttOfflineRestart);
+  el("btn-ttt-reset-stats").addEventListener("click", () => {
+    if (!confirm("이 모드의 전적을 초기화할까요?")) return;
+    saveTttStats({ win: 0, lose: 0, draw: 0 });
+    renderTttStats();
+  });
   document.querySelectorAll(".ttt-mode-btn").forEach(btn => {
     btn.addEventListener("click", () => switchTttMode(btn.dataset.tttMode));
   });
@@ -420,6 +460,165 @@ function initTicTacToe() {
   el("btn-ttt-leave-room").addEventListener("click", tttLeaveRoom);
   el("btn-ttt-refresh-room").addEventListener("click", tttRefreshRoom);
   tttOfflineRestart();
+}
+
+// ==================== 지뢰찾기 ====================
+
+const MINE_DIFFICULTIES = {
+  easy: { rows: 9, cols: 9, mines: 10 },
+  medium: { rows: 16, cols: 16, mines: 40 },
+  hard: { rows: 16, cols: 30, mines: 99 }
+};
+
+let mineBoard = [];
+let mineRows = 9;
+let mineCols = 9;
+let mineMines = 10;
+let mineGameOver = false;
+let mineFirstClick = true;
+let mineTimerInterval = null;
+let mineStartTime = 0;
+let mineFlagCount = 0;
+
+function mineIndex(r, c) {
+  return r * mineCols + c;
+}
+
+function mineNeighbors(r, c) {
+  const result = [];
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = r + dr, nc = c + dc;
+      if (nr >= 0 && nr < mineRows && nc >= 0 && nc < mineCols) result.push({ r: nr, c: nc });
+    }
+  }
+  return result;
+}
+
+function mineSetup(difficulty) {
+  const d = MINE_DIFFICULTIES[difficulty] || MINE_DIFFICULTIES.easy;
+  mineRows = d.rows;
+  mineCols = d.cols;
+  mineMines = d.mines;
+  mineBoard = new Array(mineRows * mineCols).fill(null).map(() => ({ mine: false, revealed: false, flagged: false, adjacent: 0 }));
+  mineGameOver = false;
+  mineFirstClick = true;
+  mineFlagCount = 0;
+  clearInterval(mineTimerInterval);
+  mineTimerInterval = null;
+  el("mine-timer").textContent = "0";
+  el("mine-remaining").textContent = String(mineMines);
+  renderMineBoard();
+}
+
+function minePlaceMines(excludeR, excludeC) {
+  const excluded = new Set([mineIndex(excludeR, excludeC), ...mineNeighbors(excludeR, excludeC).map(n => mineIndex(n.r, n.c))]);
+  let placed = 0;
+  while (placed < mineMines) {
+    const idx = Math.floor(Math.random() * mineBoard.length);
+    if (mineBoard[idx].mine || excluded.has(idx)) continue;
+    mineBoard[idx].mine = true;
+    placed++;
+  }
+  for (let r = 0; r < mineRows; r++) {
+    for (let c = 0; c < mineCols; c++) {
+      const idx = mineIndex(r, c);
+      if (mineBoard[idx].mine) continue;
+      mineBoard[idx].adjacent = mineNeighbors(r, c).filter(n => mineBoard[mineIndex(n.r, n.c)].mine).length;
+    }
+  }
+}
+
+function mineFloodReveal(r, c) {
+  const cell = mineBoard[mineIndex(r, c)];
+  if (cell.revealed || cell.flagged) return;
+  cell.revealed = true;
+  if (cell.adjacent === 0) {
+    mineNeighbors(r, c).forEach(n => mineFloodReveal(n.r, n.c));
+  }
+}
+
+function mineCheckWin() {
+  return mineBoard.every(cell => cell.mine || cell.revealed);
+}
+
+function mineReveal(r, c) {
+  if (mineGameOver) return;
+  const cell = mineBoard[mineIndex(r, c)];
+  if (cell.revealed || cell.flagged) return;
+
+  if (mineFirstClick) {
+    minePlaceMines(r, c);
+    mineFirstClick = false;
+    mineStartTime = Date.now();
+    mineTimerInterval = setInterval(() => {
+      el("mine-timer").textContent = String(Math.floor((Date.now() - mineStartTime) / 1000));
+    }, 1000);
+  }
+
+  if (cell.mine) {
+    cell.revealed = true;
+    mineGameOver = true;
+    clearInterval(mineTimerInterval);
+    mineBoard.forEach(c2 => { if (c2.mine) c2.revealed = true; });
+    renderMineBoard();
+    showToast("지뢰를 밟았습니다. 게임 오버!", "error");
+    return;
+  }
+
+  mineFloodReveal(r, c);
+  renderMineBoard();
+  if (mineCheckWin()) {
+    mineGameOver = true;
+    clearInterval(mineTimerInterval);
+    showToast("클리어했습니다!", "success");
+  }
+}
+
+function mineToggleFlag(r, c) {
+  if (mineGameOver) return;
+  const cell = mineBoard[mineIndex(r, c)];
+  if (cell.revealed) return;
+  cell.flagged = !cell.flagged;
+  mineFlagCount += cell.flagged ? 1 : -1;
+  el("mine-remaining").textContent = String(mineMines - mineFlagCount);
+  renderMineBoard();
+}
+
+function renderMineBoard() {
+  const container = el("mine-board");
+  container.style.gridTemplateColumns = `repeat(${mineCols}, 1fr)`;
+  container.innerHTML = mineBoard.map((cell, idx) => {
+    const r = Math.floor(idx / mineCols);
+    const c = idx % mineCols;
+    let content = "";
+    let cls = "mine-cell";
+    if (cell.revealed) {
+      cls += " revealed";
+      if (cell.mine) { content = "💣"; cls += " mine"; }
+      else if (cell.adjacent > 0) { content = String(cell.adjacent); cls += ` n${cell.adjacent}`; }
+    } else if (cell.flagged) {
+      content = "🚩";
+    }
+    return `<button type="button" class="${cls}" data-r="${r}" data-c="${c}">${content}</button>`;
+  }).join("");
+
+  container.querySelectorAll(".mine-cell").forEach(btn => {
+    const r = Number(btn.dataset.r);
+    const c = Number(btn.dataset.c);
+    btn.addEventListener("click", () => mineReveal(r, c));
+    btn.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      mineToggleFlag(r, c);
+    });
+  });
+}
+
+function initMinesweeper() {
+  el("btn-mine-restart").addEventListener("click", () => mineSetup(el("mine-difficulty").value));
+  el("mine-difficulty").addEventListener("change", () => mineSetup(el("mine-difficulty").value));
+  mineSetup("easy");
 }
 
 // ==================== 초기화 ====================
@@ -434,4 +633,5 @@ function initPracticeTab() {
 
   initG2048();
   initTicTacToe();
+  initMinesweeper();
 }

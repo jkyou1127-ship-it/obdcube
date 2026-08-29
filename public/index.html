@@ -87,6 +87,7 @@
       <div class="tabs">
         <button class="tab-btn game-tab-btn active" data-game="2048">2048</button>
         <button class="tab-btn game-tab-btn" data-game="tictactoe">틱택토</button>
+        <button class="tab-btn game-tab-btn" data-game="minesweeper">지뢰찾기</button>
       </div>
 
       <!-- 2048 -->
@@ -122,7 +123,9 @@
           <div id="ttt-offline-panel">
             <p id="ttt-status" class="desc">X 차례입니다.</p>
             <div id="ttt-board" class="ttt-board"></div>
+            <p id="ttt-stats" class="desc">X 승: 0 · O 승: 0 · 무승부: 0</p>
             <button type="button" class="btn small" id="btn-ttt-restart">새 게임</button>
+            <button type="button" class="btn small" id="btn-ttt-reset-stats">전적 초기화</button>
           </div>
 
           <div id="ttt-online-panel" class="hidden">
@@ -142,6 +145,24 @@
               <button type="button" class="btn small danger" id="btn-ttt-leave-room">나가기</button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- 지뢰찾기 -->
+      <div id="game-minesweeper" class="game-panel hidden">
+        <div class="panel">
+          <div class="inline-form">
+            <select id="mine-difficulty">
+              <option value="easy">초급 (9x9, 지뢰 10)</option>
+              <option value="medium">중급 (16x16, 지뢰 40)</option>
+              <option value="hard">고급 (16x30, 지뢰 99)</option>
+            </select>
+            <span>남은 지뢰: <strong id="mine-remaining">10</strong></span>
+            <span>시간: <strong id="mine-timer">0</strong>초</span>
+            <button type="button" class="btn small" id="btn-mine-restart">새 게임</button>
+          </div>
+          <p class="desc">좌클릭: 칸 열기 · 우클릭: 깃발 표시</p>
+          <div id="mine-board" class="mine-board"></div>
         </div>
       </div>
     </section>
@@ -227,6 +248,7 @@
         <p class="desc">참가할 종목을 선택하고 신청하세요. 이미 신청한 종목은 표시되며, 다른 종목을 추가로 선택해 더 신청할 수 있습니다.</p>
         <p id="participate-closed-msg" class="desc hidden">참가 신청이 마감되었습니다.</p>
         <form id="form-participate" class="inline-form">
+          <button type="button" class="btn small" id="btn-participate-select-all">전 종목 선택</button>
           <div id="participate-events-checkboxes" class="checkbox-grid"></div>
           <button type="submit" class="btn primary">참가 신청</button>
         </form>

@@ -437,6 +437,10 @@ el("btn-delete-competition").addEventListener("click", async () => {
   }
 });
 
+el("btn-participate-select-all").addEventListener("click", () => {
+  el("participate-events-checkboxes").querySelectorAll("input:not(:disabled)").forEach(cb => { cb.checked = true; });
+});
+
 el("form-participate").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!currentCompId) return;
