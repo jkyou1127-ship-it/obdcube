@@ -195,17 +195,13 @@ service cloud.firestore {
         // 기록(시간)은 roundTimes, 진출/탈락·순위는 roundMeta에 분리 저장한다.
         //
         // 참가자 (라운드별 기록/진출·탈락 여부)
-        // - 열람: 주최자/관리자, 본인 기록, 또는 대회가 종료된 뒤에는(입상 내역 공개) 누구나
+        // - 열람: 로그인한 누구나 (대회 페이지에서 순위·라운드 진출 현황을 볼 수 있어야 함)
         // - 등록(참가 신청): 본인 uid로 스스로 가능
         // - 수정: 주최자/관리자는 항상 전체 수정 가능.
         //   본인은 대회가 종료되지 않았을 때 roundTimes(기록)만 수정 가능하고,
         //   roundMeta(순위·진출/탈락)는 절대 건드릴 수 없음 - 새 문서와 값이 같아야 함.
         match /participants/{participantId} {
-          allow read: if isSignedIn() && (
-                          isAdmin() || isOrganizer() ||
-                          resource.data.uid == request.auth.uid ||
-                          !isCompActive()
-                        );
+          allow read: if isSignedIn();
           allow create: if isSignedIn() && (
                             isAdmin() || isOrganizer() ||
                             request.resource.data.uid == request.auth.uid

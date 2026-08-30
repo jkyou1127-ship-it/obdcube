@@ -2,6 +2,7 @@
 
 let currentCompId = null;
 const participantRoundByEvent = {}; // eventId -> 현재 표시 중인 라운드 번호
+const publicRankingRoundByEvent = {}; // eventId -> 순위/진출현황(읽기 전용)에서 보고 있는 라운드 번호
 let teamChatUnsub = null;
 
 async function openCompetitionDetail(compId) {
@@ -759,7 +760,9 @@ async function renderEventsList(comp, isEnded) {
       `;
     }).join("") || "<p class='desc'>등록된 스크램블이 없습니다.</p>";
 
-    const participantsHtml = canManageParticipants ? await buildParticipantsPanel(comp.id, ev, isEnded, recordsLocked) : "";
+    const participantsHtml = canManageParticipants
+      ? await buildParticipantsPanel(comp.id, ev, isEnded, recordsLocked)
+      : await buildPublicRankingPanel(comp.id, ev);
 
     return `
       <div class="event-block" data-event-id="${ev.id}">
@@ -794,6 +797,77 @@ async function renderEventsList(comp, isEnded) {
   container.innerHTML = blocks.join("");
   attachEventBlockHandlers(comp.id, canManageEvents);
   if (canManageParticipants) attachParticipantHandlers(comp.id);
+  else attachPublicRankingHandlers(comp.id);
+}
+
+// ---- 순위 / 라운드 진출 현황 (읽기 전용, 주최자가 아닌 누구나 열람) ----
+
+async function buildPublicRankingPanel(compId, ev) {
+  const eventId = ev.id;
+  const format = normalizeFormat(ev.format);
+  const solveCount = solveCountForFormat(format);
+  const resultLabel = resultLabelForFormat(format);
+  const round = publicRankingRoundByEvent[eventId] || effectiveFinalRound(ev);
+  let participants = await fetchParticipants(compId, eventId);
+
+  if (round > 1) {
+    participants = participants.filter(p => {
+      const prevMeta = p.roundMeta && p.roundMeta[round - 1];
+      return !prevMeta || prevMeta.status !== "eliminated";
+    });
+  }
+
+  const rows = participants.map(p => {
+    const roundTimes = (p.roundTimes && p.roundTimes[round]) || [];
+    const times = Array.isArray(roundTimes) && roundTimes.length === solveCount ? roundTimes : new Array(solveCount).fill("");
+    const meta = (p.roundMeta && p.roundMeta[round]) || {};
+    const average = computeAverage(times, format);
+    const rank = meta.rank != null && meta.rank !== "" ? Number(meta.rank) : null;
+    const sortKey = rank != null ? rank : 100000 + average;
+    return { p, times, status: meta.status || "", average, sortKey };
+  }).sort((a, b) => a.sortKey - b.sortKey);
+
+  const rowsHtml = rows.map((r, idx) => {
+    const hasAnyEntry = r.times.some(t => t.trim() !== "");
+    const resultValueLabel = hasAnyEntry ? formatSecondsToTime(r.average) : "-";
+    const rankLabel = r.average === Infinity ? "-" : idx + 1;
+    const statusLabel = { advanced: "진출", eliminated: "탈락" }[r.status] || "-";
+    return `
+    <tr>
+      <td>${rankLabel}</td>
+      <td>${escapeHtml(r.p.nickname)}</td>
+      <td>${r.times.map(t => escapeHtml(t) || "-").join(" / ")}</td>
+      <td>${resultValueLabel}</td>
+      <td>${statusLabel}</td>
+    </tr>
+  `;
+  }).join("");
+
+  return `
+    <div class="participants-panel">
+      <h5>순위 · 라운드 진출 현황 (${formatLabel(format)}, ${solveCount}회)</h5>
+      <div class="inline-form">
+        <label style="margin:0">라운드</label>
+        <input type="number" min="1" class="public-ranking-round-input" data-event="${eventId}" value="${round}" style="max-width:80px" />
+      </div>
+      <div class="table-scroll">
+        <table class="participants-table">
+          <thead><tr><th>순위</th><th>이름</th><th>기록 (${solveCount}회)</th><th>${resultLabel}</th><th>진출/탈락</th></tr></thead>
+          <tbody>${rowsHtml || `<tr><td colspan="5" class="desc">등록된 참가자가 없습니다.</td></tr>`}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function attachPublicRankingHandlers(compId) {
+  const container = el("events-list");
+  container.querySelectorAll(".public-ranking-round-input").forEach(input => {
+    input.addEventListener("change", async () => {
+      publicRankingRoundByEvent[input.dataset.event] = parseInt(input.value, 10) || 1;
+      await refreshDetail(compId);
+    });
+  });
 }
 
 // ---- 참가자 / 진출·탈락 / 순위 / 기록 (주최자·관리자 전용) ----
