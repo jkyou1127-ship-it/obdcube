@@ -114,7 +114,7 @@ async function renderRankingsRoundTabs(compId) {
   const ev = rankingsEventsCache.find(e => e.id === currentRankingsEventId);
   if (!ev) return;
   const maxRound = Math.max(effectiveFinalRound(ev), 1);
-  if (currentRankingsRound == null) currentRankingsRound = maxRound;
+  if (currentRankingsRound == null) currentRankingsRound = 1;
   const roundTabs = el("rankings-round-tabs");
   const roundNums = [];
   for (let r = 1; r <= maxRound; r++) roundNums.push(r);
