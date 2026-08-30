@@ -142,12 +142,16 @@ el("competitions-filter-ended").addEventListener("click", () => {
 
 // ---- 입상 내역 ----
 let awardsCache = [];
+let awardsViewMode = "all"; // "all"(전체) | "event"(종목별) | "comp"(대회별)
 let currentAwardsEventName = null;
+let currentAwardsCompId = null;
+let currentAwardsCompEventName = null;
 
 async function renderAwardsPanel() {
   const container = el("awards-list");
   container.innerHTML = "<p class='desc'>불러오는 중...</p>";
   el("awards-event-tabs").innerHTML = "";
+  el("awards-sub-tabs").innerHTML = "";
 
   const comps = (await fetchCompetitions()).filter(c => c.status === "ended");
   const awards = [];
@@ -174,15 +178,78 @@ async function renderAwardsPanel() {
     return;
   }
 
-  const eventNames = [...new Set(awards.map(a => a.ev.name))];
+  renderAwardsView();
+}
+
+el("awards-mode-all").addEventListener("click", () => { awardsViewMode = "all"; updateAwardsModeButtons(); renderAwardsView(); });
+el("awards-mode-event").addEventListener("click", () => { awardsViewMode = "event"; updateAwardsModeButtons(); renderAwardsView(); });
+el("awards-mode-comp").addEventListener("click", () => { awardsViewMode = "comp"; updateAwardsModeButtons(); renderAwardsView(); });
+
+function updateAwardsModeButtons() {
+  el("awards-mode-all").classList.toggle("active", awardsViewMode === "all");
+  el("awards-mode-event").classList.toggle("active", awardsViewMode === "event");
+  el("awards-mode-comp").classList.toggle("active", awardsViewMode === "comp");
+}
+
+function renderAwardsView() {
+  if (awardsViewMode === "all") {
+    el("awards-event-tabs").innerHTML = "";
+    el("awards-sub-tabs").innerHTML = "";
+    renderAwardsAllList();
+  } else if (awardsViewMode === "event") {
+    el("awards-sub-tabs").innerHTML = "";
+    renderAwardsEventTabs();
+  } else {
+    renderAwardsCompTabs();
+  }
+}
+
+// 입상 내역 한 줄(참가자 1명) 카드 HTML - 세 모드가 공용으로 사용한다.
+function renderAwardItemsHtml(items) {
+  return items.slice().sort((a, b) => a.rank - b.rank).map(a => `
+    <div class="item-card">
+      <div class="info">
+        <span>${escapeHtml(a.nickname || "-")}</span>
+        <span>(결승 ${a.round}라운드 기준)</span>
+        <span>최고기록: ${a.best === Infinity ? "-" : formatSecondsToTime(a.best)} · 평균기록: ${a.average === Infinity ? "-" : formatSecondsToTime(a.average)}</span>
+      </div>
+      <div class="actions">
+        <span class="badge active">${a.rank}등</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+// ---- 전체: 대회별로 묶고, 그 안에서 종목별로 다시 묶어 보여준다 ----
+function renderAwardsAllList() {
+  const container = el("awards-list");
+  const byComp = new Map();
+  awardsCache.forEach(a => {
+    if (!byComp.has(a.comp.id)) byComp.set(a.comp.id, { comp: a.comp, byEvent: new Map() });
+    const entry = byComp.get(a.comp.id);
+    if (!entry.byEvent.has(a.ev.name)) entry.byEvent.set(a.ev.name, []);
+    entry.byEvent.get(a.ev.name).push(a);
+  });
+  const compGroups = [...byComp.values()].sort((x, y) => (y.comp.startDate || "").localeCompare(x.comp.startDate || ""));
+
+  container.innerHTML = compGroups.map(cg => `
+    <div class="roster-block">
+      <strong>${escapeHtml(cg.comp.title)}</strong>
+      <span class="desc">${escapeHtml(formatDateRange(cg.comp.startDate, cg.comp.endDate))}</span>
+      ${[...cg.byEvent.entries()].map(([evName, items]) => `
+        <p class="desc"><strong>${escapeHtml(evName)}</strong></p>
+        ${renderAwardItemsHtml(items)}
+      `).join("")}
+    </div>
+  `).join("");
+}
+
+// ---- 종목별: 종목 탭을 고르면 그 종목의 입상 내역을 대회별로 묶어 보여준다 ----
+function renderAwardsEventTabs() {
+  const eventNames = [...new Set(awardsCache.map(a => a.ev.name))];
   if (!currentAwardsEventName || !eventNames.includes(currentAwardsEventName)) {
     currentAwardsEventName = eventNames[0];
   }
-  renderAwardsEventTabs(eventNames);
-  renderAwardsList();
-}
-
-function renderAwardsEventTabs(eventNames) {
   const tabsContainer = el("awards-event-tabs");
   tabsContainer.innerHTML = eventNames.map(name => `
     <button type="button" class="tab-pill ${name === currentAwardsEventName ? "active" : ""}" data-event-name="${escapeHtml(name)}">${escapeHtml(name)}</button>
@@ -190,14 +257,13 @@ function renderAwardsEventTabs(eventNames) {
   tabsContainer.querySelectorAll(".tab-pill").forEach(btn => {
     btn.addEventListener("click", () => {
       currentAwardsEventName = btn.dataset.eventName;
-      tabsContainer.querySelectorAll(".tab-pill").forEach(b => b.classList.toggle("active", b === btn));
-      renderAwardsList();
+      renderAwardsEventTabs();
     });
   });
+  renderAwardsByEventList();
 }
 
-// 선택된 종목의 입상 내역을 대회별로 묶고, 그 안에서 순위순으로 보여준다.
-function renderAwardsList() {
+function renderAwardsByEventList() {
   const container = el("awards-list");
   const filtered = awardsCache.filter(a => a.ev.name === currentAwardsEventName);
 
@@ -211,28 +277,66 @@ function renderAwardsList() {
     if (!byComp.has(a.comp.id)) byComp.set(a.comp.id, { comp: a.comp, items: [] });
     byComp.get(a.comp.id).items.push(a);
   });
-  const groups = [...byComp.values()];
-  groups.forEach(g => g.items.sort((x, y) => x.rank - y.rank));
-  groups.sort((x, y) => (y.comp.startDate || "").localeCompare(x.comp.startDate || ""));
+  const groups = [...byComp.values()].sort((x, y) => (y.comp.startDate || "").localeCompare(x.comp.startDate || ""));
 
   container.innerHTML = groups.map(g => `
     <div class="roster-block">
       <strong>${escapeHtml(g.comp.title)}</strong>
       <span class="desc">${escapeHtml(formatDateRange(g.comp.startDate, g.comp.endDate))}</span>
-      ${g.items.map(a => `
-        <div class="item-card">
-          <div class="info">
-            <span>${escapeHtml(a.nickname || "-")}</span>
-            <span>(결승 ${a.round}라운드 기준)</span>
-            <span>최고기록: ${a.best === Infinity ? "-" : formatSecondsToTime(a.best)} · 평균기록: ${a.average === Infinity ? "-" : formatSecondsToTime(a.average)}</span>
-          </div>
-          <div class="actions">
-            <span class="badge active">${a.rank}등</span>
-          </div>
-        </div>
-      `).join("")}
+      ${renderAwardItemsHtml(g.items)}
     </div>
   `).join("");
+}
+
+// ---- 대회별: 대회 탭을 고른 뒤, 그 대회 안의 종목을 다시 골라 보여준다 ----
+function renderAwardsCompTabs() {
+  const comps = [...new Map(awardsCache.map(a => [a.comp.id, a.comp])).values()]
+    .sort((x, y) => (y.startDate || "").localeCompare(x.startDate || ""));
+  if (!currentAwardsCompId || !comps.some(c => c.id === currentAwardsCompId)) {
+    currentAwardsCompId = comps[0].id;
+    currentAwardsCompEventName = null;
+  }
+  const tabsContainer = el("awards-event-tabs");
+  tabsContainer.innerHTML = comps.map(c => `
+    <button type="button" class="tab-pill ${c.id === currentAwardsCompId ? "active" : ""}" data-comp-id="${c.id}">${escapeHtml(c.title)}</button>
+  `).join("");
+  tabsContainer.querySelectorAll(".tab-pill").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentAwardsCompId = btn.dataset.compId;
+      currentAwardsCompEventName = null;
+      renderAwardsCompTabs();
+    });
+  });
+  renderAwardsCompEventSubTabs();
+}
+
+function renderAwardsCompEventSubTabs() {
+  const compAwards = awardsCache.filter(a => a.comp.id === currentAwardsCompId);
+  const eventNames = [...new Set(compAwards.map(a => a.ev.name))];
+  if (!currentAwardsCompEventName || !eventNames.includes(currentAwardsCompEventName)) {
+    currentAwardsCompEventName = eventNames[0];
+  }
+  const subTabs = el("awards-sub-tabs");
+  subTabs.innerHTML = eventNames.map(name => `
+    <button type="button" class="tab-pill small ${name === currentAwardsCompEventName ? "active" : ""}" data-event-name="${escapeHtml(name)}">${escapeHtml(name)}</button>
+  `).join("");
+  subTabs.querySelectorAll(".tab-pill").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentAwardsCompEventName = btn.dataset.eventName;
+      renderAwardsCompEventSubTabs();
+    });
+  });
+  renderAwardsCompList();
+}
+
+function renderAwardsCompList() {
+  const container = el("awards-list");
+  const filtered = awardsCache.filter(a => a.comp.id === currentAwardsCompId && a.ev.name === currentAwardsCompEventName);
+  if (filtered.length === 0) {
+    container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
+    return;
+  }
+  container.innerHTML = renderAwardItemsHtml(filtered);
 }
 
 // ---- 참가 현황 (내가 참가 신청한 대회) ----
