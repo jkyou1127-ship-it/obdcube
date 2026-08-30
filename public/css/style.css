@@ -474,6 +474,7 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 }
 .wca-rank-table .rank-cell { font-weight: 700; width: 48px; }
 .wca-rank-table tr.advanced { background: rgba(55, 200, 119, .16); }
+.wca-rank-table tr.eliminated { background: rgba(255, 91, 110, .16); }
 
 .toast {
   position: fixed;

@@ -167,11 +167,16 @@ async function renderRankingsTable(compId, ev) {
     const rankNum = r.average === Infinity ? null : idx + 1;
     const hasAnyEntry = r.times.some(t => t.trim() !== "");
     const resultValueLabel = hasAnyEntry ? formatSecondsToTime(r.average) : "-";
-    const statusLabel = { advanced: "진출", eliminated: "탈락" }[r.status] || "-";
-    // 결승은 상위 3위만 초록으로 강조하고, 그 외 라운드는 진출자만 강조한다.
-    const highlight = isFinalRound ? (rankNum != null && rankNum <= 3) : r.status === "advanced";
+    // 결승에서는 진출/탈락 처리가 곧 입상/미입상을 뜻한다.
+    const statusLabel = isFinalRound
+      ? ({ advanced: "입상", eliminated: "미입상" }[r.status] || "-")
+      : ({ advanced: "진출", eliminated: "탈락" }[r.status] || "-");
+    // 탈락은 항상 빨강. 결승은 상위 3위만 초록으로, 그 외 라운드는 진출자만 초록으로 강조한다.
+    let rowCls = "";
+    if (r.status === "eliminated") rowCls = "eliminated";
+    else if (isFinalRound ? (rankNum != null && rankNum <= 3) : r.status === "advanced") rowCls = "advanced";
     return `
-      <tr class="${highlight ? "advanced" : ""}">
+      <tr class="${rowCls}">
         <td class="rank-cell">${rankNum || "-"}</td>
         <td>${escapeHtml(r.p.nickname)}</td>
         <td>${r.times.map(t => escapeHtml(t) || "-").join(" · ")}</td>
