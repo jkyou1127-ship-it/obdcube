@@ -196,28 +196,41 @@ function renderAwardsEventTabs(eventNames) {
   });
 }
 
-// 선택된 종목의 입상 내역만 순위순으로 보여준다.
+// 선택된 종목의 입상 내역을 대회별로 묶고, 그 안에서 순위순으로 보여준다.
 function renderAwardsList() {
   const container = el("awards-list");
-  const filtered = awardsCache
-    .filter(a => a.ev.name === currentAwardsEventName)
-    .sort((a, b) => a.rank - b.rank);
+  const filtered = awardsCache.filter(a => a.ev.name === currentAwardsEventName);
 
   if (filtered.length === 0) {
     container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
     return;
   }
-  container.innerHTML = filtered.map(a => `
-    <div class="item-card">
-      <div class="info">
-        <strong>${escapeHtml(a.comp.title)} - ${escapeHtml(a.ev.name)}</strong>
-        <span>${escapeHtml(a.nickname || "-")}</span>
-        <span>${escapeHtml(formatDateRange(a.comp.startDate, a.comp.endDate))} (결승 ${a.round}라운드 기준)</span>
-        <span>최고기록: ${a.best === Infinity ? "-" : formatSecondsToTime(a.best)} · 평균기록: ${a.average === Infinity ? "-" : formatSecondsToTime(a.average)}</span>
-      </div>
-      <div class="actions">
-        <span class="badge active">${a.rank}등</span>
-      </div>
+
+  const byComp = new Map();
+  filtered.forEach(a => {
+    if (!byComp.has(a.comp.id)) byComp.set(a.comp.id, { comp: a.comp, items: [] });
+    byComp.get(a.comp.id).items.push(a);
+  });
+  const groups = [...byComp.values()];
+  groups.forEach(g => g.items.sort((x, y) => x.rank - y.rank));
+  groups.sort((x, y) => (y.comp.startDate || "").localeCompare(x.comp.startDate || ""));
+
+  container.innerHTML = groups.map(g => `
+    <div class="roster-block">
+      <strong>${escapeHtml(g.comp.title)}</strong>
+      <span class="desc">${escapeHtml(formatDateRange(g.comp.startDate, g.comp.endDate))}</span>
+      ${g.items.map(a => `
+        <div class="item-card">
+          <div class="info">
+            <span>${escapeHtml(a.nickname || "-")}</span>
+            <span>(결승 ${a.round}라운드 기준)</span>
+            <span>최고기록: ${a.best === Infinity ? "-" : formatSecondsToTime(a.best)} · 평균기록: ${a.average === Infinity ? "-" : formatSecondsToTime(a.average)}</span>
+          </div>
+          <div class="actions">
+            <span class="badge active">${a.rank}등</span>
+          </div>
+        </div>
+      `).join("")}
     </div>
   `).join("");
 }
