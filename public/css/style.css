@@ -135,7 +135,8 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 
 .plain-form, .inline-form { display: flex; flex-direction: column; gap: 4px; max-width: 480px; }
 .inline-form { flex-direction: row; align-items: center; gap: 8px; max-width: none; flex-wrap: wrap; }
-.inline-form input, .inline-form select { width: auto; flex: 1; min-width: 160px; }
+.inline-form input, .inline-form select, .inline-form textarea { width: auto; flex: 1; min-width: 160px; }
+.inline-form textarea { font-family: inherit; resize: vertical; }
 .plain-form .btn, .inline-form .btn { margin-top: 12px; }
 
 .panel {
@@ -340,6 +341,7 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 }
 .announcement-hint { color: var(--text-dim); font-size: 12px; }
 .announcement-detail { padding: 4px 0 8px; }
+.announcement-text { white-space: pre-wrap; }
 #detail-announcement-banner {
   border: 1px solid var(--border);
   border-radius: var(--radius);

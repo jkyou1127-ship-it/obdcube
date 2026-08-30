@@ -76,7 +76,7 @@
   </header>
 
   <div id="global-announcement-banner" class="announcement-banner hidden">
-    <strong>📢 공지</strong><span id="global-announcement-text"></span>
+    <strong>📢 공지</strong><span id="global-announcement-text" class="announcement-text"></span>
   </div>
 
   <main class="content">
@@ -249,7 +249,7 @@
           <strong>📢 대회 공지</strong><span class="announcement-hint">(누르면 펼치기)</span>
         </button>
         <div id="detail-announcement-detail" class="announcement-detail hidden">
-          <span id="detail-announcement-text"></span>
+          <span id="detail-announcement-text" class="announcement-text"></span>
         </div>
       </div>
 
@@ -392,12 +392,12 @@
         <div class="announcement-banner">
           <button type="button" class="announcement-toggle" id="btn-messenger-announcement-toggle">
             <strong>📢 대회 공지</strong>
-            <span id="messenger-announcement-current" class="announcement-hint">공지 없음 (누르면 펼치기)</span>
+            <span id="messenger-announcement-current" class="announcement-hint announcement-text">공지 없음 (누르면 펼치기)</span>
           </button>
           <div id="messenger-announcement-detail" class="announcement-detail hidden">
             <p class="desc">이 대회 상세 화면에 참가자 모두에게 표시되는 공지입니다. 주최자·공동 주최자·스태프 누구나 설정할 수 있습니다.</p>
             <form id="form-messenger-announcement" class="inline-form">
-              <input type="text" id="messenger-announcement-input" placeholder="공지 내용 (비우고 저장하면 삭제됨)" maxlength="500" />
+              <textarea id="messenger-announcement-input" placeholder="공지 내용 (비우고 저장하면 삭제됨, Enter로 줄바꿈 가능)" maxlength="500" rows="3"></textarea>
               <button type="submit" class="btn small">공지 저장</button>
             </form>
           </div>
@@ -416,9 +416,9 @@
       <div class="panel">
         <h3>전체 공지</h3>
         <p class="desc">모든 이용자에게 화면 상단에 표시되는 공지입니다.</p>
-        <p id="admin-announcement-current" class="desc">공지 없음</p>
+        <p id="admin-announcement-current" class="desc announcement-text">공지 없음</p>
         <form id="form-admin-announcement" class="inline-form">
-          <input type="text" id="admin-announcement-input" placeholder="공지 내용 (비우고 저장하면 삭제됨)" maxlength="500" />
+          <textarea id="admin-announcement-input" placeholder="공지 내용 (비우고 저장하면 삭제됨, Enter로 줄바꿈 가능)" maxlength="500" rows="3"></textarea>
           <button type="submit" class="btn small">공지 저장</button>
         </form>
       </div>
