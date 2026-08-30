@@ -344,11 +344,20 @@ async function renderMyRecordsPanel(comp) {
   // 기권만 가능하다. 기권하면 기록이 DNS(=DNF와 동일하게 처리)로 저장된다.
   const applicationsClosed = comp.participationClosed === true || !isNotStarted(comp);
   const events = await fetchEvents(comp.id);
+  // 참가자 본인이 아직 탈락하지 않은 라운드는 전부(1라운드뿐 아니라 2라운드 이상도)
+  // 자기 기록 패널에 보여준다. round를 1로 고정해서 2라운드 이상 진행이 안 되던 버그 수정.
   const mine = await Promise.all(events.map(async ev => {
     const p = await fetchMyParticipant(comp.id, ev.id);
     if (!p) return null;
     const scrambles = await fetchScrambles(comp.id, ev.id, true);
-    return { ev, p, scrambles };
+    const maxRound = Math.max(ev.maxScrambleRound || 1, 1);
+    const rounds = [];
+    for (let r = 1; r <= maxRound; r++) {
+      const prevMeta = r > 1 ? (p.roundMeta && p.roundMeta[r - 1]) : null;
+      if (r > 1 && prevMeta && prevMeta.status === "eliminated") break;
+      rounds.push(r);
+    }
+    return { ev, p, scrambles, rounds };
   }));
   const registered = mine.filter(Boolean);
 
@@ -358,11 +367,15 @@ async function renderMyRecordsPanel(comp) {
   }
   panel.classList.remove("hidden");
 
+  const entries = [];
+  registered.forEach(({ ev, p, scrambles, rounds }) => {
+    rounds.forEach(round => entries.push({ ev, p, scrambles, round }));
+  });
+
   const container = el("my-records-list");
-  container.innerHTML = registered.map(({ ev, p, scrambles }) => {
+  container.innerHTML = entries.map(({ ev, p, scrambles, round }) => {
     const format = normalizeFormat(ev.format);
     const solveCount = solveCountForFormat(format);
-    const round = 1;
     const roundTimes = (p.roundTimes && p.roundTimes[round]) || [];
     const times = Array.isArray(roundTimes) && roundTimes.length === solveCount ? roundTimes : new Array(solveCount).fill("");
     const average = computeAverage(times, format);
@@ -376,20 +389,26 @@ async function renderMyRecordsPanel(comp) {
           <div class="scramble-row"><span>#${s.index}</span><span class="scramble-text">${escapeHtml(s.scramble)}</span></div>
         `).join("")}</div>`
       : `<p class="desc">아직 공개된 스크램블이 없습니다.</p>`;
+    // "참가 취소"는 종목 신청 전체를 삭제하는 동작이라 1라운드 카드에서만 보여준다.
+    // 2라운드 이상 카드에서는 그 라운드만 기권할 수 있다.
+    const actionBtn = isEnded ? "" : (
+      round === 1
+        ? (applicationsClosed
+            ? `<button class="btn small danger my-record-forfeit">기권</button>`
+            : `<button class="btn small danger my-record-cancel">참가 취소</button>`)
+        : (applicationsClosed ? `<button class="btn small danger my-record-forfeit">기권</button>` : "")
+    );
     return `
       <div class="item-card my-record-row" data-event="${ev.id}" data-participant="${p.id}" data-round="${round}">
         <div class="info">
-          <strong>${escapeHtml(ev.name)} (${formatLabel(format)}, 1라운드)</strong>
+          <strong>${escapeHtml(ev.name)} (${formatLabel(format)}, ${round}라운드)</strong>
           ${scrambleHtml}
           <div class="solves-cell">${solveInputs}</div>
           <span>${resultLabelForFormat(format)}: ${hasAnyEntry ? formatSecondsToTime(average) : "-"}</span>
         </div>
         <div class="actions">
           ${recordsLocked ? `<span class='desc'>${lockReason} 기록을 등록할 수 없습니다.</span>` : `<button class="btn small my-record-save">저장</button>`}
-          ${isEnded ? "" : (applicationsClosed
-            ? `<button class="btn small danger my-record-forfeit">기권</button>`
-            : `<button class="btn small danger my-record-cancel">참가 취소</button>`
-          )}
+          ${actionBtn}
         </div>
       </div>
     `;
