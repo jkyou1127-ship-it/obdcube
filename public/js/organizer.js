@@ -346,16 +346,21 @@ async function renderMyRecordsPanel(comp) {
   const events = await fetchEvents(comp.id);
   // 참가자 본인이 아직 탈락하지 않은 라운드는 전부(1라운드뿐 아니라 2라운드 이상도)
   // 자기 기록 패널에 보여준다. round를 1로 고정해서 2라운드 이상 진행이 안 되던 버그 수정.
+  // 다음 라운드는 그 종목에 스크램블이 이미 등록돼 있거나(maxScrambleRound), 주최자가
+  // 해당 참가자를 이전 라운드에서 "진출" 처리했으면(스크램블이 아직 없어도) 보여준다.
   const mine = await Promise.all(events.map(async ev => {
     const p = await fetchMyParticipant(comp.id, ev.id);
     if (!p) return null;
     const scrambles = await fetchScrambles(comp.id, ev.id, true);
-    const maxRound = Math.max(ev.maxScrambleRound || 1, 1);
+    const scrambledCeiling = ev.maxScrambleRound || 1;
     const rounds = [];
-    for (let r = 1; r <= maxRound; r++) {
-      const prevMeta = r > 1 ? (p.roundMeta && p.roundMeta[r - 1]) : null;
-      if (r > 1 && prevMeta && prevMeta.status === "eliminated") break;
+    let r = 1;
+    while (r <= 50) {
       rounds.push(r);
+      const meta = p.roundMeta && p.roundMeta[r];
+      if (!meta || meta.status === "eliminated") break;
+      if (meta.status !== "advanced" && r >= scrambledCeiling) break;
+      r += 1;
     }
     return { ev, p, scrambles, rounds };
   }));
