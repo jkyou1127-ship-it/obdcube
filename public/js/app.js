@@ -80,7 +80,6 @@ async function onNavigate(name) {
   if (name === "awards") await renderAwardsPanel();
   if (name === "practice") initPracticeTab();
   if (name === "messenger") await renderMessengerList();
-  if (name === "myparticipation") await renderMyParticipationList();
   if (name === "admin") await renderAdminView();
 }
 
@@ -347,6 +346,8 @@ async function renderMyPage() {
       }
     });
   });
+
+  await renderMyParticipationList();
 
   const myComps = await fetchMyCompetitions();
   const compsContainer = el("my-competitions");
