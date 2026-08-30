@@ -167,13 +167,15 @@ async function renderRankingsTable(compId, ev) {
     const rankNum = r.average === Infinity ? null : idx + 1;
     const hasAnyEntry = r.times.some(t => t.trim() !== "");
     const resultValueLabel = hasAnyEntry ? formatSecondsToTime(r.average) : "-";
-    // 결승에서는 진출/탈락 처리가 곧 입상/미입상을 뜻한다.
+    // 결승에서는 진출/탈락 처리가 곧 입상/미입상을 뜻하고, 기권(전부 DNS)도 미입상으로 본다.
+    const forfeited = isFinalRound && isForfeitedRound(r.times);
+    const finalStatus = forfeited ? "eliminated" : r.status;
     const statusLabel = isFinalRound
-      ? ({ advanced: "입상", eliminated: "미입상" }[r.status] || "-")
+      ? ({ advanced: "입상", eliminated: "미입상" }[finalStatus] || "-")
       : ({ advanced: "진출", eliminated: "탈락" }[r.status] || "-");
-    // 탈락은 항상 빨강. 결승은 상위 3위만 초록으로, 그 외 라운드는 진출자만 초록으로 강조한다.
+    // 탈락(기권 포함)은 항상 빨강. 결승은 상위 3위만 초록으로, 그 외 라운드는 진출자만 초록으로 강조한다.
     let rowCls = "";
-    if (r.status === "eliminated") rowCls = "eliminated";
+    if (finalStatus === "eliminated") rowCls = "eliminated";
     else if (isFinalRound ? (rankNum != null && rankNum <= 3) : r.status === "advanced") rowCls = "advanced";
     return `
       <tr class="${rowCls}">
@@ -1049,11 +1051,12 @@ async function buildParticipantsPanel(compId, ev, isEnded, recordsLocked) {
     const rankCell = recordsLocked
       ? (r.average === Infinity ? "-" : idx + 1)
       : `<input type="number" class="participant-rank-input" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}" value="${r.rank != null ? r.rank : ""}" placeholder="${r.average === Infinity ? "-" : idx + 1}" style="max-width:60px" />`;
-    // 결승에서는 진출/탈락 처리가 곧 입상/미입상을 뜻하므로 문구를 다르게 보여준다.
+    // 결승에서는 진출/탈락 처리가 곧 입상/미입상을 뜻하고, 기권(전부 DNS)도 미입상으로 본다.
     const advanceLabel = isFinalRound ? "입상" : "진출";
     const eliminateLabel = isFinalRound ? "미입상" : "탈락";
+    const forfeited = isFinalRound && isForfeitedRound(r.times);
     const statusCell = recordsLocked
-      ? ({ advanced: advanceLabel, eliminated: eliminateLabel }[r.status] || "-")
+      ? ({ advanced: advanceLabel, eliminated: eliminateLabel }[forfeited ? "eliminated" : r.status] || "-")
       : `
         <button class="btn small ${r.status === "advanced" ? "success" : ""} btn-advance" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}">${advanceLabel}</button>
         <button class="btn small ${r.status === "eliminated" ? "danger" : ""} btn-eliminate" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}">${eliminateLabel}</button>

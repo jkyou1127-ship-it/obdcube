@@ -86,6 +86,14 @@ function isRecordsLocked(comp) {
   return comp.status === "ended" || isNotStarted(comp);
 }
 
+// 기권(참가 취소 대신 기록 전체를 DNS로 채우는 것) 여부. "참가 취소"와 달리 참가자
+// 문서는 남아있고 roundMeta.status도 바뀌지 않으므로, 그 라운드 기록이 전부
+// DNS인지로 기권 여부를 판단한다.
+function isForfeitedRound(times) {
+  return Array.isArray(times) && times.length > 0 &&
+    times.every(t => (t || "").trim().toUpperCase() === "DNS");
+}
+
 function parseTimeToSeconds(str) {
   if (!str) return Infinity;
   const s = String(str).trim().toUpperCase();
