@@ -244,20 +244,6 @@ async function endCompetition(compId) {
   await deleteTeamChatMessages(compId);
 }
 
-// 관리자 전용 1회성 정리: 이 삭제 기능이 생기기 전부터 이미 종료 상태였던 대회들의
-// 매신저 대화도 똑같이 정리한다.
-async function purgeEndedCompetitionsTeamChat() {
-  const snap = await db.collection("competitions").where("status", "==", "ended").get();
-  let compCount = 0;
-  let totalDeleted = 0;
-  for (const doc of snap.docs) {
-    const deleted = await deleteTeamChatMessages(doc.id);
-    if (deleted > 0) compCount += 1;
-    totalDeleted += deleted;
-  }
-  return { compCount, totalDeleted };
-}
-
 async function closeParticipation(compId) {
   await db.collection("competitions").doc(compId).update({
     participationClosed: true,
