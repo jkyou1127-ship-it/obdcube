@@ -69,6 +69,7 @@ async function approveApplication(app) {
     applicationId: app.id,
     status: "active",
     participationClosed: false,
+    participationStarted: false,
     started: false,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
@@ -232,6 +233,13 @@ async function closeParticipation(compId) {
   await db.collection("competitions").doc(compId).update({
     participationClosed: true,
     participationClosedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+async function startParticipation(compId) {
+  await db.collection("competitions").doc(compId).update({
+    participationStarted: true,
+    participationStartedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 }
 

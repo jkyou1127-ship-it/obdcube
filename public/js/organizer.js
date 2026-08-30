@@ -30,7 +30,8 @@ async function openCompetitionDetail(compId) {
   el("organizer-tools").classList.toggle("hidden", !canManageEvents || eventsClosed);
   el("organizer-actions").classList.toggle("hidden", !canManage);
   el("btn-start-competition").classList.toggle("hidden", isEnded || !isNotStarted(comp));
-  el("btn-close-participation").classList.toggle("hidden", isEnded || comp.participationClosed === true);
+  el("btn-start-participation").classList.toggle("hidden", isEnded || isParticipationStarted(comp));
+  el("btn-close-participation").classList.toggle("hidden", isEnded || !isParticipationStarted(comp) || comp.participationClosed === true);
   el("btn-close-events").classList.toggle("hidden", eventsClosed);
   el("btn-reopen-events").classList.toggle("hidden", isEnded || comp.eventsClosed !== true);
   el("btn-end-competition").classList.toggle("hidden", isEnded);
@@ -571,6 +572,14 @@ async function renderParticipatePanel(comp) {
   }
   panel.classList.remove("hidden");
 
+  const notStarted = !isParticipationStarted(comp);
+  el("participate-not-started-msg").classList.toggle("hidden", !notStarted);
+  if (notStarted) {
+    el("participate-closed-msg").classList.add("hidden");
+    el("form-participate").classList.add("hidden");
+    return;
+  }
+
   const closed = comp.participationClosed === true;
   el("participate-closed-msg").classList.toggle("hidden", !closed);
   el("form-participate").classList.toggle("hidden", closed);
@@ -599,6 +608,18 @@ el("btn-start-competition").addEventListener("click", async () => {
   try {
     await startCompetition(currentCompId);
     showToast("대회를 시작했습니다.", "success");
+    await openCompetitionDetail(currentCompId);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+el("btn-start-participation").addEventListener("click", async () => {
+  if (!currentCompId) return;
+  if (!confirm("참가 신청을 시작할까요? 시작 후에는 참가자들이 신청할 수 있습니다.")) return;
+  try {
+    await startParticipation(currentCompId);
+    showToast("참가 신청을 시작했습니다.", "success");
     await openCompetitionDetail(currentCompId);
   } catch (err) {
     showToast(err.message, "error");

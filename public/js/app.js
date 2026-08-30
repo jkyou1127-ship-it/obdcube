@@ -80,6 +80,7 @@ async function onNavigate(name) {
   if (name === "awards") await renderAwardsPanel();
   if (name === "practice") initPracticeTab();
   if (name === "messenger") await renderMessengerList();
+  if (name === "myparticipation") await renderMyParticipationList();
   if (name === "admin") await renderAdminView();
 }
 
@@ -156,6 +157,48 @@ async function renderAwardsPanel() {
       </div>
     </div>
   `).join("");
+}
+
+// ---- 참가 현황 (내가 참가 신청한 대회) ----
+async function renderMyParticipationList() {
+  const container = el("my-participation-list");
+  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+
+  const comps = await fetchCompetitions();
+  const results = [];
+  for (const comp of comps) {
+    const events = await fetchEvents(comp.id);
+    const myEventNames = [];
+    for (const ev of events) {
+      const p = await fetchMyParticipant(comp.id, ev.id);
+      if (p) myEventNames.push(ev.name);
+    }
+    if (myEventNames.length > 0) results.push({ comp, myEventNames });
+  }
+
+  if (results.length === 0) {
+    container.innerHTML = "<p class='desc'>참가 신청한 대회가 없습니다.</p>";
+    return;
+  }
+  container.innerHTML = results.map(({ comp, myEventNames }) => {
+    const statusInfo = getCompetitionStatusInfo(comp);
+    return `
+    <div class="item-card">
+      <div class="info">
+        <strong>${escapeHtml(comp.title)}</strong>
+        <span>개최일: ${escapeHtml(formatDateRange(comp.startDate, comp.endDate))}</span>
+        <span>참가 종목: ${myEventNames.map(n => escapeHtml(n)).join(", ")}</span>
+      </div>
+      <div class="actions">
+        <span class="badge ${statusInfo.cls}">${statusInfo.label}</span>
+        <button class="btn small btn-open-my-participation" data-id="${comp.id}">보기</button>
+      </div>
+    </div>
+  `;
+  }).join("");
+  container.querySelectorAll(".btn-open-my-participation").forEach(btn => {
+    btn.addEventListener("click", () => openCompetitionDetail(btn.dataset.id));
+  });
 }
 
 // ---- 대회 주최 신청 ----

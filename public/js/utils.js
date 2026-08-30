@@ -61,6 +61,12 @@ function isNotStarted(comp) {
   return !!comp && comp.started !== true;
 }
 
+// 참가 신청을 아직 받기 시작하지 않았는지 여부. 승인된 직후에도 주최자가
+// "참가 신청 시작하기"를 눌러야만 참가 신청을 받을 수 있다.
+function isParticipationStarted(comp) {
+  return !!comp && comp.participationStarted === true;
+}
+
 // 상태 표시 우선순위: 종료됨 > 진행중(시작됨) > 신청마감/참가신청중(아직 시작 전).
 // "신청마감"은 어디까지나 시작 전에 참가 신청만 먼저 끊어둔 상태를 뜻하므로,
 // "대회 시작"을 누르면 참가 신청을 마감했었는지와 무관하게 곧바로 "진행중"으로 보여야 한다.

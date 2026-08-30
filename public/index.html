@@ -65,6 +65,7 @@
       <button class="nav-btn" data-nav="mypage">마이페이지</button>
       <button class="nav-btn" data-nav="awards">입상 내역</button>
       <button class="nav-btn" data-nav="messenger">메신저</button>
+      <button class="nav-btn" data-nav="myparticipation">참가 현황</button>
       <button class="nav-btn hidden" id="nav-admin" data-nav="admin">관리자</button>
     </nav>
     <div class="user-box">
@@ -247,6 +248,7 @@
 
       <div id="organizer-actions" class="inline-form hidden">
         <button type="button" class="btn small primary" id="btn-start-competition">대회 시작</button>
+        <button type="button" class="btn small primary" id="btn-start-participation">참가 신청 시작하기</button>
         <button type="button" class="btn small" id="btn-close-participation">참가 신청 마감</button>
         <button type="button" class="btn small" id="btn-close-events">대회 종목추가 종료</button>
         <button type="button" class="btn small" id="btn-reopen-events">종목추가 재개</button>
@@ -276,6 +278,7 @@
       <div id="participate-panel" class="panel hidden">
         <h3>참가 신청</h3>
         <p class="desc">참가할 종목을 선택하고 신청하세요. 이미 신청한 종목은 표시되며, 다른 종목을 추가로 선택해 더 신청할 수 있습니다.</p>
+        <p id="participate-not-started-msg" class="desc hidden">아직 참가 신청을 받지 않는 대회입니다.</p>
         <p id="participate-closed-msg" class="desc hidden">참가 신청이 마감되었습니다.</p>
         <form id="form-participate" class="inline-form">
           <button type="button" class="btn small" id="btn-participate-select-all">전 종목 선택</button>
@@ -338,6 +341,13 @@
       <h2>입상 내역</h2>
       <p class="desc">종료된 대회에서 주최자가 순위를 지정한 종목 중 3등 이내만 표시됩니다.</p>
       <div id="awards-list" class="card-list"></div>
+    </section>
+
+    <!-- 참가 현황 (내가 참가 신청한 대회) -->
+    <section id="view-myparticipation" class="view hidden">
+      <h2>참가 현황</h2>
+      <p class="desc">내가 참가 신청한(참가 중이거나 앞으로 참가할) 대회 목록입니다.</p>
+      <div id="my-participation-list" class="card-list"></div>
     </section>
 
     <!-- 메신저 (주최자·공동 주최자·스태프 전용 대화방) -->
