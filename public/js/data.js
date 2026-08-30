@@ -111,6 +111,20 @@ async function fetchMyCompetitions() {
   return Array.from(map.values());
 }
 
+// 메신저 목록용: 주최자·공동 주최자·스태프로 참여 중인(=주최팀 대화방 접근 권한이 있는) 대회
+async function fetchMyTeamChatCompetitions() {
+  const [ownSnap, coSnap, staffSnap] = await Promise.all([
+    db.collection("competitions").where("organizerUid", "==", AppState.user.uid).get(),
+    db.collection("competitions").where("coOrganizerUids", "array-contains", AppState.user.uid).get(),
+    db.collection("competitions").where("staffUids", "array-contains", AppState.user.uid).get()
+  ]);
+  const map = new Map();
+  ownSnap.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() }));
+  coSnap.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() }));
+  staffSnap.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() }));
+  return Array.from(map.values());
+}
+
 async function addCoOrganizer(compId, uid) {
   await db.collection("competitions").doc(compId).update({
     coOrganizerUids: firebase.firestore.FieldValue.arrayUnion(uid)

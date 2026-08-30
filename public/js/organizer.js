@@ -38,22 +38,6 @@ async function openCompetitionDetail(compId) {
   el("staff-panel").classList.toggle("hidden", !canManage);
   el("event-request-panel").classList.toggle("hidden", eventsClosed);
 
-  el("team-chat-panel").classList.toggle("hidden", !canManageEvents);
-  if (teamChatUnsub) { teamChatUnsub(); teamChatUnsub = null; }
-  if (canManageEvents) {
-    teamChatUnsub = watchTeamChat(
-      compId,
-      (snap) => {
-        const messages = [];
-        snap.forEach(doc => messages.push({ id: doc.id, ...doc.data() }));
-        renderTeamChatMessages(messages, canManage);
-      },
-      (err) => {
-        el("team-chat-messages").innerHTML = "<p class='desc'>대화방을 불러오지 못했습니다.</p>";
-      }
-    );
-  }
-
   // 화면 전환은 기본 정보가 세팅된 시점에 바로 실행 - 아래 각 패널 렌더링 중
   // 하나가 실패해도(예: 권한 오류) 상세 화면 자체는 항상 열리도록 한다.
   switchView("detail");
@@ -319,7 +303,12 @@ el("form-add-staff").addEventListener("submit", async (e) => {
   }
 });
 
-// ---- 주최팀(주최자·공동 주최자·스태프) 대화방 ----
+// ---- 메신저: 대회별 주최팀(주최자·공동 주최자·스태프) 대화방 ----
+// 대회 상세 화면과는 별개의 독립된 탭으로, 여기서 어떤 대회의 대화방을
+// 볼지 목록에서 선택한다.
+
+let currentMessengerCompId = null;
+let currentMessengerCanModerate = false;
 
 function formatChatTime(ts) {
   try {
@@ -329,30 +318,106 @@ function formatChatTime(ts) {
   }
 }
 
-function renderTeamChatMessages(messages, canModerate) {
+async function renderMessengerList() {
+  if (teamChatUnsub) { teamChatUnsub(); teamChatUnsub = null; }
+  el("messenger-room-view").classList.add("hidden");
+  el("messenger-list-view").classList.remove("hidden");
+
+  const container = el("messenger-room-list");
+  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+  const comps = await fetchMyTeamChatCompetitions();
+  if (comps.length === 0) {
+    container.innerHTML = "<p class='desc'>대화방에 참여 중인 대회가 없습니다. (주최자·공동 주최자·스태프로 참여 중인 대회에서만 이용 가능)</p>";
+    return;
+  }
+  container.innerHTML = comps.map(c => `
+    <div class="item-card">
+      <div class="info"><strong>${escapeHtml(c.title)}</strong></div>
+      <button class="btn small btn-open-messenger-room" data-id="${c.id}" data-title="${escapeHtml(c.title)}">채팅 열기</button>
+    </div>
+  `).join("");
+  container.querySelectorAll(".btn-open-messenger-room").forEach(btn => {
+    btn.addEventListener("click", () => openMessengerRoom(btn.dataset.id, btn.dataset.title));
+  });
+}
+
+async function openMessengerRoom(compId, title) {
+  const comp = await fetchCompetition(compId);
+  if (!comp) {
+    showToast("대회 정보를 찾을 수 없습니다.", "error");
+    return;
+  }
+  currentMessengerCompId = compId;
+  currentMessengerCanModerate = isUserOrganizerOf(comp);
+  el("messenger-room-title").textContent = title || comp.title;
+  el("messenger-list-view").classList.add("hidden");
+  el("messenger-room-view").classList.remove("hidden");
+
+  if (teamChatUnsub) { teamChatUnsub(); teamChatUnsub = null; }
+  teamChatUnsub = watchTeamChat(
+    compId,
+    (snap) => {
+      const messages = [];
+      snap.forEach(doc => messages.push({ id: doc.id, ...doc.data() }));
+      renderTeamChatMessages(messages);
+    },
+    (err) => {
+      el("team-chat-messages").innerHTML = "<p class='desc'>대화방을 불러오지 못했습니다.</p>";
+    }
+  );
+}
+
+el("btn-messenger-back").addEventListener("click", () => {
+  currentMessengerCompId = null;
+  renderMessengerList();
+});
+
+function renderTeamChatMessages(messages) {
   const container = el("team-chat-messages");
   if (messages.length === 0) {
     container.innerHTML = "<p class='desc'>아직 메시지가 없습니다.</p>";
     return;
   }
   const myUid = AppState.user.uid;
-  container.innerHTML = messages.map(m => `
-    <div class="team-chat-message ${m.senderUid === myUid ? "mine" : ""}" data-id="${m.id}">
-      <div class="team-chat-meta">
-        <strong>${escapeHtml(m.senderNickname)}</strong>
-        <span>${m.createdAt ? formatChatTime(m.createdAt) : ""}</span>
+  container.innerHTML = messages.map(m => {
+    const mine = m.senderUid === myUid;
+    const canDelete = mine || currentMessengerCanModerate;
+    const time = m.createdAt ? formatChatTime(m.createdAt) : "";
+    const deleteBtn = canDelete ? `<button class="kakao-delete" data-id="${m.id}" title="삭제">×</button>` : "";
+    if (mine) {
+      return `
+        <div class="kakao-row mine" data-id="${m.id}">
+          <div class="kakao-col">
+            <div class="kakao-bubble-line">
+              ${deleteBtn}
+              <span class="kakao-time">${time}</span>
+              <div class="kakao-bubble mine">${escapeHtml(m.text)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    return `
+      <div class="kakao-row theirs" data-id="${m.id}">
+        <div class="kakao-avatar">${escapeHtml((m.senderNickname || "?").slice(0, 1))}</div>
+        <div class="kakao-col">
+          <div class="kakao-name">${escapeHtml(m.senderNickname)}</div>
+          <div class="kakao-bubble-line">
+            <div class="kakao-bubble theirs">${escapeHtml(m.text)}</div>
+            <span class="kakao-time">${time}</span>
+            ${deleteBtn}
+          </div>
+        </div>
       </div>
-      <div class="team-chat-text">${escapeHtml(m.text)}</div>
-      ${(canModerate || m.senderUid === myUid) ? `<button class="btn small danger team-chat-delete" data-id="${m.id}">삭제</button>` : ""}
-    </div>
-  `).join("");
+    `;
+  }).join("");
   container.scrollTop = container.scrollHeight;
 
-  container.querySelectorAll(".team-chat-delete").forEach(btn => {
+  container.querySelectorAll(".kakao-delete").forEach(btn => {
     btn.addEventListener("click", async () => {
-      if (!currentCompId) return;
+      if (!currentMessengerCompId) return;
       try {
-        await deleteTeamChatMessage(currentCompId, btn.dataset.id);
+        await deleteTeamChatMessage(currentMessengerCompId, btn.dataset.id);
       } catch (err) {
         showToast(err.message, "error");
       }
@@ -362,12 +427,12 @@ function renderTeamChatMessages(messages, canModerate) {
 
 el("form-team-chat").addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!currentCompId) return;
+  if (!currentMessengerCompId) return;
   const input = el("team-chat-text");
   const text = input.value.trim();
   if (!text) return;
   try {
-    await sendTeamChatMessage(currentCompId, text);
+    await sendTeamChatMessage(currentMessengerCompId, text);
     input.value = "";
   } catch (err) {
     showToast(err.message, "error");

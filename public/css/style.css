@@ -250,36 +250,75 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 .mine-cell.n7 { color: var(--text); }
 .mine-cell.n8 { color: var(--text-dim); }
 
-.team-chat-messages {
-  max-height: 280px;
+/* 카카오톡 느낌의 메신저 UI (고정 배색 - 라이트/다크 테마와 무관) */
+.kakao-chat {
+  max-height: 55vh;
+  min-height: 320px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 10px 0;
-  padding: 10px;
-  background: var(--bg-soft);
-  border: 1px solid var(--border);
+  gap: 2px;
+  margin: 12px 0 0;
+  padding: 14px 10px;
+  background: #b2c7d9;
   border-radius: var(--radius);
 }
-.team-chat-message {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 13px;
-}
-.team-chat-message.mine { border-color: var(--primary); }
-.team-chat-meta {
+.kakao-row {
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--text-dim);
-  font-size: 11px;
-  margin-bottom: 2px;
+  align-items: flex-end;
+  gap: 6px;
+  margin: 4px 0;
 }
-.team-chat-text { white-space: pre-wrap; word-break: break-word; }
-.team-chat-message .team-chat-delete { margin-top: 4px; }
+.kakao-row.mine { justify-content: flex-end; }
+.kakao-row.theirs { justify-content: flex-start; align-items: flex-start; }
+.kakao-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #6b7a99;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex: none;
+}
+.kakao-col { display: flex; flex-direction: column; max-width: 72%; }
+.kakao-name { font-size: 12px; color: #33475b; margin: 0 0 3px 2px; }
+.kakao-bubble-line { display: flex; align-items: flex-end; gap: 6px; }
+.kakao-row.mine .kakao-bubble-line { flex-direction: row-reverse; }
+.kakao-bubble {
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 16px;
+  box-shadow: 0 1px 1px rgba(0,0,0,.08);
+}
+.kakao-bubble.mine { background: #fee500; color: #3c1e1e; border-bottom-right-radius: 4px; }
+.kakao-bubble.theirs { background: #ffffff; color: #222; border-bottom-left-radius: 4px; }
+.kakao-time { font-size: 10px; color: #4a5a6e; white-space: nowrap; margin-bottom: 2px; }
+.kakao-delete {
+  background: none;
+  border: none;
+  color: #4a5a6e;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+.kakao-input-bar {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.kakao-input-bar input {
+  flex: 1;
+  border-radius: 20px;
+  padding: 10px 16px;
+}
 
 .card-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .item-card {

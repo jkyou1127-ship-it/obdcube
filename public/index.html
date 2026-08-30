@@ -64,6 +64,7 @@
       <button class="nav-btn" data-nav="apply">대회 주최 신청</button>
       <button class="nav-btn" data-nav="mypage">마이페이지</button>
       <button class="nav-btn" data-nav="awards">입상 내역</button>
+      <button class="nav-btn" data-nav="messenger">메신저</button>
       <button class="nav-btn hidden" id="nav-admin" data-nav="admin">관리자</button>
     </nav>
     <div class="user-box">
@@ -259,16 +260,6 @@
         <div id="staff-list" class="card-list"></div>
       </div>
 
-      <div id="team-chat-panel" class="panel hidden">
-        <h3>주최팀 대화방</h3>
-        <p class="desc">주최자·공동 주최자·스태프끼리만 볼 수 있는 대화방입니다. 참가자는 볼 수 없습니다.</p>
-        <div id="team-chat-messages" class="team-chat-messages"></div>
-        <form id="form-team-chat" class="inline-form">
-          <input type="text" id="team-chat-text" placeholder="메시지 입력" maxlength="500" required />
-          <button type="submit" class="btn small">보내기</button>
-        </form>
-      </div>
-
       <div id="participate-panel" class="panel hidden">
         <h3>참가 신청</h3>
         <p class="desc">참가할 종목을 선택하고 신청하세요. 이미 신청한 종목은 표시되며, 다른 종목을 추가로 선택해 더 신청할 수 있습니다.</p>
@@ -334,6 +325,24 @@
       <h2>입상 내역</h2>
       <p class="desc">종료된 대회에서 주최자가 순위를 지정한 종목 중 3등 이내만 표시됩니다.</p>
       <div id="awards-list" class="card-list"></div>
+    </section>
+
+    <!-- 메신저 (주최자·공동 주최자·스태프 전용 대화방) -->
+    <section id="view-messenger" class="view hidden">
+      <div id="messenger-list-view">
+        <h2>메신저</h2>
+        <p class="desc">주최자·공동 주최자·스태프로 참여 중인 대회의 대화방 목록입니다.</p>
+        <div id="messenger-room-list" class="card-list"></div>
+      </div>
+      <div id="messenger-room-view" class="hidden">
+        <button class="btn small" id="btn-messenger-back">← 목록으로</button>
+        <h2 id="messenger-room-title">-</h2>
+        <div id="team-chat-messages" class="kakao-chat"></div>
+        <form id="form-team-chat" class="kakao-input-bar">
+          <input type="text" id="team-chat-text" placeholder="메시지 입력" maxlength="500" required />
+          <button type="submit" class="btn small primary">전송</button>
+        </form>
+      </div>
     </section>
 
     <!-- 관리자 -->
