@@ -87,12 +87,26 @@ async function onNavigate(name) {
 el("btn-back-to-list").addEventListener("click", () => onNavigate("competitions"));
 
 // ---- 대회 목록 ----
+let competitionsListCache = [];
+let competitionsListFilter = "active"; // "active"(진행중/예정) | "ended"(종료)
+
 async function renderCompetitionsList() {
   const container = el("competitions-list");
   container.innerHTML = "<p class='desc'>불러오는 중...</p>";
-  const list = await fetchCompetitions();
+  competitionsListCache = await fetchCompetitions();
+  await renderCompetitionsListFiltered();
+}
+
+async function renderCompetitionsListFiltered() {
+  el("competitions-filter-active").classList.toggle("active", competitionsListFilter === "active");
+  el("competitions-filter-ended").classList.toggle("active", competitionsListFilter === "ended");
+
+  const container = el("competitions-list");
+  const list = competitionsListCache.filter(c =>
+    competitionsListFilter === "ended" ? c.status === "ended" : c.status !== "ended"
+  );
   if (list.length === 0) {
-    container.innerHTML = "<p class='desc'>아직 승인된 대회가 없습니다.</p>";
+    container.innerHTML = `<p class='desc'>${competitionsListFilter === "ended" ? "종료된" : "진행중/예정인"} 대회가 없습니다.</p>`;
     return;
   }
   const cards = await Promise.all(list.map(async c => {
@@ -116,6 +130,15 @@ async function renderCompetitionsList() {
     btn.addEventListener("click", () => openCompetitionDetail(btn.dataset.id));
   });
 }
+
+el("competitions-filter-active").addEventListener("click", () => {
+  competitionsListFilter = "active";
+  renderCompetitionsListFiltered();
+});
+el("competitions-filter-ended").addEventListener("click", () => {
+  competitionsListFilter = "ended";
+  renderCompetitionsListFiltered();
+});
 
 // ---- 입상 내역 ----
 async function renderAwardsPanel() {
