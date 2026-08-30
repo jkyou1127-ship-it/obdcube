@@ -171,6 +171,44 @@ async function deleteTeamChatMessage(compId, messageId) {
   await db.collection("competitions").doc(compId).collection("teamChat").doc(messageId).delete();
 }
 
+// 대회별 공지: 주최자·공동 주최자·스태프 누구나 설정 가능, 대회 상세 화면에서 누구나 열람 가능
+async function fetchCompetitionAnnouncement(compId) {
+  const doc = await db.collection("competitions").doc(compId).collection("announcement").doc("current").get();
+  return doc.exists ? doc.data() : null;
+}
+
+async function setCompetitionAnnouncement(compId, text) {
+  const ref = db.collection("competitions").doc(compId).collection("announcement").doc("current");
+  if (!text) {
+    await ref.delete();
+    return;
+  }
+  await ref.set({
+    text,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedByNickname: AppState.profile.nickname
+  });
+}
+
+// 전체 공지: 관리자만 설정 가능, 모든 로그인 사용자에게 화면 상단에 표시됨
+async function fetchGlobalAnnouncement() {
+  const doc = await db.collection("settings").doc("globalAnnouncement").get();
+  return doc.exists ? doc.data() : null;
+}
+
+async function setGlobalAnnouncement(text) {
+  const ref = db.collection("settings").doc("globalAnnouncement");
+  if (!text) {
+    await ref.delete();
+    return;
+  }
+  await ref.set({
+    text,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedByNickname: AppState.profile.nickname
+  });
+}
+
 async function fetchCompetition(compId) {
   const doc = await db.collection("competitions").doc(compId).get();
   return doc.exists ? { id: doc.id, ...doc.data() } : null;

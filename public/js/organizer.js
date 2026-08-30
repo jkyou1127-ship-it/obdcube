@@ -43,6 +43,19 @@ async function openCompetitionDetail(compId) {
   switchView("detail");
 
   try {
+    const announcement = await fetchCompetitionAnnouncement(compId);
+    const banner = el("detail-announcement-banner");
+    if (announcement && announcement.text) {
+      el("detail-announcement-text").textContent = announcement.text;
+      banner.classList.remove("hidden");
+    } else {
+      banner.classList.add("hidden");
+    }
+  } catch (err) {
+    el("detail-announcement-banner").classList.add("hidden");
+  }
+
+  try {
     await renderEventsList(comp, isEnded);
   } catch (err) {
     el("events-list").innerHTML = "<p class='desc'>종목 정보를 불러오지 못했습니다.</p>";
@@ -353,6 +366,16 @@ async function openMessengerRoom(compId, title) {
   el("messenger-list-view").classList.add("hidden");
   el("messenger-room-view").classList.remove("hidden");
 
+  try {
+    const announcement = await fetchCompetitionAnnouncement(compId);
+    el("messenger-announcement-current").textContent = announcement && announcement.text
+      ? `현재 공지: ${announcement.text}`
+      : "공지 없음";
+    el("messenger-announcement-input").value = announcement && announcement.text ? announcement.text : "";
+  } catch (err) {
+    el("messenger-announcement-current").textContent = "공지를 불러오지 못했습니다.";
+  }
+
   if (teamChatUnsub) { teamChatUnsub(); teamChatUnsub = null; }
   teamChatUnsub = watchTeamChat(
     compId,
@@ -370,6 +393,19 @@ async function openMessengerRoom(compId, title) {
 el("btn-messenger-back").addEventListener("click", () => {
   currentMessengerCompId = null;
   renderMessengerList();
+});
+
+el("form-messenger-announcement").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentMessengerCompId) return;
+  const text = el("messenger-announcement-input").value.trim();
+  try {
+    await setCompetitionAnnouncement(currentMessengerCompId, text);
+    el("messenger-announcement-current").textContent = text ? `현재 공지: ${text}` : "공지 없음";
+    showToast(text ? "대회 공지를 저장했습니다." : "대회 공지를 삭제했습니다.", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
 });
 
 function renderTeamChatMessages(messages) {

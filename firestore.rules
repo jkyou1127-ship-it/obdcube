@@ -20,6 +20,12 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // 전체 공지 등 사이트 전역 설정 - 관리자만 작성 가능, 누구나 열람 가능
+    match /settings/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // 사용자 프로필 (닉네임 등)
     match /users/{uid} {
       allow read: if isSignedIn();
@@ -156,6 +162,12 @@ service cloud.firestore {
                           isAdmin() || isOrganizer() ||
                           resource.data.senderUid == request.auth.uid
                         );
+      }
+
+      // 대회별 공지 - 주최자/공동 주최자/스태프 누구나 작성 가능, 참가자 포함 누구나 열람 가능
+      match /announcement/{docId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && (isAdmin() || isOrganizer() || isStaff());
       }
 
       // 종목 (Events)

@@ -1,7 +1,15 @@
 // 관리자 페이지: 대회 주최 신청 승인/반려, 관리자 지정
 
 async function renderAdminView() {
-  await Promise.all([renderPendingApplications(), renderReviewedApplications(), renderAdminsList()]);
+  await Promise.all([renderPendingApplications(), renderReviewedApplications(), renderAdminsList(), renderGlobalAnnouncementAdmin()]);
+}
+
+async function renderGlobalAnnouncementAdmin() {
+  const announcement = await fetchGlobalAnnouncement();
+  el("admin-announcement-current").textContent = announcement && announcement.text
+    ? `현재 공지: ${announcement.text}`
+    : "공지 없음";
+  el("admin-announcement-input").value = announcement && announcement.text ? announcement.text : "";
 }
 
 async function renderPendingApplications() {
@@ -110,6 +118,19 @@ function initAdminForm() {
       el("admin-target-nickname").value = "";
       showToast(`${nickname}님을 관리자로 지정했습니다.`, "success");
       await renderAdminsList();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  });
+
+  el("form-admin-announcement").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = el("admin-announcement-input").value.trim();
+    try {
+      await setGlobalAnnouncement(text);
+      showToast(text ? "전체 공지를 저장했습니다." : "전체 공지를 삭제했습니다.", "success");
+      await renderGlobalAnnouncementAdmin();
+      await applyGlobalAnnouncementBanner();
     } catch (err) {
       showToast(err.message, "error");
     }

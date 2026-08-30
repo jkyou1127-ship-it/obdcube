@@ -74,6 +74,10 @@
     </div>
   </header>
 
+  <div id="global-announcement-banner" class="announcement-banner hidden">
+    <strong>📢 공지</strong><span id="global-announcement-text"></span>
+  </div>
+
   <main class="content">
 
     <!-- 대회 목록 -->
@@ -230,6 +234,10 @@
       <p id="detail-desc" class="desc"></p>
       <p class="meta">개최일: <span id="detail-date"></span> · 주최자: <span id="detail-organizer"></span> · 상태: <span id="detail-status" class="badge"></span></p>
 
+      <div id="detail-announcement-banner" class="announcement-banner hidden">
+        <strong>📢 대회 공지</strong><span id="detail-announcement-text"></span>
+      </div>
+
       <div id="competition-roster" class="panel"></div>
 
       <div id="organizer-actions" class="inline-form hidden">
@@ -337,6 +345,15 @@
       <div id="messenger-room-view" class="hidden">
         <button class="btn small" id="btn-messenger-back">← 목록으로</button>
         <h2 id="messenger-room-title">-</h2>
+        <div class="panel">
+          <h3>대회 공지</h3>
+          <p class="desc">이 대회 상세 화면에 참가자 모두에게 표시되는 공지입니다. 주최자·공동 주최자·스태프 누구나 설정할 수 있습니다.</p>
+          <p id="messenger-announcement-current" class="desc">공지 없음</p>
+          <form id="form-messenger-announcement" class="inline-form">
+            <input type="text" id="messenger-announcement-input" placeholder="공지 내용 (비우고 저장하면 삭제됨)" maxlength="300" />
+            <button type="submit" class="btn small">공지 저장</button>
+          </form>
+        </div>
         <div id="team-chat-messages" class="kakao-chat"></div>
         <form id="form-team-chat" class="kakao-input-bar">
           <input type="text" id="team-chat-text" placeholder="메시지 입력" maxlength="500" required />
@@ -348,6 +365,15 @@
     <!-- 관리자 -->
     <section id="view-admin" class="view hidden">
       <h2>관리자 페이지</h2>
+      <div class="panel">
+        <h3>전체 공지</h3>
+        <p class="desc">모든 이용자에게 화면 상단에 표시되는 공지입니다.</p>
+        <p id="admin-announcement-current" class="desc">공지 없음</p>
+        <form id="form-admin-announcement" class="inline-form">
+          <input type="text" id="admin-announcement-input" placeholder="공지 내용 (비우고 저장하면 삭제됨)" maxlength="300" />
+          <button type="submit" class="btn small">공지 저장</button>
+        </form>
+      </div>
       <div class="panel">
         <h3>대회 주최 신청 승인 대기</h3>
         <div id="admin-pending-list" class="card-list"></div>

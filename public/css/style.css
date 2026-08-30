@@ -320,6 +320,21 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
   padding: 10px 16px;
 }
 
+.announcement-banner {
+  background: rgba(91,124,255,.12);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+  font-size: 13px;
+  color: var(--text);
+}
+.announcement-banner strong { margin-right: 8px; color: var(--primary); }
+#detail-announcement-banner {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
 .card-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .item-card {
   background: var(--bg-soft);

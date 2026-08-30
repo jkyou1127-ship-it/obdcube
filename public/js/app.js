@@ -374,5 +374,17 @@ auth.onAuthStateChanged(async (user) => {
   el("user-nickname").textContent = AppState.profile.nickname;
   el("nav-admin").classList.toggle("hidden", !AppState.isAdmin);
   showAppScreen();
+  applyGlobalAnnouncementBanner().catch(() => {});
   await onNavigate("competitions");
 });
+
+async function applyGlobalAnnouncementBanner() {
+  const announcement = await fetchGlobalAnnouncement();
+  const banner = el("global-announcement-banner");
+  if (announcement && announcement.text) {
+    el("global-announcement-text").textContent = announcement.text;
+    banner.classList.remove("hidden");
+  } else {
+    banner.classList.add("hidden");
+  }
+}
