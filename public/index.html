@@ -239,6 +239,18 @@
       <p id="detail-desc" class="desc"></p>
       <p class="meta">개최일: <span id="detail-date"></span> · 주최자: <span id="detail-organizer"></span> · 상태: <span id="detail-status" class="badge"></span></p>
 
+      <div class="detail-tabs">
+        <button type="button" class="detail-tab-btn active" id="tab-btn-events">종목</button>
+        <button type="button" class="detail-tab-btn" id="tab-btn-rankings">순위</button>
+      </div>
+
+      <div id="detail-tab-rankings-panel" class="hidden">
+        <div id="rankings-event-tabs" class="tab-row"></div>
+        <div id="rankings-round-tabs" class="tab-row"></div>
+        <div id="rankings-table-container"></div>
+      </div>
+
+      <div id="detail-tab-events-panel">
       <div id="detail-announcement-banner" class="announcement-banner hidden">
         <button type="button" class="announcement-toggle" id="btn-detail-announcement-toggle">
           <strong>📢 대회 공지</strong><span class="announcement-hint">(누르면 펼치기)</span>
@@ -338,6 +350,7 @@
       </div>
 
       <div id="events-list"></div>
+      </div>
     </section>
 
     <!-- 입상 내역 -->

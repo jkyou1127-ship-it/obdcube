@@ -2,8 +2,141 @@
 
 let currentCompId = null;
 const participantRoundByEvent = {}; // eventId -> 현재 표시 중인 라운드 번호
-const publicRankingRoundByEvent = {}; // eventId -> 순위/진출현황(읽기 전용)에서 보고 있는 라운드 번호
 let teamChatUnsub = null;
+
+// ---- 순위 탭 (WCA Live 스타일 읽기 전용 순위표, 누구나 열람 가능) ----
+let rankingsCompId = null;
+let rankingsEventsCache = [];
+let currentRankingsEventId = null;
+let currentRankingsRound = null;
+
+function initDetailTabs() {
+  el("tab-btn-events").addEventListener("click", () => {
+    el("tab-btn-events").classList.add("active");
+    el("tab-btn-rankings").classList.remove("active");
+    el("detail-tab-events-panel").classList.remove("hidden");
+    el("detail-tab-rankings-panel").classList.add("hidden");
+  });
+  el("tab-btn-rankings").addEventListener("click", () => {
+    el("tab-btn-rankings").classList.add("active");
+    el("tab-btn-events").classList.remove("active");
+    el("detail-tab-rankings-panel").classList.remove("hidden");
+    el("detail-tab-events-panel").classList.add("hidden");
+  });
+}
+initDetailTabs();
+
+async function renderRankingsTab(comp) {
+  if (rankingsCompId !== comp.id) {
+    rankingsCompId = comp.id;
+    currentRankingsEventId = null;
+    currentRankingsRound = null;
+  }
+  const events = await fetchEvents(comp.id);
+  rankingsEventsCache = events;
+  const eventTabs = el("rankings-event-tabs");
+  if (events.length === 0) {
+    eventTabs.innerHTML = "";
+    el("rankings-round-tabs").innerHTML = "";
+    el("rankings-table-container").innerHTML = "<p class='desc'>등록된 종목이 없습니다.</p>";
+    return;
+  }
+  if (!currentRankingsEventId || !events.some(ev => ev.id === currentRankingsEventId)) {
+    currentRankingsEventId = events[0].id;
+    currentRankingsRound = null;
+  }
+  eventTabs.innerHTML = events.map(ev => `
+    <button type="button" class="tab-pill ${ev.id === currentRankingsEventId ? "active" : ""}" data-event="${ev.id}">${escapeHtml(ev.name)}</button>
+  `).join("");
+  eventTabs.querySelectorAll(".tab-pill").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (currentRankingsEventId === btn.dataset.event) return;
+      currentRankingsEventId = btn.dataset.event;
+      currentRankingsRound = null;
+      renderRankingsTab(comp);
+    });
+  });
+  await renderRankingsRoundTabs(comp.id);
+}
+
+async function renderRankingsRoundTabs(compId) {
+  const ev = rankingsEventsCache.find(e => e.id === currentRankingsEventId);
+  if (!ev) return;
+  const maxRound = Math.max(effectiveFinalRound(ev), 1);
+  if (currentRankingsRound == null) currentRankingsRound = maxRound;
+  const roundTabs = el("rankings-round-tabs");
+  const roundNums = [];
+  for (let r = 1; r <= maxRound; r++) roundNums.push(r);
+  roundTabs.innerHTML = roundNums.map(r => `
+    <button type="button" class="tab-pill small ${r === currentRankingsRound ? "active" : ""}" data-round="${r}">${r}라운드</button>
+  `).join("");
+  roundTabs.querySelectorAll(".tab-pill").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentRankingsRound = parseInt(btn.dataset.round, 10);
+      roundTabs.querySelectorAll(".tab-pill").forEach(b => b.classList.toggle("active", b === btn));
+      renderRankingsTable(compId, ev);
+    });
+  });
+  await renderRankingsTable(compId, ev);
+}
+
+async function renderRankingsTable(compId, ev) {
+  const container = el("rankings-table-container");
+  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+  const format = normalizeFormat(ev.format);
+  const solveCount = solveCountForFormat(format);
+  const resultLabel = resultLabelForFormat(format);
+  const round = currentRankingsRound;
+
+  let participants = await fetchParticipants(compId, ev.id);
+  if (round > 1) {
+    participants = participants.filter(p => {
+      const prevMeta = p.roundMeta && p.roundMeta[round - 1];
+      return !prevMeta || prevMeta.status !== "eliminated";
+    });
+  }
+
+  const rows = participants.map(p => {
+    const roundTimes = (p.roundTimes && p.roundTimes[round]) || [];
+    const times = Array.isArray(roundTimes) && roundTimes.length === solveCount ? roundTimes : new Array(solveCount).fill("");
+    const meta = (p.roundMeta && p.roundMeta[round]) || {};
+    const average = computeAverage(times, format);
+    const rank = meta.rank != null && meta.rank !== "" ? Number(meta.rank) : null;
+    const sortKey = rank != null ? rank : 100000 + average;
+    return { p, times, status: meta.status || "", average, sortKey };
+  }).sort((a, b) => a.sortKey - b.sortKey);
+
+  if (rows.length === 0) {
+    container.innerHTML = "<p class='desc'>등록된 참가자가 없습니다.</p>";
+    return;
+  }
+
+  const rowsHtml = rows.map((r, idx) => {
+    const rankNum = r.average === Infinity ? null : idx + 1;
+    const medalCls = rankNum === 1 ? "gold" : rankNum === 2 ? "silver" : rankNum === 3 ? "bronze" : "";
+    const hasAnyEntry = r.times.some(t => t.trim() !== "");
+    const resultValueLabel = hasAnyEntry ? formatSecondsToTime(r.average) : "-";
+    const statusLabel = { advanced: "진출", eliminated: "탈락" }[r.status] || "-";
+    return `
+      <tr class="${medalCls}">
+        <td class="rank-cell">${rankNum || "-"}</td>
+        <td>${escapeHtml(r.p.nickname)}</td>
+        <td>${r.times.map(t => escapeHtml(t) || "-").join(" · ")}</td>
+        <td>${resultValueLabel}</td>
+        <td>${statusLabel}</td>
+      </tr>
+    `;
+  }).join("");
+
+  container.innerHTML = `
+    <div class="table-scroll">
+      <table class="wca-rank-table">
+        <thead><tr><th>순위</th><th>이름</th><th>기록 (${solveCount}회)</th><th>${resultLabel}</th><th>진출/탈락</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+}
 
 async function openCompetitionDetail(compId) {
   currentCompId = compId;
@@ -40,9 +173,21 @@ async function openCompetitionDetail(compId) {
   el("staff-panel").classList.toggle("hidden", !canManage);
   el("event-request-panel").classList.toggle("hidden", eventsClosed);
 
+  // 대회 상세 화면을 열 때마다 항상 "종목" 탭부터 보여준다.
+  el("tab-btn-events").classList.add("active");
+  el("tab-btn-rankings").classList.remove("active");
+  el("detail-tab-events-panel").classList.remove("hidden");
+  el("detail-tab-rankings-panel").classList.add("hidden");
+
   // 화면 전환은 기본 정보가 세팅된 시점에 바로 실행 - 아래 각 패널 렌더링 중
   // 하나가 실패해도(예: 권한 오류) 상세 화면 자체는 항상 열리도록 한다.
   switchView("detail");
+
+  try {
+    await renderRankingsTab(comp);
+  } catch (err) {
+    el("rankings-table-container").innerHTML = "<p class='desc'>순위 정보를 불러오지 못했습니다.</p>";
+  }
 
   try {
     const announcement = await fetchCompetitionAnnouncement(compId);
@@ -760,9 +905,7 @@ async function renderEventsList(comp, isEnded) {
       `;
     }).join("") || "<p class='desc'>등록된 스크램블이 없습니다.</p>";
 
-    const participantsHtml = canManageParticipants
-      ? await buildParticipantsPanel(comp.id, ev, isEnded, recordsLocked)
-      : await buildPublicRankingPanel(comp.id, ev);
+    const participantsHtml = canManageParticipants ? await buildParticipantsPanel(comp.id, ev, isEnded, recordsLocked) : "";
 
     return `
       <div class="event-block" data-event-id="${ev.id}">
@@ -797,77 +940,6 @@ async function renderEventsList(comp, isEnded) {
   container.innerHTML = blocks.join("");
   attachEventBlockHandlers(comp.id, canManageEvents);
   if (canManageParticipants) attachParticipantHandlers(comp.id);
-  else attachPublicRankingHandlers(comp.id);
-}
-
-// ---- 순위 / 라운드 진출 현황 (읽기 전용, 주최자가 아닌 누구나 열람) ----
-
-async function buildPublicRankingPanel(compId, ev) {
-  const eventId = ev.id;
-  const format = normalizeFormat(ev.format);
-  const solveCount = solveCountForFormat(format);
-  const resultLabel = resultLabelForFormat(format);
-  const round = publicRankingRoundByEvent[eventId] || effectiveFinalRound(ev);
-  let participants = await fetchParticipants(compId, eventId);
-
-  if (round > 1) {
-    participants = participants.filter(p => {
-      const prevMeta = p.roundMeta && p.roundMeta[round - 1];
-      return !prevMeta || prevMeta.status !== "eliminated";
-    });
-  }
-
-  const rows = participants.map(p => {
-    const roundTimes = (p.roundTimes && p.roundTimes[round]) || [];
-    const times = Array.isArray(roundTimes) && roundTimes.length === solveCount ? roundTimes : new Array(solveCount).fill("");
-    const meta = (p.roundMeta && p.roundMeta[round]) || {};
-    const average = computeAverage(times, format);
-    const rank = meta.rank != null && meta.rank !== "" ? Number(meta.rank) : null;
-    const sortKey = rank != null ? rank : 100000 + average;
-    return { p, times, status: meta.status || "", average, sortKey };
-  }).sort((a, b) => a.sortKey - b.sortKey);
-
-  const rowsHtml = rows.map((r, idx) => {
-    const hasAnyEntry = r.times.some(t => t.trim() !== "");
-    const resultValueLabel = hasAnyEntry ? formatSecondsToTime(r.average) : "-";
-    const rankLabel = r.average === Infinity ? "-" : idx + 1;
-    const statusLabel = { advanced: "진출", eliminated: "탈락" }[r.status] || "-";
-    return `
-    <tr>
-      <td>${rankLabel}</td>
-      <td>${escapeHtml(r.p.nickname)}</td>
-      <td>${r.times.map(t => escapeHtml(t) || "-").join(" / ")}</td>
-      <td>${resultValueLabel}</td>
-      <td>${statusLabel}</td>
-    </tr>
-  `;
-  }).join("");
-
-  return `
-    <div class="participants-panel">
-      <h5>순위 · 라운드 진출 현황 (${formatLabel(format)}, ${solveCount}회)</h5>
-      <div class="inline-form">
-        <label style="margin:0">라운드</label>
-        <input type="number" min="1" class="public-ranking-round-input" data-event="${eventId}" value="${round}" style="max-width:80px" />
-      </div>
-      <div class="table-scroll">
-        <table class="participants-table">
-          <thead><tr><th>순위</th><th>이름</th><th>기록 (${solveCount}회)</th><th>${resultLabel}</th><th>진출/탈락</th></tr></thead>
-          <tbody>${rowsHtml || `<tr><td colspan="5" class="desc">등록된 참가자가 없습니다.</td></tr>`}</tbody>
-        </table>
-      </div>
-    </div>
-  `;
-}
-
-function attachPublicRankingHandlers(compId) {
-  const container = el("events-list");
-  container.querySelectorAll(".public-ranking-round-input").forEach(input => {
-    input.addEventListener("change", async () => {
-      publicRankingRoundByEvent[input.dataset.event] = parseInt(input.value, 10) || 1;
-      await refreshDetail(compId);
-    });
-  });
 }
 
 // ---- 참가자 / 진출·탈락 / 순위 / 기록 (주최자·관리자 전용) ----
