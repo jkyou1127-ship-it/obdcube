@@ -119,7 +119,7 @@ async function renderRankingsRoundTabs(compId) {
   const roundNums = [];
   for (let r = 1; r <= maxRound; r++) roundNums.push(r);
   roundTabs.innerHTML = roundNums.map(r => `
-    <button type="button" class="tab-pill small ${r === currentRankingsRound ? "active" : ""}" data-round="${r}">${r}라운드</button>
+    <button type="button" class="tab-pill small ${r === currentRankingsRound ? "active" : ""}" data-round="${r}">${r === maxRound ? "결승" : `${r}라운드`}</button>
   `).join("");
   roundTabs.querySelectorAll(".tab-pill").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -138,6 +138,7 @@ async function renderRankingsTable(compId, ev) {
   const solveCount = solveCountForFormat(format);
   const resultLabel = resultLabelForFormat(format);
   const round = currentRankingsRound;
+  const isFinalRound = round === effectiveFinalRound(ev);
 
   let participants = await fetchParticipants(compId, ev.id);
   if (round > 1) {
@@ -167,8 +168,10 @@ async function renderRankingsTable(compId, ev) {
     const hasAnyEntry = r.times.some(t => t.trim() !== "");
     const resultValueLabel = hasAnyEntry ? formatSecondsToTime(r.average) : "-";
     const statusLabel = { advanced: "진출", eliminated: "탈락" }[r.status] || "-";
+    // 결승은 상위 3위만 초록으로 강조하고, 그 외 라운드는 진출자만 강조한다.
+    const highlight = isFinalRound ? (rankNum != null && rankNum <= 3) : r.status === "advanced";
     return `
-      <tr class="${r.status === "advanced" ? "advanced" : ""}">
+      <tr class="${highlight ? "advanced" : ""}">
         <td class="rank-cell">${rankNum || "-"}</td>
         <td>${escapeHtml(r.p.nickname)}</td>
         <td>${r.times.map(t => escapeHtml(t) || "-").join(" · ")}</td>
