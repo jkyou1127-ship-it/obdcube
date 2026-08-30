@@ -98,7 +98,7 @@
         <button class="tab-btn game-tab-btn active" data-game="2048">2048</button>
         <button class="tab-btn game-tab-btn" data-game="tictactoe">틱택토</button>
         <button class="tab-btn game-tab-btn" data-game="minesweeper">지뢰찾기</button>
-        <button class="tab-btn game-tab-btn" data-game="mole">두더지 잡기</button>
+        <button class="tab-btn game-tab-btn" data-game="wax">왁스볼 부수기</button>
       </div>
 
       <!-- 2048 -->
@@ -177,17 +177,25 @@
         </div>
       </div>
 
-      <!-- 두더지 잡기 -->
-      <div id="game-mole" class="game-panel hidden">
+      <!-- 왁스볼 부수기 -->
+      <div id="game-wax" class="game-panel hidden">
         <div class="panel">
           <div class="inline-form">
-            <span>점수: <strong id="mole-score">0</strong></span>
-            <span>최고 점수: <strong id="mole-best">0</strong></span>
-            <span>남은 시간: <strong id="mole-timer">30</strong>초</span>
-            <button type="button" class="btn small primary" id="btn-mole-start">게임 시작</button>
+            <span>깨짐: <strong id="wax-hits">0</strong> / <strong id="wax-hits-total">12</strong></span>
+            <span>부순 개수: <strong id="wax-broken-count">0</strong></span>
+            <button type="button" class="btn small" id="btn-wax-restart">새 왁스볼</button>
           </div>
-          <p class="desc">튀어나온 두더지를 클릭해서 잡으세요.</p>
-          <div id="mole-board" class="mole-board"></div>
+          <p class="desc" id="wax-hint">겉 왁스 껍질을 계속 눌러서 깨보세요. 다 깨지면 안의 말랑이가 나옵니다.</p>
+          <div class="wax-ball-wrap">
+            <button type="button" id="wax-ball" class="wax-ball">
+              <span class="wax-crack wax-crack-1"></span>
+              <span class="wax-crack wax-crack-2"></span>
+              <span class="wax-crack wax-crack-3"></span>
+              <span class="wax-crack wax-crack-4"></span>
+              <span class="wax-crack wax-crack-5"></span>
+              <span class="wax-crack wax-crack-6"></span>
+            </button>
+          </div>
         </div>
       </div>
     </section>

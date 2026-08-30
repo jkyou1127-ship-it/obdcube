@@ -11,7 +11,7 @@ function switchGameTab(name) {
   el("game-2048").classList.toggle("hidden", name !== "2048");
   el("game-tictactoe").classList.toggle("hidden", name !== "tictactoe");
   el("game-minesweeper").classList.toggle("hidden", name !== "minesweeper");
-  el("game-mole").classList.toggle("hidden", name !== "mole");
+  el("game-wax").classList.toggle("hidden", name !== "wax");
 }
 
 // ==================== 2048 ====================
@@ -622,103 +622,80 @@ function initMinesweeper() {
   mineSetup("easy");
 }
 
-// ==================== 두더지 잡기 ====================
+// ==================== 왁스볼 부수기 ====================
+// 겉은 딱딱한 왁스 껍질, 속은 말랑이. 껍질을 다 깨면 말랑이가 나와서 계속 누르며
+// 스트레스를 풀 수 있다.
 
-const MOLE_COUNT = 9; // 3x3
-const MOLE_GAME_SECONDS = 30;
-let moleActiveIndex = -1;
-let moleScore = 0;
-let moleTimeLeft = MOLE_GAME_SECONDS;
-let molePlaying = false;
-let moleShowTimer = null;
-let moleTickTimer = null;
+const WAX_HITS_TO_BREAK = 12;
+const WAX_CRACK_COUNT = 6;
+const WAX_SHELL_COLORS = [
+  ["#ffe9c7", "#d98c3f"],
+  ["#d7f0ff", "#4a90c9"],
+  ["#e6ffd9", "#5aa93f"],
+  ["#f3d9ff", "#9a4fcf"],
+  ["#ffd9d9", "#cf4f4f"]
+];
+let waxHits = 0;
+let waxBroken = false;
 
-function moleLoadBest() {
-  try { return Number(localStorage.getItem("obdcube-mole-best")) || 0; } catch (e) { return 0; }
+function waxLoadBrokenCount() {
+  try { return Number(localStorage.getItem("obdcube-wax-broken-count")) || 0; } catch (e) { return 0; }
 }
 
-function moleSaveBest(score) {
-  try { localStorage.setItem("obdcube-mole-best", String(score)); } catch (e) {}
+function waxSaveBrokenCount(n) {
+  try { localStorage.setItem("obdcube-wax-broken-count", String(n)); } catch (e) {}
 }
 
-function renderMoleBoard() {
-  const container = el("mole-board");
-  const cells = [];
-  for (let i = 0; i < MOLE_COUNT; i++) {
-    const up = i === moleActiveIndex;
-    cells.push(`<button type="button" class="mole-hole${up ? " up" : ""}" data-i="${i}">${up ? "🐹" : ""}</button>`);
+function waxNewBall() {
+  waxHits = 0;
+  waxBroken = false;
+  const ball = el("wax-ball");
+  const [hi, lo] = WAX_SHELL_COLORS[Math.floor(Math.random() * WAX_SHELL_COLORS.length)];
+  ball.style.setProperty("--wax-hi", hi);
+  ball.style.setProperty("--wax-lo", lo);
+  ball.classList.remove("broken", "squish");
+  ball.querySelectorAll(".wax-crack").forEach(c => c.classList.remove("show"));
+  el("wax-hits").textContent = "0";
+  el("wax-hint").textContent = "겉 왁스 껍질을 계속 눌러서 깨보세요. 다 깨지면 안의 말랑이가 나옵니다.";
+}
+
+function waxClick() {
+  const ball = el("wax-ball");
+  if (waxBroken) {
+    ball.classList.remove("squish");
+    void ball.offsetWidth; // 리플로우를 강제로 발생시켜 애니메이션을 다시 재생시킨다
+    ball.classList.add("squish");
+    return;
   }
-  container.innerHTML = cells.join("");
-  container.querySelectorAll(".mole-hole").forEach(btn => {
-    btn.addEventListener("click", () => moleWhack(Number(btn.dataset.i)));
+
+  waxHits += 1;
+  el("wax-hits").textContent = String(waxHits);
+  ball.classList.remove("shake");
+  void ball.offsetWidth;
+  ball.classList.add("shake");
+
+  const visibleCracks = Math.min(WAX_CRACK_COUNT, Math.floor(waxHits / (WAX_HITS_TO_BREAK / WAX_CRACK_COUNT)));
+  ball.querySelectorAll(".wax-crack").forEach((c, i) => {
+    c.classList.toggle("show", i < visibleCracks);
   });
-}
 
-function moleWhack(i) {
-  if (!molePlaying || i !== moleActiveIndex) return;
-  moleScore += 1;
-  el("mole-score").textContent = String(moleScore);
-  moleActiveIndex = -1;
-  renderMoleBoard();
-}
-
-function moleShowNext() {
-  if (!molePlaying) return;
-  moleActiveIndex = Math.floor(Math.random() * MOLE_COUNT);
-  renderMoleBoard();
-  const upTime = 500 + Math.random() * 500;
-  moleShowTimer = setTimeout(() => {
-    if (!molePlaying) return;
-    moleActiveIndex = -1;
-    renderMoleBoard();
-    const gap = 200 + Math.random() * 400;
-    moleShowTimer = setTimeout(moleShowNext, gap);
-  }, upTime);
-}
-
-function moleStart() {
-  clearTimeout(moleShowTimer);
-  clearInterval(moleTickTimer);
-  moleScore = 0;
-  moleTimeLeft = MOLE_GAME_SECONDS;
-  molePlaying = true;
-  moleActiveIndex = -1;
-  el("mole-score").textContent = "0";
-  el("mole-timer").textContent = String(moleTimeLeft);
-  el("btn-mole-start").textContent = "게임 중...";
-  el("btn-mole-start").disabled = true;
-  renderMoleBoard();
-  moleShowNext();
-  moleTickTimer = setInterval(() => {
-    moleTimeLeft -= 1;
-    el("mole-timer").textContent = String(moleTimeLeft);
-    if (moleTimeLeft <= 0) moleEnd();
-  }, 1000);
-}
-
-function moleEnd() {
-  molePlaying = false;
-  clearTimeout(moleShowTimer);
-  clearInterval(moleTickTimer);
-  moleActiveIndex = -1;
-  renderMoleBoard();
-  el("btn-mole-start").textContent = "게임 시작";
-  el("btn-mole-start").disabled = false;
-
-  const best = moleLoadBest();
-  if (moleScore > best) {
-    moleSaveBest(moleScore);
-    el("mole-best").textContent = String(moleScore);
-    showToast(`최고 점수 갱신! ${moleScore}점`, "success");
-  } else {
-    showToast(`게임 종료! ${moleScore}점`, "");
+  if (waxHits >= WAX_HITS_TO_BREAK) {
+    waxBroken = true;
+    ball.classList.add("broken");
+    el("wax-hint").textContent = "말랑이가 나왔어요! 계속 눌러서 스트레스를 풀어보세요.";
+    const total = waxLoadBrokenCount() + 1;
+    waxSaveBrokenCount(total);
+    el("wax-broken-count").textContent = String(total);
+    showToast("왁스볼을 다 깼습니다! 말랑이 등장", "success");
   }
 }
 
-function initMoleGame() {
-  el("mole-best").textContent = String(moleLoadBest());
-  el("btn-mole-start").addEventListener("click", moleStart);
-  renderMoleBoard();
+function initWaxBall() {
+  el("wax-hits-total").textContent = String(WAX_HITS_TO_BREAK);
+  el("wax-broken-count").textContent = String(waxLoadBrokenCount());
+  el("wax-ball").addEventListener("click", waxClick);
+  el("btn-wax-restart").addEventListener("click", waxNewBall);
+  waxNewBall();
 }
 
 // ==================== 초기화 ====================
@@ -734,5 +711,5 @@ function initPracticeTab() {
   initG2048();
   initTicTacToe();
   initMinesweeper();
-  initMoleGame();
+  initWaxBall();
 }
