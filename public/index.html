@@ -98,6 +98,7 @@
         <button class="tab-btn game-tab-btn active" data-game="2048">2048</button>
         <button class="tab-btn game-tab-btn" data-game="tictactoe">틱택토</button>
         <button class="tab-btn game-tab-btn" data-game="minesweeper">지뢰찾기</button>
+        <button class="tab-btn game-tab-btn" data-game="bubblewrap">뽁뽁이</button>
       </div>
 
       <!-- 2048 -->
@@ -173,6 +174,18 @@
           </div>
           <p class="desc">좌클릭: 칸 열기 · 우클릭: 깃발 표시</p>
           <div id="mine-board" class="mine-board"></div>
+        </div>
+      </div>
+
+      <!-- 뽁뽁이 -->
+      <div id="game-bubblewrap" class="game-panel hidden">
+        <div class="panel">
+          <div class="inline-form">
+            <span>터뜨린 개수: <strong id="bubble-popped">0</strong> / <strong id="bubble-total">0</strong></span>
+            <button type="button" class="btn small" id="btn-bubble-restart">새 뽁뽁이</button>
+          </div>
+          <p class="desc">스트레스 풀릴 때까지 눌러서 터뜨려보세요.</p>
+          <div id="bubble-grid" class="bubble-grid"></div>
         </div>
       </div>
     </section>

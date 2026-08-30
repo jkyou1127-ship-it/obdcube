@@ -11,6 +11,7 @@ function switchGameTab(name) {
   el("game-2048").classList.toggle("hidden", name !== "2048");
   el("game-tictactoe").classList.toggle("hidden", name !== "tictactoe");
   el("game-minesweeper").classList.toggle("hidden", name !== "minesweeper");
+  el("game-bubblewrap").classList.toggle("hidden", name !== "bubblewrap");
 }
 
 // ==================== 2048 ====================
@@ -621,6 +622,39 @@ function initMinesweeper() {
   mineSetup("easy");
 }
 
+// ==================== 뽁뽁이 (버블랩) ====================
+
+const BUBBLE_ROWS = 8;
+const BUBBLE_COLS = 10;
+let bubblePoppedCount = 0;
+
+function bubbleSetup() {
+  bubblePoppedCount = 0;
+  const total = BUBBLE_ROWS * BUBBLE_COLS;
+  el("bubble-total").textContent = String(total);
+  el("bubble-popped").textContent = "0";
+
+  const container = el("bubble-grid");
+  const cells = [];
+  for (let i = 0; i < total; i++) cells.push(`<button type="button" class="bubble-cell" data-i="${i}"></button>`);
+  container.innerHTML = cells.join("");
+  container.querySelectorAll(".bubble-cell").forEach(btn => {
+    btn.addEventListener("click", () => bubblePop(btn));
+  });
+}
+
+function bubblePop(btn) {
+  if (btn.classList.contains("popped")) return;
+  btn.classList.add("popped");
+  bubblePoppedCount += 1;
+  el("bubble-popped").textContent = String(bubblePoppedCount);
+}
+
+function initBubbleWrap() {
+  el("btn-bubble-restart").addEventListener("click", bubbleSetup);
+  bubbleSetup();
+}
+
 // ==================== 초기화 ====================
 
 function initPracticeTab() {
@@ -634,4 +668,5 @@ function initPracticeTab() {
   initG2048();
   initTicTacToe();
   initMinesweeper();
+  initBubbleWrap();
 }
