@@ -98,7 +98,7 @@
         <button class="tab-btn game-tab-btn active" data-game="2048">2048</button>
         <button class="tab-btn game-tab-btn" data-game="tictactoe">틱택토</button>
         <button class="tab-btn game-tab-btn" data-game="minesweeper">지뢰찾기</button>
-        <button class="tab-btn game-tab-btn" data-game="bubblewrap">뽁뽁이</button>
+        <button class="tab-btn game-tab-btn" data-game="mole">두더지 잡기</button>
       </div>
 
       <!-- 2048 -->
@@ -177,15 +177,17 @@
         </div>
       </div>
 
-      <!-- 뽁뽁이 -->
-      <div id="game-bubblewrap" class="game-panel hidden">
+      <!-- 두더지 잡기 -->
+      <div id="game-mole" class="game-panel hidden">
         <div class="panel">
           <div class="inline-form">
-            <span>터뜨린 개수: <strong id="bubble-popped">0</strong> / <strong id="bubble-total">0</strong></span>
-            <button type="button" class="btn small" id="btn-bubble-restart">새 뽁뽁이</button>
+            <span>점수: <strong id="mole-score">0</strong></span>
+            <span>최고 점수: <strong id="mole-best">0</strong></span>
+            <span>남은 시간: <strong id="mole-timer">30</strong>초</span>
+            <button type="button" class="btn small primary" id="btn-mole-start">게임 시작</button>
           </div>
-          <p class="desc">스트레스 풀릴 때까지 눌러서 터뜨려보세요.</p>
-          <div id="bubble-grid" class="bubble-grid"></div>
+          <p class="desc">튀어나온 두더지를 클릭해서 잡으세요.</p>
+          <div id="mole-board" class="mole-board"></div>
         </div>
       </div>
     </section>

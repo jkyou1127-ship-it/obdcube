@@ -11,7 +11,7 @@ function switchGameTab(name) {
   el("game-2048").classList.toggle("hidden", name !== "2048");
   el("game-tictactoe").classList.toggle("hidden", name !== "tictactoe");
   el("game-minesweeper").classList.toggle("hidden", name !== "minesweeper");
-  el("game-bubblewrap").classList.toggle("hidden", name !== "bubblewrap");
+  el("game-mole").classList.toggle("hidden", name !== "mole");
 }
 
 // ==================== 2048 ====================
@@ -622,37 +622,103 @@ function initMinesweeper() {
   mineSetup("easy");
 }
 
-// ==================== 뽁뽁이 (버블랩) ====================
+// ==================== 두더지 잡기 ====================
 
-const BUBBLE_ROWS = 8;
-const BUBBLE_COLS = 10;
-let bubblePoppedCount = 0;
+const MOLE_COUNT = 9; // 3x3
+const MOLE_GAME_SECONDS = 30;
+let moleActiveIndex = -1;
+let moleScore = 0;
+let moleTimeLeft = MOLE_GAME_SECONDS;
+let molePlaying = false;
+let moleShowTimer = null;
+let moleTickTimer = null;
 
-function bubbleSetup() {
-  bubblePoppedCount = 0;
-  const total = BUBBLE_ROWS * BUBBLE_COLS;
-  el("bubble-total").textContent = String(total);
-  el("bubble-popped").textContent = "0";
+function moleLoadBest() {
+  try { return Number(localStorage.getItem("obdcube-mole-best")) || 0; } catch (e) { return 0; }
+}
 
-  const container = el("bubble-grid");
+function moleSaveBest(score) {
+  try { localStorage.setItem("obdcube-mole-best", String(score)); } catch (e) {}
+}
+
+function renderMoleBoard() {
+  const container = el("mole-board");
   const cells = [];
-  for (let i = 0; i < total; i++) cells.push(`<button type="button" class="bubble-cell" data-i="${i}"></button>`);
+  for (let i = 0; i < MOLE_COUNT; i++) {
+    const up = i === moleActiveIndex;
+    cells.push(`<button type="button" class="mole-hole${up ? " up" : ""}" data-i="${i}">${up ? "🐹" : ""}</button>`);
+  }
   container.innerHTML = cells.join("");
-  container.querySelectorAll(".bubble-cell").forEach(btn => {
-    btn.addEventListener("click", () => bubblePop(btn));
+  container.querySelectorAll(".mole-hole").forEach(btn => {
+    btn.addEventListener("click", () => moleWhack(Number(btn.dataset.i)));
   });
 }
 
-function bubblePop(btn) {
-  if (btn.classList.contains("popped")) return;
-  btn.classList.add("popped");
-  bubblePoppedCount += 1;
-  el("bubble-popped").textContent = String(bubblePoppedCount);
+function moleWhack(i) {
+  if (!molePlaying || i !== moleActiveIndex) return;
+  moleScore += 1;
+  el("mole-score").textContent = String(moleScore);
+  moleActiveIndex = -1;
+  renderMoleBoard();
 }
 
-function initBubbleWrap() {
-  el("btn-bubble-restart").addEventListener("click", bubbleSetup);
-  bubbleSetup();
+function moleShowNext() {
+  if (!molePlaying) return;
+  moleActiveIndex = Math.floor(Math.random() * MOLE_COUNT);
+  renderMoleBoard();
+  const upTime = 500 + Math.random() * 500;
+  moleShowTimer = setTimeout(() => {
+    if (!molePlaying) return;
+    moleActiveIndex = -1;
+    renderMoleBoard();
+    const gap = 200 + Math.random() * 400;
+    moleShowTimer = setTimeout(moleShowNext, gap);
+  }, upTime);
+}
+
+function moleStart() {
+  clearTimeout(moleShowTimer);
+  clearInterval(moleTickTimer);
+  moleScore = 0;
+  moleTimeLeft = MOLE_GAME_SECONDS;
+  molePlaying = true;
+  moleActiveIndex = -1;
+  el("mole-score").textContent = "0";
+  el("mole-timer").textContent = String(moleTimeLeft);
+  el("btn-mole-start").textContent = "게임 중...";
+  el("btn-mole-start").disabled = true;
+  renderMoleBoard();
+  moleShowNext();
+  moleTickTimer = setInterval(() => {
+    moleTimeLeft -= 1;
+    el("mole-timer").textContent = String(moleTimeLeft);
+    if (moleTimeLeft <= 0) moleEnd();
+  }, 1000);
+}
+
+function moleEnd() {
+  molePlaying = false;
+  clearTimeout(moleShowTimer);
+  clearInterval(moleTickTimer);
+  moleActiveIndex = -1;
+  renderMoleBoard();
+  el("btn-mole-start").textContent = "게임 시작";
+  el("btn-mole-start").disabled = false;
+
+  const best = moleLoadBest();
+  if (moleScore > best) {
+    moleSaveBest(moleScore);
+    el("mole-best").textContent = String(moleScore);
+    showToast(`최고 점수 갱신! ${moleScore}점`, "success");
+  } else {
+    showToast(`게임 종료! ${moleScore}점`, "");
+  }
+}
+
+function initMoleGame() {
+  el("mole-best").textContent = String(moleLoadBest());
+  el("btn-mole-start").addEventListener("click", moleStart);
+  renderMoleBoard();
 }
 
 // ==================== 초기화 ====================
@@ -668,5 +734,5 @@ function initPracticeTab() {
   initG2048();
   initTicTacToe();
   initMinesweeper();
-  initBubbleWrap();
+  initMoleGame();
 }

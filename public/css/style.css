@@ -251,29 +251,32 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 .mine-cell.n7 { color: var(--text); }
 .mine-cell.n8 { color: var(--text-dim); }
 
-/* 뽁뽁이(버블랩) - 고정 배색으로 눌렀을 때 통통한 비닐 느낌을 낸다 */
-.bubble-grid {
+/* 두더지 잡기 */
+.mole-board {
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 6px;
-  max-width: 560px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-width: 360px;
   margin: 14px 0;
 }
-.bubble-cell {
+.mole-hole {
   aspect-ratio: 1;
   border: none;
   border-radius: 50%;
   padding: 0;
   cursor: pointer;
-  background: radial-gradient(circle at 32% 28%, #f3f9ff, #bcd9f7 55%, #82addd);
-  box-shadow: 0 2px 4px rgba(0,0,0,.3), inset 0 -2px 3px rgba(255,255,255,.5);
-  transition: transform .06s ease;
+  font-size: 32px;
+  line-height: 1;
+  background: radial-gradient(circle at 50% 40%, #6b4a2f, #3c2a1a 75%);
+  box-shadow: inset 0 4px 8px rgba(0,0,0,.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.bubble-cell:active { transform: scale(.92); }
-.bubble-cell.popped {
-  cursor: default;
-  background: var(--bg-soft);
-  box-shadow: inset 0 2px 5px rgba(0,0,0,.4);
+.mole-hole.up { animation: mole-pop .15s ease-out; }
+@keyframes mole-pop {
+  from { transform: scale(.5); }
+  to { transform: scale(1); }
 }
 
 /* 카카오톡 느낌의 메신저 UI (고정 배색 - 라이트/다크 테마와 무관) */
