@@ -369,7 +369,7 @@ async function openMessengerRoom(compId, title) {
   try {
     const announcement = await fetchCompetitionAnnouncement(compId);
     el("messenger-announcement-current").textContent = announcement && announcement.text
-      ? `현재 공지: ${announcement.text}`
+      ? announcement.text
       : "공지 없음";
     el("messenger-announcement-input").value = announcement && announcement.text ? announcement.text : "";
   } catch (err) {
@@ -401,7 +401,7 @@ el("form-messenger-announcement").addEventListener("submit", async (e) => {
   const text = el("messenger-announcement-input").value.trim();
   try {
     await setCompetitionAnnouncement(currentMessengerCompId, text);
-    el("messenger-announcement-current").textContent = text ? `현재 공지: ${text}` : "공지 없음";
+    el("messenger-announcement-current").textContent = text || "공지 없음";
     showToast(text ? "대회 공지를 저장했습니다." : "대회 공지를 삭제했습니다.", "success");
   } catch (err) {
     showToast(err.message, "error");

@@ -196,3 +196,13 @@ function initThemeToggle() {
 }
 
 initThemeToggle();
+
+// 공지 배너: 평소엔 한 줄로 접혀 있다가 누르면 펼쳐지는 토글 버튼을 연결한다.
+function initAnnouncementToggle(toggleId, detailId) {
+  const btn = el(toggleId);
+  const detail = el(detailId);
+  if (!btn || !detail) return;
+  btn.addEventListener("click", () => {
+    detail.classList.toggle("hidden");
+  });
+}

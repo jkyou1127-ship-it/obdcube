@@ -341,6 +341,9 @@ async function renderMyPage() {
 initApplyEventsCheckboxes();
 initOrganizerToolsForm();
 initAdminForm();
+initAnnouncementToggle("btn-global-announcement-toggle", "global-announcement-detail");
+initAnnouncementToggle("btn-detail-announcement-toggle", "detail-announcement-detail");
+initAnnouncementToggle("btn-messenger-announcement-toggle", "messenger-announcement-detail");
 
 auth.onAuthStateChanged(async (user) => {
   AppState.user = user;
