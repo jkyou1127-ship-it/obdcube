@@ -141,9 +141,13 @@ el("competitions-filter-ended").addEventListener("click", () => {
 });
 
 // ---- 입상 내역 ----
+let awardsCache = [];
+let currentAwardsEventName = null;
+
 async function renderAwardsPanel() {
   const container = el("awards-list");
   container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+  el("awards-event-tabs").innerHTML = "";
 
   const comps = (await fetchCompetitions()).filter(c => c.status === "ended");
   const awards = [];
@@ -163,13 +167,47 @@ async function renderAwardsPanel() {
       }
     }
   }
-  awards.sort((a, b) => a.rank - b.rank);
+  awardsCache = awards;
 
   if (awards.length === 0) {
     container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
     return;
   }
-  container.innerHTML = awards.map(a => `
+
+  const eventNames = [...new Set(awards.map(a => a.ev.name))];
+  if (!currentAwardsEventName || !eventNames.includes(currentAwardsEventName)) {
+    currentAwardsEventName = eventNames[0];
+  }
+  renderAwardsEventTabs(eventNames);
+  renderAwardsList();
+}
+
+function renderAwardsEventTabs(eventNames) {
+  const tabsContainer = el("awards-event-tabs");
+  tabsContainer.innerHTML = eventNames.map(name => `
+    <button type="button" class="tab-pill ${name === currentAwardsEventName ? "active" : ""}" data-event-name="${escapeHtml(name)}">${escapeHtml(name)}</button>
+  `).join("");
+  tabsContainer.querySelectorAll(".tab-pill").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentAwardsEventName = btn.dataset.eventName;
+      tabsContainer.querySelectorAll(".tab-pill").forEach(b => b.classList.toggle("active", b === btn));
+      renderAwardsList();
+    });
+  });
+}
+
+// 선택된 종목의 입상 내역만 순위순으로 보여준다.
+function renderAwardsList() {
+  const container = el("awards-list");
+  const filtered = awardsCache
+    .filter(a => a.ev.name === currentAwardsEventName)
+    .sort((a, b) => a.rank - b.rank);
+
+  if (filtered.length === 0) {
+    container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
+    return;
+  }
+  container.innerHTML = filtered.map(a => `
     <div class="item-card">
       <div class="info">
         <strong>${escapeHtml(a.comp.title)} - ${escapeHtml(a.ev.name)}</strong>
