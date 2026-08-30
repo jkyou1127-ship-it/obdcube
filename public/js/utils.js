@@ -9,6 +9,14 @@ function showToast(message, type = "") {
 
 function el(id) { return document.getElementById(id); }
 
+// 종목 이름 표기가 다른(예: "클락"/"Clock") 같은 종목을 하나로 묶어서 보여주기 위한
+// 정규화. 입상 내역에서 종목별/대회별로 묶을 때 이 이름을 기준으로 그룹화한다.
+function canonicalEventName(name) {
+  const trimmed = (name == null ? "" : String(name)).trim();
+  if (trimmed.toLowerCase() === "clock" || trimmed === "클락") return "클락";
+  return trimmed;
+}
+
 function escapeHtml(str) {
   const div = document.createElement("div");
   div.textContent = str == null ? "" : String(str);

@@ -167,7 +167,7 @@ async function renderAwardsPanel() {
         const times = (p.roundTimes && p.roundTimes[placement.round]) || [];
         const best = bestSingleFromTimes(times);
         const average = computeAverage(times, format);
-        awards.push({ comp, ev, format, best, average, nickname: p.nickname, ...placement });
+        awards.push({ comp, ev, evName: canonicalEventName(ev.name), format, best, average, nickname: p.nickname, ...placement });
       }
     }
   }
@@ -227,8 +227,8 @@ function renderAwardsAllList() {
   awardsCache.forEach(a => {
     if (!byComp.has(a.comp.id)) byComp.set(a.comp.id, { comp: a.comp, byEvent: new Map() });
     const entry = byComp.get(a.comp.id);
-    if (!entry.byEvent.has(a.ev.name)) entry.byEvent.set(a.ev.name, []);
-    entry.byEvent.get(a.ev.name).push(a);
+    if (!entry.byEvent.has(a.evName)) entry.byEvent.set(a.evName, []);
+    entry.byEvent.get(a.evName).push(a);
   });
   const compGroups = [...byComp.values()].sort((x, y) => (y.comp.startDate || "").localeCompare(x.comp.startDate || ""));
 
@@ -246,7 +246,7 @@ function renderAwardsAllList() {
 
 // ---- 종목별: 종목 탭을 고르면 그 종목의 입상 내역을 대회별로 묶어 보여준다 ----
 function renderAwardsEventTabs() {
-  const eventNames = [...new Set(awardsCache.map(a => a.ev.name))];
+  const eventNames = [...new Set(awardsCache.map(a => a.evName))];
   if (!currentAwardsEventName || !eventNames.includes(currentAwardsEventName)) {
     currentAwardsEventName = eventNames[0];
   }
@@ -265,7 +265,7 @@ function renderAwardsEventTabs() {
 
 function renderAwardsByEventList() {
   const container = el("awards-list");
-  const filtered = awardsCache.filter(a => a.ev.name === currentAwardsEventName);
+  const filtered = awardsCache.filter(a => a.evName === currentAwardsEventName);
 
   if (filtered.length === 0) {
     container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
@@ -312,7 +312,7 @@ function renderAwardsCompTabs() {
 
 function renderAwardsCompEventSubTabs() {
   const compAwards = awardsCache.filter(a => a.comp.id === currentAwardsCompId);
-  const eventNames = [...new Set(compAwards.map(a => a.ev.name))];
+  const eventNames = [...new Set(compAwards.map(a => a.evName))];
   if (!currentAwardsCompEventName || !eventNames.includes(currentAwardsCompEventName)) {
     currentAwardsCompEventName = eventNames[0];
   }
@@ -331,7 +331,7 @@ function renderAwardsCompEventSubTabs() {
 
 function renderAwardsCompList() {
   const container = el("awards-list");
-  const filtered = awardsCache.filter(a => a.comp.id === currentAwardsCompId && a.ev.name === currentAwardsCompEventName);
+  const filtered = awardsCache.filter(a => a.comp.id === currentAwardsCompId && a.evName === currentAwardsCompEventName);
   if (filtered.length === 0) {
     container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
     return;
