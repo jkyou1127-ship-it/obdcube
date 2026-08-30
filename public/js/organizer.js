@@ -338,6 +338,9 @@ async function renderMyRecordsPanel(comp) {
   const recordsLocked = isRecordsLocked(comp);
   const isEnded = comp.status === "ended";
   const lockReason = comp.status === "ended" ? "대회가 종료되어" : "개최일 전이라";
+  // 참가 신청이 끝난 뒤(신청 마감 또는 대회 시작)에는 참가를 아예 취소할 수 없고,
+  // 기권만 가능하다. 기권하면 기록이 DNS(=DNF와 동일하게 처리)로 저장된다.
+  const applicationsClosed = comp.participationClosed === true || !isNotStarted(comp);
   const events = await fetchEvents(comp.id);
   const mine = await Promise.all(events.map(async ev => {
     const p = await fetchMyParticipant(comp.id, ev.id);
@@ -381,7 +384,10 @@ async function renderMyRecordsPanel(comp) {
         </div>
         <div class="actions">
           ${recordsLocked ? `<span class='desc'>${lockReason} 기록을 등록할 수 없습니다.</span>` : `<button class="btn small my-record-save">저장</button>`}
-          ${isEnded ? "" : `<button class="btn small danger my-record-cancel">참가 취소</button>`}
+          ${isEnded ? "" : (applicationsClosed
+            ? `<button class="btn small danger my-record-forfeit">기권</button>`
+            : `<button class="btn small danger my-record-cancel">참가 취소</button>`
+          )}
         </div>
       </div>
     `;
@@ -410,6 +416,21 @@ async function renderMyRecordsPanel(comp) {
         await renderMyRecordsPanel(comp);
         await renderCompetitionRoster(comp).catch(() => {});
         await renderParticipatePanel(comp).catch(() => {});
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+  container.querySelectorAll(".my-record-forfeit").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const row = btn.closest(".my-record-row");
+      if (!confirm("이 종목을 기권할까요? 기록이 DNS로 처리됩니다.")) return;
+      try {
+        const solveCount = row.querySelectorAll(".my-record-solve").length;
+        const dnsTimes = new Array(solveCount).fill("DNS");
+        await updateMyTimes(comp.id, row.dataset.event, row.dataset.participant, row.dataset.round, dnsTimes);
+        showToast("기권 처리되었습니다.", "success");
+        await renderMyRecordsPanel(comp);
       } catch (err) {
         showToast(err.message, "error");
       }
