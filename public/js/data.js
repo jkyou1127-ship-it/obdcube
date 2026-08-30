@@ -227,6 +227,13 @@ async function endCompetition(compId) {
     status: "ended",
     endedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
+  // 대회가 끝나면 주최팀 대화방 내용은 더 이상 필요 없으므로 함께 삭제한다.
+  const chatSnap = await db.collection("competitions").doc(compId).collection("teamChat").get();
+  if (!chatSnap.empty) {
+    const batch = db.batch();
+    chatSnap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+  }
 }
 
 async function closeParticipation(compId) {
