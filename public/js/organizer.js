@@ -578,9 +578,10 @@ async function renderMessengerList() {
 
   const container = el("messenger-room-list");
   container.innerHTML = "<p class='desc'>불러오는 중...</p>";
-  const comps = await fetchMyTeamChatCompetitions();
+  // 대회가 종료되면 대화 내용이 삭제되므로 매신저 목록/입장 자체를 막는다.
+  const comps = (await fetchMyTeamChatCompetitions()).filter(c => c.status !== "ended");
   if (comps.length === 0) {
-    container.innerHTML = "<p class='desc'>대화방에 참여 중인 대회가 없습니다. (주최자·공동 주최자·스태프로 참여 중인 대회에서만 이용 가능)</p>";
+    container.innerHTML = "<p class='desc'>대화방에 참여 중인 대회가 없습니다. (주최자·공동 주최자·스태프로 참여 중인, 종료되지 않은 대회에서만 이용 가능)</p>";
     return;
   }
   container.innerHTML = comps.map(c => `
@@ -598,6 +599,11 @@ async function openMessengerRoom(compId, title) {
   const comp = await fetchCompetition(compId);
   if (!comp) {
     showToast("대회 정보를 찾을 수 없습니다.", "error");
+    return;
+  }
+  if (comp.status === "ended") {
+    showToast("종료된 대회는 매신저에 입장할 수 없습니다.", "error");
+    await renderMessengerList();
     return;
   }
   currentMessengerCompId = compId;

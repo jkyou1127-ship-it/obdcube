@@ -152,11 +152,13 @@ service cloud.firestore {
                         );
       }
 
-      // 주최팀(주최자·공동 주최자·스태프) 전용 대화방 - 참가자는 열람 불가
+      // 주최팀(주최자·공동 주최자·스태프) 전용 대화방 - 참가자는 열람 불가.
+      // 대회가 종료되면 메시지가 전부 삭제되고, 새 메시지 작성도 막힌다.
       match /teamChat/{messageId} {
         allow read: if isSignedIn() && (isAdmin() || isOrganizer() || isStaff());
         allow create: if isSignedIn() && (isAdmin() || isOrganizer() || isStaff()) &&
-                          request.resource.data.senderUid == request.auth.uid;
+                          request.resource.data.senderUid == request.auth.uid &&
+                          get(/databases/$(database)/documents/competitions/$(compId)).data.status != 'ended';
         allow update: if false;
         allow delete: if isSignedIn() && (
                           isAdmin() || isOrganizer() ||
