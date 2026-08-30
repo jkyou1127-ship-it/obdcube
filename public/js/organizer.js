@@ -996,6 +996,7 @@ async function buildParticipantsPanel(compId, ev, isEnded, recordsLocked) {
   const solveCount = solveCountForFormat(format);
   const resultLabel = resultLabelForFormat(format);
   const round = participantRoundByEvent[eventId] || 1;
+  const isFinalRound = round === effectiveFinalRound(ev);
   let participants = await fetchParticipants(compId, eventId);
 
   // 직전 라운드에서 탈락 처리된 참가자는 다음 라운드 명단에서 제외
@@ -1027,11 +1028,14 @@ async function buildParticipantsPanel(compId, ev, isEnded, recordsLocked) {
     const rankCell = recordsLocked
       ? (r.average === Infinity ? "-" : idx + 1)
       : `<input type="number" class="participant-rank-input" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}" value="${r.rank != null ? r.rank : ""}" placeholder="${r.average === Infinity ? "-" : idx + 1}" style="max-width:60px" />`;
+    // 결승에서는 진출/탈락 처리가 곧 입상/미입상을 뜻하므로 문구를 다르게 보여준다.
+    const advanceLabel = isFinalRound ? "입상" : "진출";
+    const eliminateLabel = isFinalRound ? "미입상" : "탈락";
     const statusCell = recordsLocked
-      ? ({ advanced: "진출", eliminated: "탈락" }[r.status] || "-")
+      ? ({ advanced: advanceLabel, eliminated: eliminateLabel }[r.status] || "-")
       : `
-        <button class="btn small ${r.status === "advanced" ? "success" : ""} btn-advance" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}">진출</button>
-        <button class="btn small ${r.status === "eliminated" ? "danger" : ""} btn-eliminate" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}">탈락</button>
+        <button class="btn small ${r.status === "advanced" ? "success" : ""} btn-advance" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}">${advanceLabel}</button>
+        <button class="btn small ${r.status === "eliminated" ? "danger" : ""} btn-eliminate" data-event="${eventId}" data-participant="${r.p.id}" data-round="${round}">${eliminateLabel}</button>
       `;
     return `
     <tr>
@@ -1062,7 +1066,7 @@ async function buildParticipantsPanel(compId, ev, isEnded, recordsLocked) {
       `}
       <div class="table-scroll">
         <table class="participants-table">
-          <thead><tr><th>순위</th><th>이름</th><th>기록 (${solveCount}회)</th><th>${resultLabel}</th><th>진출/탈락</th><th></th></tr></thead>
+          <thead><tr><th>순위</th><th>이름</th><th>기록 (${solveCount}회)</th><th>${resultLabel}</th><th>${isFinalRound ? "입상/미입상" : "진출/탈락"}</th><th></th></tr></thead>
           <tbody>${rowsHtml || `<tr><td colspan="6" class="desc">등록된 참가자가 없습니다.</td></tr>`}</tbody>
         </table>
       </div>
