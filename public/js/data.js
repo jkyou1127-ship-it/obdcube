@@ -137,6 +137,26 @@ async function removeStaff(compId, uid) {
   });
 }
 
+// 대회별 주최팀(주최자·공동 주최자·스태프) 전용 대화방. 참가자는 볼 수 없다.
+async function sendTeamChatMessage(compId, text) {
+  await db.collection("competitions").doc(compId).collection("teamChat").add({
+    senderUid: AppState.user.uid,
+    senderNickname: AppState.profile.nickname,
+    text,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+function watchTeamChat(compId, onNext, onError) {
+  return db.collection("competitions").doc(compId).collection("teamChat")
+    .orderBy("createdAt", "asc")
+    .onSnapshot(onNext, onError);
+}
+
+async function deleteTeamChatMessage(compId, messageId) {
+  await db.collection("competitions").doc(compId).collection("teamChat").doc(messageId).delete();
+}
+
 async function fetchCompetition(compId) {
   const doc = await db.collection("competitions").doc(compId).get();
   return doc.exists ? { id: doc.id, ...doc.data() } : null;

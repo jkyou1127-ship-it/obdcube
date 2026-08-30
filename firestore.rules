@@ -146,6 +146,18 @@ service cloud.firestore {
                         );
       }
 
+      // 주최팀(주최자·공동 주최자·스태프) 전용 대화방 - 참가자는 열람 불가
+      match /teamChat/{messageId} {
+        allow read: if isSignedIn() && (isAdmin() || isOrganizer() || isStaff());
+        allow create: if isSignedIn() && (isAdmin() || isOrganizer() || isStaff()) &&
+                          request.resource.data.senderUid == request.auth.uid;
+        allow update: if false;
+        allow delete: if isSignedIn() && (
+                          isAdmin() || isOrganizer() ||
+                          resource.data.senderUid == request.auth.uid
+                        );
+      }
+
       // 종목 (Events)
       match /events/{eventId} {
         allow read: if isSignedIn();

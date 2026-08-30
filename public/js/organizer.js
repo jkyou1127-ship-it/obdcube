@@ -2,6 +2,7 @@
 
 let currentCompId = null;
 const participantRoundByEvent = {}; // eventId -> 현재 표시 중인 라운드 번호
+let teamChatUnsub = null;
 
 async function openCompetitionDetail(compId) {
   currentCompId = compId;
@@ -36,6 +37,22 @@ async function openCompetitionDetail(compId) {
   el("coorganizer-panel").classList.toggle("hidden", !canManage);
   el("staff-panel").classList.toggle("hidden", !canManage);
   el("event-request-panel").classList.toggle("hidden", eventsClosed);
+
+  el("team-chat-panel").classList.toggle("hidden", !canManageEvents);
+  if (teamChatUnsub) { teamChatUnsub(); teamChatUnsub = null; }
+  if (canManageEvents) {
+    teamChatUnsub = watchTeamChat(
+      compId,
+      (snap) => {
+        const messages = [];
+        snap.forEach(doc => messages.push({ id: doc.id, ...doc.data() }));
+        renderTeamChatMessages(messages, canManage);
+      },
+      (err) => {
+        el("team-chat-messages").innerHTML = "<p class='desc'>대화방을 불러오지 못했습니다.</p>";
+      }
+    );
+  }
 
   // 화면 전환은 기본 정보가 세팅된 시점에 바로 실행 - 아래 각 패널 렌더링 중
   // 하나가 실패해도(예: 권한 오류) 상세 화면 자체는 항상 열리도록 한다.
@@ -297,6 +314,61 @@ el("form-add-staff").addEventListener("submit", async (e) => {
     nicknameInput.value = "";
     showToast(`${nickname}님을 스태프로 추가했습니다.`, "success");
     await openCompetitionDetail(currentCompId);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+// ---- 주최팀(주최자·공동 주최자·스태프) 대화방 ----
+
+function formatChatTime(ts) {
+  try {
+    return ts.toDate().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  } catch (e) {
+    return "";
+  }
+}
+
+function renderTeamChatMessages(messages, canModerate) {
+  const container = el("team-chat-messages");
+  if (messages.length === 0) {
+    container.innerHTML = "<p class='desc'>아직 메시지가 없습니다.</p>";
+    return;
+  }
+  const myUid = AppState.user.uid;
+  container.innerHTML = messages.map(m => `
+    <div class="team-chat-message ${m.senderUid === myUid ? "mine" : ""}" data-id="${m.id}">
+      <div class="team-chat-meta">
+        <strong>${escapeHtml(m.senderNickname)}</strong>
+        <span>${m.createdAt ? formatChatTime(m.createdAt) : ""}</span>
+      </div>
+      <div class="team-chat-text">${escapeHtml(m.text)}</div>
+      ${(canModerate || m.senderUid === myUid) ? `<button class="btn small danger team-chat-delete" data-id="${m.id}">삭제</button>` : ""}
+    </div>
+  `).join("");
+  container.scrollTop = container.scrollHeight;
+
+  container.querySelectorAll(".team-chat-delete").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!currentCompId) return;
+      try {
+        await deleteTeamChatMessage(currentCompId, btn.dataset.id);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+}
+
+el("form-team-chat").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentCompId) return;
+  const input = el("team-chat-text");
+  const text = input.value.trim();
+  if (!text) return;
+  try {
+    await sendTeamChatMessage(currentCompId, text);
+    input.value = "";
   } catch (err) {
     showToast(err.message, "error");
   }
