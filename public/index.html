@@ -76,7 +76,12 @@
   </header>
 
   <div id="global-announcement-banner" class="announcement-banner hidden">
-    <strong>📢 공지</strong><span id="global-announcement-text" class="announcement-text"></span>
+    <button type="button" class="announcement-toggle" id="btn-global-announcement-toggle">
+      <strong>📢 공지</strong><span id="global-announcement-hint" class="announcement-hint">(누르면 펼치기)</span>
+    </button>
+    <div id="global-announcement-detail" class="announcement-detail hidden">
+      <span id="global-announcement-text" class="announcement-text"></span>
+    </div>
   </div>
 
   <main class="content">

@@ -568,6 +568,7 @@ initOrganizerToolsForm();
 initAdminForm();
 initAnnouncementToggle("btn-detail-announcement-toggle", "detail-announcement-detail");
 initAnnouncementToggle("btn-messenger-announcement-toggle", "messenger-announcement-detail");
+initAnnouncementToggle("btn-global-announcement-toggle", "global-announcement-detail");
 
 auth.onAuthStateChanged(async (user) => {
   AppState.user = user;
@@ -610,6 +611,7 @@ async function applyGlobalAnnouncementBanner() {
   const banner = el("global-announcement-banner");
   if (announcement && announcement.text) {
     el("global-announcement-text").textContent = announcement.text;
+    el("global-announcement-hint").textContent = `${summarizeAnnouncement(announcement.text)} (누르면 펼치기)`;
     banner.classList.remove("hidden");
   } else {
     banner.classList.add("hidden");
