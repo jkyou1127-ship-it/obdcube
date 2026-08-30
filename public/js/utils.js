@@ -67,12 +67,14 @@ function isParticipationStarted(comp) {
   return !!comp && comp.participationStarted === true;
 }
 
-// 상태 표시 우선순위: 종료됨 > 진행중(시작됨) > 신청마감/참가신청중(아직 시작 전).
-// "신청마감"은 어디까지나 시작 전에 참가 신청만 먼저 끊어둔 상태를 뜻하므로,
+// 상태 표시 우선순위: 종료됨 > 진행중(시작됨) > 개최예정(참가 신청 아직 시작 안 함) >
+// 신청마감/참가신청중(아직 대회 시작 전).
+// "신청마감"은 어디까지나 대회 시작 전에 참가 신청만 먼저 끊어둔 상태를 뜻하므로,
 // "대회 시작"을 누르면 참가 신청을 마감했었는지와 무관하게 곧바로 "진행중"으로 보여야 한다.
 function getCompetitionStatusInfo(comp) {
   if (comp.status === "ended") return { label: "종료됨", cls: "ended" };
   if (!isNotStarted(comp)) return { label: "진행중", cls: "active" };
+  if (!isParticipationStarted(comp)) return { label: "개최예정", cls: "upcoming" };
   if (comp.participationClosed === true) return { label: "신청마감", cls: "closed" };
   return { label: "참가신청중", cls: "upcoming" };
 }
