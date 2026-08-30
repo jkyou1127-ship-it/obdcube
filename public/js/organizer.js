@@ -4,11 +4,13 @@ let currentCompId = null;
 const participantRoundByEvent = {}; // eventId -> 현재 표시 중인 라운드 번호
 let teamChatUnsub = null;
 
-// ---- 순위 (WCA Live 스타일 읽기 전용 순위표, 별도 탭에서 대회를 선택해 열람) ----
+// ---- OBD Live (WCA Live 스타일 읽기 전용 순위표, 별도 탭에서 대회를 선택해 열람) ----
 let rankingsCompId = null;
 let rankingsEventsCache = [];
 let currentRankingsEventId = null;
 let currentRankingsRound = null;
+let rankingsListCache = [];
+let rankingsListFilter = "active"; // "active"(진행 중) | "ended"(종료)
 
 async function renderRankingsList() {
   el("rankings-detail-view").classList.add("hidden");
@@ -16,21 +18,44 @@ async function renderRankingsList() {
 
   const container = el("rankings-comp-list");
   container.innerHTML = "<p class='desc'>불러오는 중...</p>";
-  const comps = await fetchCompetitions();
+  rankingsListCache = await fetchCompetitions();
+  renderRankingsCompList();
+}
+
+function renderRankingsCompList() {
+  el("rankings-filter-active").classList.toggle("active", rankingsListFilter === "active");
+  el("rankings-filter-ended").classList.toggle("active", rankingsListFilter === "ended");
+
+  // 아직 시작하지 않은 대회는 진행 중/종료 어느 쪽에도 표시하지 않는다.
+  const comps = rankingsListCache.filter(c => {
+    if (c.status === "ended") return rankingsListFilter === "ended";
+    return rankingsListFilter === "active" && !isNotStarted(c);
+  });
+
+  const container = el("rankings-comp-list");
   if (comps.length === 0) {
-    container.innerHTML = "<p class='desc'>아직 승인된 대회가 없습니다.</p>";
+    container.innerHTML = `<p class='desc'>${rankingsListFilter === "ended" ? "종료된" : "진행 중인"} 대회가 없습니다.</p>`;
     return;
   }
   container.innerHTML = comps.map(c => `
     <div class="item-card">
       <div class="info"><strong>${escapeHtml(c.title)}</strong></div>
-      <button class="btn small btn-open-rankings" data-id="${c.id}" data-title="${escapeHtml(c.title)}">순위 보기</button>
+      <button class="btn small btn-open-rankings" data-id="${c.id}" data-title="${escapeHtml(c.title)}">OBD Live 보기</button>
     </div>
   `).join("");
   container.querySelectorAll(".btn-open-rankings").forEach(btn => {
     btn.addEventListener("click", () => openRankingsView(btn.dataset.id, btn.dataset.title));
   });
 }
+
+el("rankings-filter-active").addEventListener("click", () => {
+  rankingsListFilter = "active";
+  renderRankingsCompList();
+});
+el("rankings-filter-ended").addEventListener("click", () => {
+  rankingsListFilter = "ended";
+  renderRankingsCompList();
+});
 
 async function openRankingsView(compId, title) {
   const comp = await fetchCompetition(compId);
@@ -44,7 +69,7 @@ async function openRankingsView(compId, title) {
   try {
     await loadRankingsForComp(comp);
   } catch (err) {
-    el("rankings-table-container").innerHTML = "<p class='desc'>순위 정보를 불러오지 못했습니다.</p>";
+    el("rankings-table-container").innerHTML = "<p class='desc'>OBD Live 정보를 불러오지 못했습니다.</p>";
   }
 }
 
