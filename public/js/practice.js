@@ -622,9 +622,9 @@ function initMinesweeper() {
   mineSetup("easy");
 }
 
-// ==================== 왁스볼 부수기 ====================
-// 겉은 딱딱한 왁스 껍질, 속은 말랑이. 껍질을 다 깨면 말랑이가 나와서 계속 누르며
-// 스트레스를 풀 수 있다.
+// ==================== 왁뿌볼 ====================
+// 말랑한 클레이(말랑이) 겉면에 왁스를 코팅해 굳힌 촉감 장난감. 눌러서 왁스 껍질을
+// 빠작빠작 부수면 안의 말랑이가 나오고, 그 뒤로는 계속 눌러 뽀득한 소리를 즐긴다.
 
 const WAX_HITS_TO_BREAK = 12;
 const WAX_CRACK_COUNT = 6;
@@ -637,6 +637,7 @@ const WAX_SHELL_COLORS = [
 ];
 let waxHits = 0;
 let waxBroken = false;
+let waxAudioCtx = null;
 
 function waxLoadBrokenCount() {
   try { return Number(localStorage.getItem("obdcube-wax-broken-count")) || 0; } catch (e) { return 0; }
@@ -644,6 +645,66 @@ function waxLoadBrokenCount() {
 
 function waxSaveBrokenCount(n) {
   try { localStorage.setItem("obdcube-wax-broken-count", String(n)); } catch (e) {}
+}
+
+// 실제 음원 파일 없이 Web Audio API로 즉석에서 소리를 합성한다.
+function waxGetAudioCtx() {
+  if (!waxAudioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    waxAudioCtx = new Ctx();
+  }
+  if (waxAudioCtx.state === "suspended") waxAudioCtx.resume().catch(() => {});
+  return waxAudioCtx;
+}
+
+// 짧은 화이트 노이즈를 필터로 다듬어 "빠작"하는 껍질 부서지는 소리를 낸다.
+function waxPlayNoiseBurst(duration, filterType, freq, peakGain) {
+  const ctx = waxGetAudioCtx();
+  if (!ctx) return;
+  const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = filterType;
+  filter.frequency.value = freq;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(peakGain, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  noise.start();
+  noise.stop(ctx.currentTime + duration);
+}
+
+function waxPlayCrack() {
+  waxPlayNoiseBurst(0.09, "bandpass", 1100 + Math.random() * 900, 0.35);
+}
+
+function waxPlayShatter() {
+  waxPlayNoiseBurst(0.35, "highpass", 700, 0.5);
+}
+
+function waxPlaySquish() {
+  const ctx = waxGetAudioCtx();
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(240, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(90, ctx.currentTime + 0.16);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.25, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.2);
 }
 
 function waxNewBall() {
@@ -662,6 +723,7 @@ function waxNewBall() {
 function waxClick() {
   const ball = el("wax-ball");
   if (waxBroken) {
+    waxPlaySquish();
     ball.classList.remove("squish");
     void ball.offsetWidth; // 리플로우를 강제로 발생시켜 애니메이션을 다시 재생시킨다
     ball.classList.add("squish");
@@ -669,6 +731,7 @@ function waxClick() {
   }
 
   waxHits += 1;
+  waxPlayCrack();
   el("wax-hits").textContent = String(waxHits);
   ball.classList.remove("shake");
   void ball.offsetWidth;
@@ -682,11 +745,12 @@ function waxClick() {
   if (waxHits >= WAX_HITS_TO_BREAK) {
     waxBroken = true;
     ball.classList.add("broken");
+    waxPlayShatter();
     el("wax-hint").textContent = "말랑이가 나왔어요! 계속 눌러서 스트레스를 풀어보세요.";
     const total = waxLoadBrokenCount() + 1;
     waxSaveBrokenCount(total);
     el("wax-broken-count").textContent = String(total);
-    showToast("왁스볼을 다 깼습니다! 말랑이 등장", "success");
+    showToast("왁뿌볼을 다 깼습니다! 말랑이 등장", "success");
   }
 }
 
