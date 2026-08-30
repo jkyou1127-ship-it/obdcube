@@ -452,21 +452,7 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
   font-family: "Courier New", monospace;
 }
 
-/* 대회 상세 화면: 종목/순위 탭 */
-.detail-tabs { display: flex; gap: 6px; margin: 14px 0; border-bottom: 1px solid var(--border); }
-.detail-tab-btn {
-  background: none;
-  border: none;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-dim);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-}
-.detail-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
-
-/* 순위 탭: WCA Live 스타일 */
+/* 순위 화면: WCA Live 스타일 */
 .tab-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .tab-pill {
   background: var(--card);
@@ -487,12 +473,7 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
   border-bottom: 1px solid var(--border);
 }
 .wca-rank-table .rank-cell { font-weight: 700; width: 48px; }
-.wca-rank-table tr.gold { background: rgba(255, 176, 59, .16); }
-.wca-rank-table tr.silver { background: rgba(163, 168, 201, .16); }
-.wca-rank-table tr.bronze { background: rgba(199, 122, 63, .16); }
-.wca-rank-table tr.gold .rank-cell { color: #ffb03b; }
-.wca-rank-table tr.silver .rank-cell { color: #a3a8c9; }
-.wca-rank-table tr.bronze .rank-cell { color: #c77a3f; }
+.wca-rank-table tr.advanced { background: rgba(55, 200, 119, .16); }
 
 .toast {
   position: fixed;

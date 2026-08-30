@@ -64,6 +64,7 @@
       <button class="nav-btn" data-nav="apply">대회 주최 신청</button>
       <button class="nav-btn" data-nav="mypage">마이페이지</button>
       <button class="nav-btn" data-nav="awards">입상 내역</button>
+      <button class="nav-btn" data-nav="rankings">순위</button>
       <button class="nav-btn" data-nav="messenger">메신저</button>
       <button class="nav-btn hidden" id="nav-admin" data-nav="admin">관리자</button>
     </nav>
@@ -239,18 +240,6 @@
       <p id="detail-desc" class="desc"></p>
       <p class="meta">개최일: <span id="detail-date"></span> · 주최자: <span id="detail-organizer"></span> · 상태: <span id="detail-status" class="badge"></span></p>
 
-      <div class="detail-tabs">
-        <button type="button" class="detail-tab-btn active" id="tab-btn-events">종목</button>
-        <button type="button" class="detail-tab-btn" id="tab-btn-rankings">순위</button>
-      </div>
-
-      <div id="detail-tab-rankings-panel" class="hidden">
-        <div id="rankings-event-tabs" class="tab-row"></div>
-        <div id="rankings-round-tabs" class="tab-row"></div>
-        <div id="rankings-table-container"></div>
-      </div>
-
-      <div id="detail-tab-events-panel">
       <div id="detail-announcement-banner" class="announcement-banner hidden">
         <button type="button" class="announcement-toggle" id="btn-detail-announcement-toggle">
           <strong>📢 대회 공지</strong><span class="announcement-hint">(누르면 펼치기)</span>
@@ -350,7 +339,6 @@
       </div>
 
       <div id="events-list"></div>
-      </div>
     </section>
 
     <!-- 입상 내역 -->
@@ -358,6 +346,22 @@
       <h2>입상 내역</h2>
       <p class="desc">종료된 대회에서 주최자가 순위를 지정한 종목 중 3등 이내만 표시됩니다.</p>
       <div id="awards-list" class="card-list"></div>
+    </section>
+
+    <!-- 순위 -->
+    <section id="view-rankings" class="view hidden">
+      <div id="rankings-list-view">
+        <h2>순위</h2>
+        <p class="desc">순위를 확인할 대회를 선택하세요.</p>
+        <div id="rankings-comp-list" class="card-list"></div>
+      </div>
+      <div id="rankings-detail-view" class="hidden">
+        <button class="btn small" id="btn-rankings-back">← 목록으로</button>
+        <h2 id="rankings-detail-title">-</h2>
+        <div id="rankings-event-tabs" class="tab-row"></div>
+        <div id="rankings-round-tabs" class="tab-row"></div>
+        <div id="rankings-table-container"></div>
+      </div>
     </section>
 
     <!-- 메신저 (주최자·공동 주최자·스태프 전용 대화방) -->

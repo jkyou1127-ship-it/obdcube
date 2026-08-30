@@ -4,29 +4,55 @@ let currentCompId = null;
 const participantRoundByEvent = {}; // eventId -> 현재 표시 중인 라운드 번호
 let teamChatUnsub = null;
 
-// ---- 순위 탭 (WCA Live 스타일 읽기 전용 순위표, 누구나 열람 가능) ----
+// ---- 순위 (WCA Live 스타일 읽기 전용 순위표, 별도 탭에서 대회를 선택해 열람) ----
 let rankingsCompId = null;
 let rankingsEventsCache = [];
 let currentRankingsEventId = null;
 let currentRankingsRound = null;
 
-function initDetailTabs() {
-  el("tab-btn-events").addEventListener("click", () => {
-    el("tab-btn-events").classList.add("active");
-    el("tab-btn-rankings").classList.remove("active");
-    el("detail-tab-events-panel").classList.remove("hidden");
-    el("detail-tab-rankings-panel").classList.add("hidden");
-  });
-  el("tab-btn-rankings").addEventListener("click", () => {
-    el("tab-btn-rankings").classList.add("active");
-    el("tab-btn-events").classList.remove("active");
-    el("detail-tab-rankings-panel").classList.remove("hidden");
-    el("detail-tab-events-panel").classList.add("hidden");
+async function renderRankingsList() {
+  el("rankings-detail-view").classList.add("hidden");
+  el("rankings-list-view").classList.remove("hidden");
+
+  const container = el("rankings-comp-list");
+  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+  const comps = await fetchCompetitions();
+  if (comps.length === 0) {
+    container.innerHTML = "<p class='desc'>아직 승인된 대회가 없습니다.</p>";
+    return;
+  }
+  container.innerHTML = comps.map(c => `
+    <div class="item-card">
+      <div class="info"><strong>${escapeHtml(c.title)}</strong></div>
+      <button class="btn small btn-open-rankings" data-id="${c.id}" data-title="${escapeHtml(c.title)}">순위 보기</button>
+    </div>
+  `).join("");
+  container.querySelectorAll(".btn-open-rankings").forEach(btn => {
+    btn.addEventListener("click", () => openRankingsView(btn.dataset.id, btn.dataset.title));
   });
 }
-initDetailTabs();
 
-async function renderRankingsTab(comp) {
+async function openRankingsView(compId, title) {
+  const comp = await fetchCompetition(compId);
+  if (!comp) {
+    showToast("대회 정보를 찾을 수 없습니다.", "error");
+    return;
+  }
+  el("rankings-detail-title").textContent = title || comp.title;
+  el("rankings-list-view").classList.add("hidden");
+  el("rankings-detail-view").classList.remove("hidden");
+  try {
+    await loadRankingsForComp(comp);
+  } catch (err) {
+    el("rankings-table-container").innerHTML = "<p class='desc'>순위 정보를 불러오지 못했습니다.</p>";
+  }
+}
+
+el("btn-rankings-back").addEventListener("click", () => {
+  renderRankingsList();
+});
+
+async function loadRankingsForComp(comp) {
   if (rankingsCompId !== comp.id) {
     rankingsCompId = comp.id;
     currentRankingsEventId = null;
@@ -53,7 +79,7 @@ async function renderRankingsTab(comp) {
       if (currentRankingsEventId === btn.dataset.event) return;
       currentRankingsEventId = btn.dataset.event;
       currentRankingsRound = null;
-      renderRankingsTab(comp);
+      loadRankingsForComp(comp);
     });
   });
   await renderRankingsRoundTabs(comp.id);
@@ -113,12 +139,11 @@ async function renderRankingsTable(compId, ev) {
 
   const rowsHtml = rows.map((r, idx) => {
     const rankNum = r.average === Infinity ? null : idx + 1;
-    const medalCls = rankNum === 1 ? "gold" : rankNum === 2 ? "silver" : rankNum === 3 ? "bronze" : "";
     const hasAnyEntry = r.times.some(t => t.trim() !== "");
     const resultValueLabel = hasAnyEntry ? formatSecondsToTime(r.average) : "-";
     const statusLabel = { advanced: "진출", eliminated: "탈락" }[r.status] || "-";
     return `
-      <tr class="${medalCls}">
+      <tr class="${r.status === "advanced" ? "advanced" : ""}">
         <td class="rank-cell">${rankNum || "-"}</td>
         <td>${escapeHtml(r.p.nickname)}</td>
         <td>${r.times.map(t => escapeHtml(t) || "-").join(" · ")}</td>
@@ -173,21 +198,9 @@ async function openCompetitionDetail(compId) {
   el("staff-panel").classList.toggle("hidden", !canManage);
   el("event-request-panel").classList.toggle("hidden", eventsClosed);
 
-  // 대회 상세 화면을 열 때마다 항상 "종목" 탭부터 보여준다.
-  el("tab-btn-events").classList.add("active");
-  el("tab-btn-rankings").classList.remove("active");
-  el("detail-tab-events-panel").classList.remove("hidden");
-  el("detail-tab-rankings-panel").classList.add("hidden");
-
   // 화면 전환은 기본 정보가 세팅된 시점에 바로 실행 - 아래 각 패널 렌더링 중
   // 하나가 실패해도(예: 권한 오류) 상세 화면 자체는 항상 열리도록 한다.
   switchView("detail");
-
-  try {
-    await renderRankingsTab(comp);
-  } catch (err) {
-    el("rankings-table-container").innerHTML = "<p class='desc'>순위 정보를 불러오지 못했습니다.</p>";
-  }
 
   try {
     const announcement = await fetchCompetitionAnnouncement(compId);

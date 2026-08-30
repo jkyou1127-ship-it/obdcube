@@ -78,6 +78,7 @@ async function onNavigate(name) {
   if (name === "competitions") await renderCompetitionsList();
   if (name === "mypage") await renderMyPage();
   if (name === "awards") await renderAwardsPanel();
+  if (name === "rankings") await renderRankingsList();
   if (name === "practice") initPracticeTab();
   if (name === "messenger") await renderMessengerList();
   if (name === "admin") await renderAdminView();
