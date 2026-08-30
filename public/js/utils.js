@@ -17,6 +17,16 @@ function canonicalEventName(name) {
   return trimmed;
 }
 
+// 공지 간략히 보기: 접혀 있을 때는 첫 줄만, 그것도 너무 길면 잘라서 보여준다.
+// 전체 내용은 펼쳤을 때(또는 관리자가 항상 볼 수 있는 전체 공지 배너에서만) 보인다.
+function summarizeAnnouncement(text, maxLen = 40) {
+  if (!text) return "";
+  const firstLine = text.split("\n")[0];
+  const hasMore = text.length > firstLine.length || firstLine.length > maxLen;
+  const cut = firstLine.length > maxLen ? firstLine.slice(0, maxLen) : firstLine;
+  return hasMore ? cut + "..." : cut;
+}
+
 function escapeHtml(str) {
   const div = document.createElement("div");
   div.textContent = str == null ? "" : String(str);

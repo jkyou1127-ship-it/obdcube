@@ -242,6 +242,7 @@ async function openCompetitionDetail(compId) {
     const banner = el("detail-announcement-banner");
     if (announcement && announcement.text) {
       el("detail-announcement-text").textContent = announcement.text;
+      el("detail-announcement-hint").textContent = `${summarizeAnnouncement(announcement.text)} (누르면 펼치기)`;
       banner.classList.remove("hidden");
     } else {
       banner.classList.add("hidden");
@@ -615,7 +616,7 @@ async function openMessengerRoom(compId, title) {
   try {
     const announcement = await fetchCompetitionAnnouncement(compId);
     el("messenger-announcement-current").textContent = announcement && announcement.text
-      ? announcement.text
+      ? summarizeAnnouncement(announcement.text)
       : "공지 없음";
     el("messenger-announcement-input").value = announcement && announcement.text ? announcement.text : "";
   } catch (err) {
@@ -647,7 +648,7 @@ el("form-messenger-announcement").addEventListener("submit", async (e) => {
   const text = el("messenger-announcement-input").value.trim();
   try {
     await setCompetitionAnnouncement(currentMessengerCompId, text);
-    el("messenger-announcement-current").textContent = text || "공지 없음";
+    el("messenger-announcement-current").textContent = text ? summarizeAnnouncement(text) : "공지 없음";
     showToast(text ? "대회 공지를 저장했습니다." : "대회 공지를 삭제했습니다.", "success");
   } catch (err) {
     showToast(err.message, "error");

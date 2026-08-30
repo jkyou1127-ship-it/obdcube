@@ -7,7 +7,7 @@ async function renderAdminView() {
 async function renderGlobalAnnouncementAdmin() {
   const announcement = await fetchGlobalAnnouncement();
   el("admin-announcement-current").textContent = announcement && announcement.text
-    ? `현재 공지: ${announcement.text}`
+    ? `현재 공지: ${summarizeAnnouncement(announcement.text)}`
     : "공지 없음";
   el("admin-announcement-input").value = announcement && announcement.text ? announcement.text : "";
 }
