@@ -135,4 +135,14 @@ function initAdminForm() {
       showToast(err.message, "error");
     }
   });
+
+  el("btn-purge-ended-chats").addEventListener("click", async () => {
+    if (!confirm("이미 종료된 모든 대회의 매신저 대화를 삭제합니다. 되돌릴 수 없습니다. 계속할까요?")) return;
+    try {
+      const { compCount, totalDeleted } = await purgeEndedCompetitionsTeamChat();
+      showToast(`대회 ${compCount}개에서 메시지 ${totalDeleted}개를 삭제했습니다.`, "success");
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  });
 }

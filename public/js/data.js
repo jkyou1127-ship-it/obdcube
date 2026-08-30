@@ -222,18 +222,40 @@ async function startCompetition(compId) {
   });
 }
 
+// 한 대회의 매신저(팀 대화방) 메시지를 전부 삭제한다. Firestore 배치 한도(500)를
+// 넘는 경우를 대비해 400개씩 나눠서 지운다. 삭제한 메시지 수를 반환한다.
+async function deleteTeamChatMessages(compId) {
+  const chatSnap = await db.collection("competitions").doc(compId).collection("teamChat").get();
+  const docs = chatSnap.docs;
+  for (let i = 0; i < docs.length; i += 400) {
+    const batch = db.batch();
+    docs.slice(i, i + 400).forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+  }
+  return docs.length;
+}
+
 async function endCompetition(compId) {
   await db.collection("competitions").doc(compId).update({
     status: "ended",
     endedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   // 대회가 끝나면 주최팀 대화방 내용은 더 이상 필요 없으므로 함께 삭제한다.
-  const chatSnap = await db.collection("competitions").doc(compId).collection("teamChat").get();
-  if (!chatSnap.empty) {
-    const batch = db.batch();
-    chatSnap.forEach(doc => batch.delete(doc.ref));
-    await batch.commit();
+  await deleteTeamChatMessages(compId);
+}
+
+// 관리자 전용 1회성 정리: 이 삭제 기능이 생기기 전부터 이미 종료 상태였던 대회들의
+// 매신저 대화도 똑같이 정리한다.
+async function purgeEndedCompetitionsTeamChat() {
+  const snap = await db.collection("competitions").where("status", "==", "ended").get();
+  let compCount = 0;
+  let totalDeleted = 0;
+  for (const doc of snap.docs) {
+    const deleted = await deleteTeamChatMessages(doc.id);
+    if (deleted > 0) compCount += 1;
+    totalDeleted += deleted;
   }
+  return { compCount, totalDeleted };
 }
 
 async function closeParticipation(compId) {
