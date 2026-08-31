@@ -308,7 +308,7 @@ async function openCompetitionDetail(compId) {
   switchView("detail");
 
   try {
-    await renderSchedulePanel(compId, canManageEvents);
+    await renderSchedulePanel(compId, canManage);
   } catch (err) {
     el("schedule-list").innerHTML = "<p class='desc'>일정을 불러오지 못했습니다.</p>";
   }
