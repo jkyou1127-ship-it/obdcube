@@ -91,7 +91,10 @@
     <section id="view-competitions" class="view">
       <h2>승인된 대회</h2>
       <div class="tab-row">
-        <button type="button" class="tab-pill active" id="competitions-filter-active">진행중/예정인 대회</button>
+        <button type="button" class="tab-pill" id="competitions-filter-closed">신청마감</button>
+        <button type="button" class="tab-pill active" id="competitions-filter-open">참가신청중</button>
+        <button type="button" class="tab-pill" id="competitions-filter-ongoing">진행중</button>
+        <button type="button" class="tab-pill" id="competitions-filter-upcoming">개최예정</button>
         <button type="button" class="tab-pill" id="competitions-filter-ended">종료된 대회</button>
       </div>
       <div id="competitions-list" class="card-list"></div>

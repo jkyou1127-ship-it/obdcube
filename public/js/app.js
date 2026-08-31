@@ -89,7 +89,24 @@ el("btn-back-to-list").addEventListener("click", () => onNavigate("competitions"
 
 // ---- 대회 목록 ----
 let competitionsListCache = [];
-let competitionsListFilter = "active"; // "active"(진행중/예정) | "ended"(종료)
+let competitionsListFilter = "open"; // "closed" | "open" | "ongoing" | "upcoming" | "ended"
+
+// getCompetitionStatusInfo가 매기는 배지 라벨과 1:1로 대응시켜, 목록 필터와
+// 각 카드에 보이는 상태 배지가 항상 같은 기준으로 나뉘도록 한다.
+const COMPETITIONS_FILTER_LABELS = {
+  closed: "신청마감",
+  open: "참가신청중",
+  ongoing: "진행중",
+  upcoming: "개최예정",
+  ended: "종료된"
+};
+const STATUS_LABEL_TO_FILTER_KEY = {
+  "신청마감": "closed",
+  "참가신청중": "open",
+  "진행중": "ongoing",
+  "개최예정": "upcoming",
+  "종료됨": "ended"
+};
 
 async function renderCompetitionsList() {
   const container = el("competitions-list");
@@ -99,22 +116,18 @@ async function renderCompetitionsList() {
 }
 
 async function renderCompetitionsListFiltered() {
-  el("competitions-filter-active").classList.toggle("active", competitionsListFilter === "active");
-  el("competitions-filter-ended").classList.toggle("active", competitionsListFilter === "ended");
+  Object.keys(COMPETITIONS_FILTER_LABELS).forEach(key => {
+    el(`competitions-filter-${key}`).classList.toggle("active", competitionsListFilter === key);
+  });
 
   const container = el("competitions-list");
   const list = competitionsListCache.filter(c =>
-    competitionsListFilter === "ended" ? c.status === "ended" : c.status !== "ended"
+    STATUS_LABEL_TO_FILTER_KEY[getCompetitionStatusInfo(c).label] === competitionsListFilter
   );
-  // 진행중인 대회는 항상 최상단, 그 외에는 개최일 빠른 순으로 정렬한다.
-  list.sort((a, b) => {
-    const aStarted = !isNotStarted(a);
-    const bStarted = !isNotStarted(b);
-    if (aStarted !== bStarted) return aStarted ? -1 : 1;
-    return (a.startDate || "").localeCompare(b.startDate || "");
-  });
+  // 개최일 빠른 순으로 정렬한다.
+  list.sort((a, b) => (a.startDate || "").localeCompare(b.startDate || ""));
   if (list.length === 0) {
-    container.innerHTML = `<p class='desc'>${competitionsListFilter === "ended" ? "종료된" : "진행중/예정인"} 대회가 없습니다.</p>`;
+    container.innerHTML = `<p class='desc'>${COMPETITIONS_FILTER_LABELS[competitionsListFilter]} 대회가 없습니다.</p>`;
     return;
   }
   const cards = await Promise.all(list.map(async c => {
@@ -142,13 +155,11 @@ async function renderCompetitionsListFiltered() {
   });
 }
 
-el("competitions-filter-active").addEventListener("click", () => {
-  competitionsListFilter = "active";
-  renderCompetitionsListFiltered();
-});
-el("competitions-filter-ended").addEventListener("click", () => {
-  competitionsListFilter = "ended";
-  renderCompetitionsListFiltered();
+Object.keys(COMPETITIONS_FILTER_LABELS).forEach(key => {
+  el(`competitions-filter-${key}`).addEventListener("click", () => {
+    competitionsListFilter = key;
+    renderCompetitionsListFiltered();
+  });
 });
 
 // ---- 입상 내역 ----
