@@ -4,6 +4,70 @@ let currentCompId = null;
 const participantRoundByEvent = {}; // eventId -> 현재 표시 중인 라운드 번호
 let teamChatUnsub = null;
 
+// ---- 대회 상세: 정보/일정 탭 ----
+function initDetailTabs() {
+  el("tab-btn-detail-info").addEventListener("click", () => {
+    el("tab-btn-detail-info").classList.add("active");
+    el("tab-btn-detail-schedule").classList.remove("active");
+    el("detail-tab-info-panel").classList.remove("hidden");
+    el("detail-tab-schedule-panel").classList.add("hidden");
+  });
+  el("tab-btn-detail-schedule").addEventListener("click", () => {
+    el("tab-btn-detail-schedule").classList.add("active");
+    el("tab-btn-detail-info").classList.remove("active");
+    el("detail-tab-schedule-panel").classList.remove("hidden");
+    el("detail-tab-info-panel").classList.add("hidden");
+  });
+}
+initDetailTabs();
+
+async function renderSchedulePanel(compId, canManage) {
+  el("form-add-schedule").classList.toggle("hidden", !canManage);
+  const container = el("schedule-list");
+  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+  const items = await fetchSchedule(compId);
+  if (items.length === 0) {
+    container.innerHTML = "<p class='desc'>등록된 일정이 없습니다.</p>";
+    return;
+  }
+  container.innerHTML = items.map(item => `
+    <div class="item-card">
+      <div class="info">
+        <strong>${escapeHtml(item.time)}</strong>
+        <span>${escapeHtml(item.title)}</span>
+      </div>
+      ${canManage ? `<div class="actions"><button class="btn small danger btn-del-schedule" data-id="${item.id}">삭제</button></div>` : ""}
+    </div>
+  `).join("");
+  container.querySelectorAll(".btn-del-schedule").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      try {
+        await deleteScheduleItem(compId, btn.dataset.id);
+        await renderSchedulePanel(compId, canManage);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+}
+
+el("form-add-schedule").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentCompId) return;
+  const time = el("schedule-time").value.trim();
+  const title = el("schedule-title").value.trim();
+  if (!time || !title) return;
+  try {
+    await addScheduleItem(currentCompId, time, title);
+    el("schedule-time").value = "";
+    el("schedule-title").value = "";
+    await renderSchedulePanel(currentCompId, true);
+    showToast("일정을 추가했습니다.", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
 // ---- OBD Live (WCA Live 스타일 읽기 전용 순위표, 별도 탭에서 대회를 선택해 열람) ----
 let rankingsCompId = null;
 let rankingsEventsCache = [];
@@ -233,9 +297,21 @@ async function openCompetitionDetail(compId) {
   el("staff-panel").classList.toggle("hidden", !canManage);
   el("event-request-panel").classList.toggle("hidden", eventsClosed);
 
+  // 대회 상세 화면을 열 때마다 항상 "정보" 탭부터 보여준다.
+  el("tab-btn-detail-info").classList.add("active");
+  el("tab-btn-detail-schedule").classList.remove("active");
+  el("detail-tab-info-panel").classList.remove("hidden");
+  el("detail-tab-schedule-panel").classList.add("hidden");
+
   // 화면 전환은 기본 정보가 세팅된 시점에 바로 실행 - 아래 각 패널 렌더링 중
   // 하나가 실패해도(예: 권한 오류) 상세 화면 자체는 항상 열리도록 한다.
   switchView("detail");
+
+  try {
+    await renderSchedulePanel(compId, canManageEvents);
+  } catch (err) {
+    el("schedule-list").innerHTML = "<p class='desc'>일정을 불러오지 못했습니다.</p>";
+  }
 
   try {
     const announcement = await fetchCompetitionAnnouncement(compId);

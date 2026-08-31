@@ -511,6 +511,20 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
   font-family: "Courier New", monospace;
 }
 
+/* 대회 상세 화면: 정보/일정 탭 */
+.detail-tabs { display: flex; gap: 6px; margin: 14px 0; border-bottom: 1px solid var(--border); }
+.detail-tab-btn {
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.detail-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
 /* 순위 화면: WCA Live 스타일 */
 .tab-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .tab-pill {

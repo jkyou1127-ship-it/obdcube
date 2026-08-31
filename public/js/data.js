@@ -191,6 +191,30 @@ async function setCompetitionAnnouncement(compId, text) {
   });
 }
 
+// 대회 일정 - 시간/내용 순서대로 나열한다(order로 정렬)
+async function fetchSchedule(compId) {
+  const snap = await db.collection("competitions").doc(compId).collection("schedule").get();
+  const list = [];
+  snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+  list.sort((a, b) => (a.order || 0) - (b.order || 0));
+  return list;
+}
+
+async function addScheduleItem(compId, time, title) {
+  const ref = db.collection("competitions").doc(compId).collection("schedule");
+  const existing = await ref.get();
+  return ref.add({
+    time,
+    title,
+    order: existing.size + 1,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+async function deleteScheduleItem(compId, itemId) {
+  await db.collection("competitions").doc(compId).collection("schedule").doc(itemId).delete();
+}
+
 // 전체 공지: 관리자만 설정 가능, 모든 로그인 사용자에게 화면 상단에 표시됨
 async function fetchGlobalAnnouncement() {
   const doc = await db.collection("settings").doc("globalAnnouncement").get();
