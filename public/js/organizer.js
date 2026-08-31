@@ -946,12 +946,30 @@ async function renderJoinApplyForm(comp) {
   const container = el("joinapply-events-checkboxes");
   container.innerHTML = events.length === 0
     ? "<p class='desc'>등록된 종목이 없습니다.</p>"
-    : myEntries.map(({ ev, mine }) => `
-        <label>
-          <input type="checkbox" value="${ev.id}" ${mine ? "checked disabled" : ""} />
-          ${escapeHtml(ev.name)}${mine ? " (신청완료)" : ""}
-        </label>
-      `).join("");
+    : myEntries.map(({ ev, mine }) => mine
+        ? `<span class="joinapply-applied-item">
+             ${escapeHtml(ev.name)} (신청완료)
+             <button type="button" class="btn small danger btn-joinapply-cancel" data-event="${ev.id}" data-participant="${mine.id}">참가 취소</button>
+           </span>`
+        : `<label>
+             <input type="checkbox" value="${ev.id}" />
+             ${escapeHtml(ev.name)}
+           </label>`
+      ).join("");
+
+  container.querySelectorAll(".btn-joinapply-cancel").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("이 종목 참가를 취소할까요? 입력한 기록도 함께 삭제됩니다.")) return;
+      try {
+        await deleteParticipant(comp.id, btn.dataset.event, btn.dataset.participant);
+        showToast("참가 신청을 취소했습니다.", "success");
+        await renderJoinApplyForm(comp);
+        await renderCompetitionRoster(comp).catch(() => {});
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
 }
 
 el("btn-joinapply-back").addEventListener("click", () => {
