@@ -891,7 +891,24 @@ async function renderJoinApplyList() {
     container.innerHTML = "<p class='desc'>현재 참가 신청을 받고 있는 대회가 없습니다.</p>";
     return;
   }
-  container.innerHTML = comps.map(c => `
+
+  // 이미 신청한 종목이 하나라도 있으면(=초기 참가 신청 이후) "종목 추가/삭제" 버튼을
+  // "신청하기" 옆에 함께 보여준다. 둘 다 같은 화면으로 연결되며, 그 화면에서
+  // 새 종목 추가와 기존 종목 취소를 모두 할 수 있다.
+  const withApplied = await Promise.all(comps.map(async c => {
+    let alreadyApplied = false;
+    try {
+      const events = await fetchEvents(c.id);
+      for (const ev of events) {
+        if (await fetchMyParticipant(c.id, ev.id).catch(() => null)) { alreadyApplied = true; break; }
+      }
+    } catch (err) {
+      console.error(`대회(${c.id}) 참가 여부 확인 실패:`, err);
+    }
+    return { c, alreadyApplied };
+  }));
+
+  container.innerHTML = withApplied.map(({ c, alreadyApplied }) => `
     <div class="item-card">
       <div class="info">
         <strong>${escapeHtml(c.title)}</strong>
@@ -899,6 +916,7 @@ async function renderJoinApplyList() {
       </div>
       <div class="actions">
         <button class="btn small btn-open-joinapply" data-id="${c.id}" data-title="${escapeHtml(c.title)}">신청하기</button>
+        ${alreadyApplied ? `<button class="btn small btn-open-joinapply" data-id="${c.id}" data-title="${escapeHtml(c.title)}">종목 추가/삭제</button>` : ""}
       </div>
     </div>
   `).join("");
