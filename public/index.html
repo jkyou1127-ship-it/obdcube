@@ -241,30 +241,14 @@
       <div id="joinapply-form-view" class="hidden">
         <button class="btn small" id="btn-joinapply-back">← 목록으로</button>
         <h2 id="joinapply-title">-</h2>
+        <p class="desc">참가할 종목은 체크하고, 취소할 종목은 체크를 해제한 뒤 저장하세요.</p>
         <p id="joinapply-not-started-msg" class="desc hidden">아직 참가 신청을 받지 않는 대회입니다.</p>
         <p id="joinapply-closed-msg" class="desc hidden">참가 신청이 마감되었습니다.</p>
-
-        <div id="joinapply-manage-choice" class="hidden">
-          <button type="button" class="btn small primary" id="btn-joinapply-mode-add">추가</button>
-          <button type="button" class="btn small danger" id="btn-joinapply-mode-remove">삭제</button>
-        </div>
-
-        <div id="joinapply-add-panel" class="hidden">
-          <p class="desc">추가할 종목을 선택하세요.</p>
-          <form id="form-joinapply-add" class="inline-form">
-            <button type="button" class="btn small" id="btn-joinapply-select-all">전 종목 선택</button>
-            <div id="joinapply-add-checkboxes" class="checkbox-grid"></div>
-            <button type="submit" class="btn primary">신청</button>
-          </form>
-        </div>
-
-        <div id="joinapply-remove-panel" class="hidden">
-          <p class="desc">삭제할 종목을 선택하세요.</p>
-          <form id="form-joinapply-remove" class="inline-form">
-            <div id="joinapply-remove-checkboxes" class="checkbox-grid"></div>
-            <button type="submit" class="btn danger">선택한 종목 참가 취소</button>
-          </form>
-        </div>
+        <form id="form-joinapply" class="inline-form">
+          <button type="button" class="btn small" id="btn-joinapply-select-all">전 종목 선택</button>
+          <div id="joinapply-events-checkboxes" class="checkbox-grid"></div>
+          <button type="submit" class="btn primary">저장</button>
+        </form>
       </div>
     </section>
 
