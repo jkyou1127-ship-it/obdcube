@@ -987,9 +987,12 @@ async function renderFeedbackList() {
   el("feedback-detail-view").classList.add("hidden");
   el("feedback-list-view").classList.remove("hidden");
 
+  await renderAppFeedbackPanel();
+
   const container = el("feedback-comp-list");
   container.innerHTML = "<p class='desc'>불러오는 중...</p>";
-  const comps = await fetchCompetitions();
+  // 진행 중/예정인 대회는 제외하고, 종료된 대회만 피드백 대상으로 보여준다.
+  const comps = (await fetchCompetitions()).filter(c => c.status === "ended");
   const relevant = [];
   for (const comp of comps) {
     const isOrg = isUserOrganizerOf(comp);
@@ -1002,13 +1005,16 @@ async function renderFeedbackList() {
   }
 
   if (relevant.length === 0) {
-    container.innerHTML = "<p class='desc'>피드백을 남기거나 확인할 수 있는 대회가 없습니다. (참가했거나 주최 중인 대회만 해당)</p>";
+    container.innerHTML = "<p class='desc'>피드백을 남기거나 확인할 수 있는, 종료된 대회가 없습니다.</p>";
     return;
   }
+  // 개최일 최신순으로 정렬해 날짜별로 구분하기 쉽게 한다.
+  relevant.sort((a, b) => (b.comp.startDate || "").localeCompare(a.comp.startDate || ""));
   container.innerHTML = relevant.map(({ comp, isOrg, participated }) => `
     <div class="item-card">
       <div class="info">
         <strong>${escapeHtml(comp.title)}</strong>
+        <span>개최일: ${escapeHtml(formatDateRange(comp.startDate, comp.endDate))}</span>
         <span>${[isOrg ? "주최자" : "", participated ? "참가자" : ""].filter(Boolean).join(" · ")}</span>
       </div>
       <div class="actions">
@@ -1094,6 +1100,60 @@ el("form-feedback-submit").addEventListener("submit", async (e) => {
     await submitFeedback(currentFeedbackCompId, text);
     el("feedback-text").value = "";
     showToast("피드백을 제출했습니다.", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+// ---- 앱 피드백 (앱 자체에 대한 의견 - sycovy0706@naver.com 계정만 열람 가능) ----
+
+async function renderAppFeedbackPanel() {
+  const isSuperAdmin = !!(AppState.user && AppState.user.email === "sycovy0706@naver.com");
+  el("app-feedback-view-panel").classList.toggle("hidden", !isSuperAdmin);
+  if (isSuperAdmin) await renderAppFeedbackList();
+}
+
+async function renderAppFeedbackList() {
+  const container = el("app-feedback-list");
+  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+  try {
+    const items = await fetchAppFeedback();
+    if (items.length === 0) {
+      container.innerHTML = "<p class='desc'>아직 받은 앱 피드백이 없습니다.</p>";
+      return;
+    }
+    container.innerHTML = items.map(item => `
+      <div class="item-card">
+        <div class="info">
+          <strong>${escapeHtml(item.authorNickname || "-")}</strong>
+          <span>${escapeHtml(item.text)}</span>
+        </div>
+        <div class="actions"><button class="btn small danger btn-del-app-feedback" data-id="${item.id}">삭제</button></div>
+      </div>
+    `).join("");
+    container.querySelectorAll(".btn-del-app-feedback").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        try {
+          await deleteAppFeedback(btn.dataset.id);
+          await renderAppFeedbackList();
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      });
+    });
+  } catch (err) {
+    container.innerHTML = "<p class='desc'>앱 피드백을 불러오지 못했습니다.</p>";
+  }
+}
+
+el("form-app-feedback-submit").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = el("app-feedback-text").value.trim();
+  if (!text) return;
+  try {
+    await submitAppFeedback(text);
+    el("app-feedback-text").value = "";
+    showToast("앱 피드백을 제출했습니다.", "success");
   } catch (err) {
     showToast(err.message, "error");
   }

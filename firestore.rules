@@ -55,6 +55,14 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // 앱 자체에 대한 피드백 - 로그인한 누구나 작성 가능, sycovy0706@naver.com 계정만 열람 가능
+    match /appFeedback/{feedbackId} {
+      allow read: if isBootstrapAdminEmail();
+      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
+      allow update: if false;
+      allow delete: if isSignedIn() && (isBootstrapAdminEmail() || resource.data.authorUid == request.auth.uid);
+    }
+
     // 심심풀이 - 틱택토 온라인 대전 방
     // 문서 구조: { board:[9칸], turn:'X'|'O', status:'waiting'|'playing'|'finished',
     //             playerX:{uid,nickname}, playerO:{uid,nickname}|null, winner:'X'|'O'|'draw'|null }

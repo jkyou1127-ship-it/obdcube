@@ -257,6 +257,20 @@
       <div id="feedback-list-view">
         <h2>피드백</h2>
         <p class="desc">참가한 대회에 피드백을 남기거나, 주최 중인 대회에 달린 피드백을 확인할 수 있습니다.</p>
+
+        <div class="panel">
+          <h3>앱 피드백</h3>
+          <p class="desc">OBD Cube 앱 자체에 대한 의견을 남겨주세요.</p>
+          <form id="form-app-feedback-submit" class="inline-form">
+            <textarea id="app-feedback-text" rows="3" maxlength="1000" placeholder="앱에 대한 의견을 남겨주세요." required></textarea>
+            <button type="submit" class="btn small primary">제출</button>
+          </form>
+          <div id="app-feedback-view-panel" class="hidden">
+            <h4>받은 앱 피드백</h4>
+            <div id="app-feedback-list" class="card-list"></div>
+          </div>
+        </div>
+
         <div id="feedback-comp-list" class="card-list"></div>
       </div>
       <div id="feedback-detail-view" class="hidden">

@@ -268,6 +268,28 @@ async function deleteFeedback(compId, feedbackId) {
   await db.collection("competitions").doc(compId).collection("feedback").doc(feedbackId).delete();
 }
 
+// 앱(OBD Cube) 자체에 대한 피드백 - sycovy0706@naver.com 계정만 열람 가능(firestore.rules에서 강제)
+async function submitAppFeedback(text) {
+  await db.collection("appFeedback").add({
+    text,
+    authorUid: AppState.user.uid,
+    authorNickname: AppState.profile.nickname,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+async function fetchAppFeedback() {
+  const snap = await db.collection("appFeedback").get();
+  const list = [];
+  snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+  list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+  return list;
+}
+
+async function deleteAppFeedback(feedbackId) {
+  await db.collection("appFeedback").doc(feedbackId).delete();
+}
+
 // 전체 공지: 관리자만 설정 가능, 모든 로그인 사용자에게 화면 상단에 표시됨
 async function fetchGlobalAnnouncement() {
   const doc = await db.collection("settings").doc("globalAnnouncement").get();
