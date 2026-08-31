@@ -4,19 +4,19 @@ let currentCompId = null;
 const participantRoundByEvent = {}; // eventId -> 현재 표시 중인 라운드 번호
 let teamChatUnsub = null;
 
-// ---- 대회 상세: 정보/일정 탭 ----
-function initDetailTabs() {
-  el("tab-btn-detail-info").addEventListener("click", () => {
-    el("tab-btn-detail-info").classList.add("active");
-    el("tab-btn-detail-schedule").classList.remove("active");
-    el("detail-tab-info-panel").classList.remove("hidden");
-    el("detail-tab-schedule-panel").classList.add("hidden");
+// ---- 대회 상세: 정보/일정/참가자 목록 탭 ----
+const DETAIL_TAB_NAMES = ["info", "schedule", "roster"];
+
+function switchDetailTab(name) {
+  DETAIL_TAB_NAMES.forEach(n => {
+    el(`tab-btn-detail-${n}`).classList.toggle("active", n === name);
+    el(`detail-tab-${n}-panel`).classList.toggle("hidden", n !== name);
   });
-  el("tab-btn-detail-schedule").addEventListener("click", () => {
-    el("tab-btn-detail-schedule").classList.add("active");
-    el("tab-btn-detail-info").classList.remove("active");
-    el("detail-tab-schedule-panel").classList.remove("hidden");
-    el("detail-tab-info-panel").classList.add("hidden");
+}
+
+function initDetailTabs() {
+  DETAIL_TAB_NAMES.forEach(name => {
+    el(`tab-btn-detail-${name}`).addEventListener("click", () => switchDetailTab(name));
   });
 }
 initDetailTabs();
@@ -298,10 +298,7 @@ async function openCompetitionDetail(compId) {
   el("event-request-panel").classList.toggle("hidden", eventsClosed);
 
   // 대회 상세 화면을 열 때마다 항상 "정보" 탭부터 보여준다.
-  el("tab-btn-detail-info").classList.add("active");
-  el("tab-btn-detail-schedule").classList.remove("active");
-  el("detail-tab-info-panel").classList.remove("hidden");
-  el("detail-tab-schedule-panel").classList.add("hidden");
+  switchDetailTab("info");
 
   // 화면 전환은 기본 정보가 세팅된 시점에 바로 실행 - 아래 각 패널 렌더링 중
   // 하나가 실패해도(예: 권한 오류) 상세 화면 자체는 항상 열리도록 한다.
@@ -331,11 +328,6 @@ async function openCompetitionDetail(compId) {
     await renderEventsList(comp, isEnded);
   } catch (err) {
     el("events-list").innerHTML = "<p class='desc'>종목 정보를 불러오지 못했습니다.</p>";
-  }
-  try {
-    await renderParticipatePanel(comp);
-  } catch (err) {
-    showToast("참가 신청 정보를 불러오지 못했습니다: " + err.message, "error");
   }
   try {
     await renderCompetitionRoster(comp);
@@ -518,7 +510,6 @@ async function renderMyRecordsPanel(comp) {
         showToast("참가를 취소했습니다.", "success");
         await renderMyRecordsPanel(comp);
         await renderCompetitionRoster(comp).catch(() => {});
-        await renderParticipatePanel(comp).catch(() => {});
       } catch (err) {
         showToast(err.message, "error");
       }
@@ -885,26 +876,65 @@ el("form-event-request").addEventListener("submit", async (e) => {
   }
 });
 
-async function renderParticipatePanel(comp) {
-  const panel = el("participate-panel");
-  const isEnded = comp.status === "ended";
-  if (isEnded) {
-    panel.classList.add("hidden");
+// ---- 참가 신청 (별도 탭: 대회를 선택해 참가 신청) ----
+
+async function renderJoinApplyList() {
+  el("joinapply-form-view").classList.add("hidden");
+  el("joinapply-list-view").classList.remove("hidden");
+
+  const container = el("joinapply-comp-list");
+  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+  const comps = (await fetchCompetitions()).filter(c =>
+    c.status !== "ended" && isParticipationStarted(c) && c.participationClosed !== true
+  );
+  if (comps.length === 0) {
+    container.innerHTML = "<p class='desc'>현재 참가 신청을 받고 있는 대회가 없습니다.</p>";
     return;
   }
-  panel.classList.remove("hidden");
+  container.innerHTML = comps.map(c => `
+    <div class="item-card">
+      <div class="info">
+        <strong>${escapeHtml(c.title)}</strong>
+        <span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))}</span>
+      </div>
+      <div class="actions">
+        <button class="btn small btn-open-joinapply" data-id="${c.id}" data-title="${escapeHtml(c.title)}">신청하기</button>
+      </div>
+    </div>
+  `).join("");
+  container.querySelectorAll(".btn-open-joinapply").forEach(btn => {
+    btn.addEventListener("click", () => openJoinApplyForm(btn.dataset.id, btn.dataset.title));
+  });
+}
 
+let currentJoinApplyCompId = null;
+
+async function openJoinApplyForm(compId, title) {
+  const comp = await fetchCompetition(compId);
+  if (!comp) {
+    showToast("대회 정보를 찾을 수 없습니다.", "error");
+    return;
+  }
+  currentJoinApplyCompId = compId;
+  el("joinapply-title").textContent = title || comp.title;
+  el("joinapply-list-view").classList.add("hidden");
+  el("joinapply-form-view").classList.remove("hidden");
+  await renderJoinApplyForm(comp);
+}
+
+async function renderJoinApplyForm(comp) {
+  const isEnded = comp.status === "ended";
   const notStarted = !isParticipationStarted(comp);
-  el("participate-not-started-msg").classList.toggle("hidden", !notStarted);
-  if (notStarted) {
-    el("participate-closed-msg").classList.add("hidden");
-    el("form-participate").classList.add("hidden");
+  el("joinapply-not-started-msg").classList.toggle("hidden", !notStarted);
+  if (notStarted || isEnded) {
+    el("joinapply-closed-msg").classList.add("hidden");
+    el("form-joinapply").classList.add("hidden");
     return;
   }
 
   const closed = comp.participationClosed === true;
-  el("participate-closed-msg").classList.toggle("hidden", !closed);
-  el("form-participate").classList.toggle("hidden", closed);
+  el("joinapply-closed-msg").classList.toggle("hidden", !closed);
+  el("form-joinapply").classList.toggle("hidden", closed);
   if (closed) return;
 
   const events = await fetchEvents(comp.id);
@@ -913,7 +943,7 @@ async function renderParticipatePanel(comp) {
     mine: await fetchMyParticipant(comp.id, ev.id).catch(() => null)
   })));
 
-  const container = el("participate-events-checkboxes");
+  const container = el("joinapply-events-checkboxes");
   container.innerHTML = events.length === 0
     ? "<p class='desc'>등록된 종목이 없습니다.</p>"
     : myEntries.map(({ ev, mine }) => `
@@ -923,6 +953,33 @@ async function renderParticipatePanel(comp) {
         </label>
       `).join("");
 }
+
+el("btn-joinapply-back").addEventListener("click", () => {
+  currentJoinApplyCompId = null;
+  renderJoinApplyList();
+});
+
+el("btn-joinapply-select-all").addEventListener("click", () => {
+  el("joinapply-events-checkboxes").querySelectorAll("input:not(:disabled)").forEach(cb => { cb.checked = true; });
+});
+
+el("form-joinapply").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentJoinApplyCompId) return;
+  const checked = Array.from(el("joinapply-events-checkboxes").querySelectorAll("input:checked:not(:disabled)")).map(cb => cb.value);
+  if (checked.length === 0) {
+    showToast("새로 신청할 종목을 1개 이상 선택해주세요.", "error");
+    return;
+  }
+  try {
+    await Promise.all(checked.map(eventId => applyToParticipate(currentJoinApplyCompId, eventId)));
+    showToast("참가 신청이 완료되었습니다.", "success");
+    const comp = await fetchCompetition(currentJoinApplyCompId);
+    await renderJoinApplyForm(comp);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
 
 el("btn-start-competition").addEventListener("click", async () => {
   if (!currentCompId) return;
@@ -1003,29 +1060,6 @@ el("btn-delete-competition").addEventListener("click", async () => {
     await deleteCompetition(currentCompId);
     showToast("대회를 삭제했습니다.", "success");
     onNavigate("competitions");
-  } catch (err) {
-    showToast(err.message, "error");
-  }
-});
-
-el("btn-participate-select-all").addEventListener("click", () => {
-  el("participate-events-checkboxes").querySelectorAll("input:not(:disabled)").forEach(cb => { cb.checked = true; });
-});
-
-el("form-participate").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (!currentCompId) return;
-  // 이미 신청한 종목은 체크되어 있지만 disabled 처리되어 있으므로 제외하고,
-  // 새로 체크한(=아직 신청하지 않은) 종목만 신청 처리한다.
-  const checked = Array.from(el("participate-events-checkboxes").querySelectorAll("input:checked:not(:disabled)")).map(cb => cb.value);
-  if (checked.length === 0) {
-    showToast("새로 신청할 종목을 1개 이상 선택해주세요.", "error");
-    return;
-  }
-  try {
-    await Promise.all(checked.map(eventId => applyToParticipate(currentCompId, eventId)));
-    showToast("참가 신청이 완료되었습니다.", "success");
-    await openCompetitionDetail(currentCompId);
   } catch (err) {
     showToast(err.message, "error");
   }

@@ -60,6 +60,7 @@
     <div class="brand-mini">🧊 OBD Cube</div>
     <nav class="nav">
       <button class="nav-btn" data-nav="competitions">대회 목록</button>
+      <button class="nav-btn" data-nav="joinapply">참가 신청</button>
       <button class="nav-btn" data-nav="practice">심심풀이</button>
       <button class="nav-btn" data-nav="apply">대회 주최 신청</button>
       <button class="nav-btn" data-nav="mypage">마이페이지</button>
@@ -226,6 +227,27 @@
       </form>
     </section>
 
+    <!-- 참가 신청 (대회에 개인/선수로 참가 신청) -->
+    <section id="view-joinapply" class="view hidden">
+      <div id="joinapply-list-view">
+        <h2>참가 신청</h2>
+        <p class="desc">참가 신청을 받고 있는 대회 목록입니다.</p>
+        <div id="joinapply-comp-list" class="card-list"></div>
+      </div>
+      <div id="joinapply-form-view" class="hidden">
+        <button class="btn small" id="btn-joinapply-back">← 목록으로</button>
+        <h2 id="joinapply-title">-</h2>
+        <p class="desc">참가할 종목을 선택하고 신청하세요. 이미 신청한 종목은 표시되며, 다른 종목을 추가로 선택해 더 신청할 수 있습니다.</p>
+        <p id="joinapply-not-started-msg" class="desc hidden">아직 참가 신청을 받지 않는 대회입니다.</p>
+        <p id="joinapply-closed-msg" class="desc hidden">참가 신청이 마감되었습니다.</p>
+        <form id="form-joinapply" class="inline-form">
+          <button type="button" class="btn small" id="btn-joinapply-select-all">전 종목 선택</button>
+          <div id="joinapply-events-checkboxes" class="checkbox-grid"></div>
+          <button type="submit" class="btn primary">참가 신청</button>
+        </form>
+      </div>
+    </section>
+
     <!-- 마이페이지 -->
     <section id="view-mypage" class="view hidden">
       <h2>마이페이지</h2>
@@ -275,6 +297,7 @@
       <div class="detail-tabs">
         <button type="button" class="detail-tab-btn active" id="tab-btn-detail-info">정보</button>
         <button type="button" class="detail-tab-btn" id="tab-btn-detail-schedule">일정</button>
+        <button type="button" class="detail-tab-btn" id="tab-btn-detail-roster">참가자 목록</button>
       </div>
 
       <div id="detail-tab-schedule-panel" class="hidden">
@@ -290,6 +313,10 @@
         </div>
       </div>
 
+      <div id="detail-tab-roster-panel" class="hidden">
+        <div id="competition-roster" class="panel"></div>
+      </div>
+
       <div id="detail-tab-info-panel">
       <div id="detail-announcement-banner" class="announcement-banner hidden">
         <button type="button" class="announcement-toggle" id="btn-detail-announcement-toggle">
@@ -299,8 +326,6 @@
           <span id="detail-announcement-text" class="announcement-text"></span>
         </div>
       </div>
-
-      <div id="competition-roster" class="panel"></div>
 
       <div id="organizer-actions" class="inline-form hidden">
         <button type="button" class="btn small primary" id="btn-start-competition">대회 시작</button>
@@ -329,18 +354,6 @@
           <button type="submit" class="btn small">스태프 추가</button>
         </form>
         <div id="staff-list" class="card-list"></div>
-      </div>
-
-      <div id="participate-panel" class="panel hidden">
-        <h3>참가 신청</h3>
-        <p class="desc">참가할 종목을 선택하고 신청하세요. 이미 신청한 종목은 표시되며, 다른 종목을 추가로 선택해 더 신청할 수 있습니다.</p>
-        <p id="participate-not-started-msg" class="desc hidden">아직 참가 신청을 받지 않는 대회입니다.</p>
-        <p id="participate-closed-msg" class="desc hidden">참가 신청이 마감되었습니다.</p>
-        <form id="form-participate" class="inline-form">
-          <button type="button" class="btn small" id="btn-participate-select-all">전 종목 선택</button>
-          <div id="participate-events-checkboxes" class="checkbox-grid"></div>
-          <button type="submit" class="btn primary">참가 신청</button>
-        </form>
       </div>
 
       <div id="my-records-panel" class="panel hidden">

@@ -76,6 +76,7 @@ document.querySelectorAll(".nav-btn").forEach(btn => {
 async function onNavigate(name) {
   switchView(name);
   if (name === "competitions") await renderCompetitionsList();
+  if (name === "joinapply") await renderJoinApplyList();
   if (name === "mypage") await renderMyPage();
   if (name === "awards") await renderAwardsPanel();
   if (name === "rankings") await renderRankingsList();
