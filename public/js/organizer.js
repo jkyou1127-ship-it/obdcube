@@ -891,24 +891,7 @@ async function renderJoinApplyList() {
     container.innerHTML = "<p class='desc'>현재 참가 신청을 받고 있는 대회가 없습니다.</p>";
     return;
   }
-
-  // 이미 신청한 종목이 하나라도 있으면(=초기 참가 신청 이후) "종목 추가/삭제" 버튼을
-  // "신청하기" 옆에 함께 보여준다. 둘 다 같은 화면으로 연결되며, 그 화면에서
-  // 새 종목 추가와 기존 종목 취소를 모두 할 수 있다.
-  const withApplied = await Promise.all(comps.map(async c => {
-    let alreadyApplied = false;
-    try {
-      const events = await fetchEvents(c.id);
-      for (const ev of events) {
-        if (await fetchMyParticipant(c.id, ev.id).catch(() => null)) { alreadyApplied = true; break; }
-      }
-    } catch (err) {
-      console.error(`대회(${c.id}) 참가 여부 확인 실패:`, err);
-    }
-    return { c, alreadyApplied };
-  }));
-
-  container.innerHTML = withApplied.map(({ c, alreadyApplied }) => `
+  container.innerHTML = comps.map(c => `
     <div class="item-card">
       <div class="info">
         <strong>${escapeHtml(c.title)}</strong>
@@ -916,7 +899,6 @@ async function renderJoinApplyList() {
       </div>
       <div class="actions">
         <button class="btn small btn-open-joinapply" data-id="${c.id}" data-title="${escapeHtml(c.title)}">신청하기</button>
-        ${alreadyApplied ? `<button class="btn small btn-open-joinapply" data-id="${c.id}" data-title="${escapeHtml(c.title)}">종목 추가/삭제</button>` : ""}
       </div>
     </div>
   `).join("");
@@ -926,6 +908,7 @@ async function renderJoinApplyList() {
 }
 
 let currentJoinApplyCompId = null;
+let joinApplyMyEntries = []; // [{ ev, mine }] - 종목 추가/삭제 화면에서 재사용
 
 async function openJoinApplyForm(compId, title) {
   const comp = await fetchCompetition(compId);
@@ -940,54 +923,59 @@ async function openJoinApplyForm(compId, title) {
   await renderJoinApplyForm(comp);
 }
 
+function resetJoinApplyPanels() {
+  el("joinapply-manage-choice").classList.add("hidden");
+  el("joinapply-add-panel").classList.add("hidden");
+  el("joinapply-remove-panel").classList.add("hidden");
+}
+
 async function renderJoinApplyForm(comp) {
   const isEnded = comp.status === "ended";
   const notStarted = !isParticipationStarted(comp);
   el("joinapply-not-started-msg").classList.toggle("hidden", !notStarted);
+  resetJoinApplyPanels();
   if (notStarted || isEnded) {
     el("joinapply-closed-msg").classList.add("hidden");
-    el("form-joinapply").classList.add("hidden");
+    el("btn-joinapply-manage").classList.add("hidden");
     return;
   }
 
   const closed = comp.participationClosed === true;
   el("joinapply-closed-msg").classList.toggle("hidden", !closed);
-  el("form-joinapply").classList.toggle("hidden", closed);
+  el("btn-joinapply-manage").classList.toggle("hidden", closed);
   if (closed) return;
 
   const events = await fetchEvents(comp.id);
-  const myEntries = await Promise.all(events.map(async ev => ({
+  joinApplyMyEntries = await Promise.all(events.map(async ev => ({
     ev,
     mine: await fetchMyParticipant(comp.id, ev.id).catch(() => null)
   })));
+}
 
-  const container = el("joinapply-events-checkboxes");
-  container.innerHTML = events.length === 0
-    ? "<p class='desc'>등록된 종목이 없습니다.</p>"
-    : myEntries.map(({ ev, mine }) => mine
-        ? `<span class="joinapply-applied-item">
-             ${escapeHtml(ev.name)} (신청완료)
-             <button type="button" class="btn small danger btn-joinapply-cancel" data-event="${ev.id}" data-participant="${mine.id}">참가 취소</button>
-           </span>`
-        : `<label>
-             <input type="checkbox" value="${ev.id}" />
-             ${escapeHtml(ev.name)}
-           </label>`
-      ).join("");
+function renderJoinApplyAddCheckboxes() {
+  const container = el("joinapply-add-checkboxes");
+  const notApplied = joinApplyMyEntries.filter(({ mine }) => !mine);
+  container.innerHTML = notApplied.length === 0
+    ? "<p class='desc'>추가로 신청할 수 있는 종목이 없습니다.</p>"
+    : notApplied.map(({ ev }) => `
+        <label>
+          <input type="checkbox" value="${ev.id}" />
+          ${escapeHtml(ev.name)}
+        </label>
+      `).join("");
+}
 
-  container.querySelectorAll(".btn-joinapply-cancel").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      if (!confirm("이 종목 참가를 취소할까요? 입력한 기록도 함께 삭제됩니다.")) return;
-      try {
-        await deleteParticipant(comp.id, btn.dataset.event, btn.dataset.participant);
-        showToast("참가 신청을 취소했습니다.", "success");
-        await renderJoinApplyForm(comp);
-        await renderCompetitionRoster(comp).catch(() => {});
-      } catch (err) {
-        showToast(err.message, "error");
-      }
-    });
-  });
+function renderJoinApplyRemoveCheckboxes() {
+  const container = el("joinapply-remove-checkboxes");
+  const applied = joinApplyMyEntries.filter(({ mine }) => mine);
+  container.innerHTML = applied.length === 0
+    ? "<p class='desc'>삭제할 수 있는 신청 종목이 없습니다.</p>"
+    : applied.map(({ ev }) => `
+        <label>
+          <input type="checkbox" value="${ev.id}" />
+          ${escapeHtml(ev.name)}
+        </label>
+      `).join("");
 }
 
 el("btn-joinapply-back").addEventListener("click", () => {
@@ -995,16 +983,34 @@ el("btn-joinapply-back").addEventListener("click", () => {
   renderJoinApplyList();
 });
 
-el("btn-joinapply-select-all").addEventListener("click", () => {
-  el("joinapply-events-checkboxes").querySelectorAll("input:not(:disabled)").forEach(cb => { cb.checked = true; });
+el("btn-joinapply-manage").addEventListener("click", () => {
+  el("joinapply-add-panel").classList.add("hidden");
+  el("joinapply-remove-panel").classList.add("hidden");
+  el("joinapply-manage-choice").classList.toggle("hidden");
 });
 
-el("form-joinapply").addEventListener("submit", async (e) => {
+el("btn-joinapply-mode-add").addEventListener("click", () => {
+  el("joinapply-remove-panel").classList.add("hidden");
+  el("joinapply-add-panel").classList.remove("hidden");
+  renderJoinApplyAddCheckboxes();
+});
+
+el("btn-joinapply-mode-remove").addEventListener("click", () => {
+  el("joinapply-add-panel").classList.add("hidden");
+  el("joinapply-remove-panel").classList.remove("hidden");
+  renderJoinApplyRemoveCheckboxes();
+});
+
+el("btn-joinapply-select-all").addEventListener("click", () => {
+  el("joinapply-add-checkboxes").querySelectorAll("input").forEach(cb => { cb.checked = true; });
+});
+
+el("form-joinapply-add").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!currentJoinApplyCompId) return;
-  const checked = Array.from(el("joinapply-events-checkboxes").querySelectorAll("input:checked:not(:disabled)")).map(cb => cb.value);
+  const checked = Array.from(el("joinapply-add-checkboxes").querySelectorAll("input:checked")).map(cb => cb.value);
   if (checked.length === 0) {
-    showToast("새로 신청할 종목을 1개 이상 선택해주세요.", "error");
+    showToast("추가할 종목을 1개 이상 선택해주세요.", "error");
     return;
   }
   try {
@@ -1012,6 +1018,30 @@ el("form-joinapply").addEventListener("submit", async (e) => {
     showToast("참가 신청이 완료되었습니다.", "success");
     const comp = await fetchCompetition(currentJoinApplyCompId);
     await renderJoinApplyForm(comp);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+el("form-joinapply-remove").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentJoinApplyCompId) return;
+  const checked = Array.from(el("joinapply-remove-checkboxes").querySelectorAll("input:checked")).map(cb => cb.value);
+  if (checked.length === 0) {
+    showToast("삭제할 종목을 1개 이상 선택해주세요.", "error");
+    return;
+  }
+  if (!confirm("선택한 종목의 참가를 취소할까요? 입력한 기록도 함께 삭제됩니다.")) return;
+  try {
+    const compId = currentJoinApplyCompId;
+    await Promise.all(checked.map(eventId => {
+      const entry = joinApplyMyEntries.find(e => e.ev.id === eventId);
+      return entry && entry.mine ? deleteParticipant(compId, eventId, entry.mine.id) : Promise.resolve();
+    }));
+    showToast("선택한 종목의 참가를 취소했습니다.", "success");
+    const comp = await fetchCompetition(compId);
+    await renderJoinApplyForm(comp);
+    await renderCompetitionRoster(comp).catch(() => {});
   } catch (err) {
     showToast(err.message, "error");
   }

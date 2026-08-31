@@ -459,13 +459,6 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
   margin: 0;
 }
 .checkbox-grid input[type="checkbox"] { width: auto; }
-.joinapply-applied-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text);
-  font-size: 14px;
-}
 
 .event-block {
   background: var(--card);
