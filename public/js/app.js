@@ -119,11 +119,14 @@ async function renderCompetitionsListFiltered() {
   const cards = await Promise.all(list.map(async c => {
     const statusInfo = getCompetitionStatusInfo(c);
     const organizerText = await organizerDisplayText(c);
+    const events = await fetchEvents(c.id);
+    const eventNames = events.map(ev => ev.name).join(", ");
     return `
     <div class="item-card">
       <div class="info">
         <strong>${escapeHtml(c.title)}</strong>
         <span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))} · 주최자: ${escapeHtml(organizerText)}</span>
+        <span>종목: ${eventNames ? escapeHtml(eventNames) : "-"}</span>
       </div>
       <div class="actions">
         <span class="badge ${statusInfo.cls}">${statusInfo.label}</span>
