@@ -936,13 +936,11 @@ async function renderJoinApplyForm(comp) {
   resetJoinApplyPanels();
   if (notStarted || isEnded) {
     el("joinapply-closed-msg").classList.add("hidden");
-    el("btn-joinapply-manage").classList.add("hidden");
     return;
   }
 
   const closed = comp.participationClosed === true;
   el("joinapply-closed-msg").classList.toggle("hidden", !closed);
-  el("btn-joinapply-manage").classList.toggle("hidden", closed);
   if (closed) return;
 
   const events = await fetchEvents(comp.id);
@@ -950,6 +948,9 @@ async function renderJoinApplyForm(comp) {
     ev,
     mine: await fetchMyParticipant(comp.id, ev.id).catch(() => null)
   })));
+
+  // 별도 버튼 없이, 참가 신청 화면에 들어오면 바로 추가/삭제 선택지를 보여준다.
+  el("joinapply-manage-choice").classList.remove("hidden");
 }
 
 function renderJoinApplyAddCheckboxes() {
@@ -981,12 +982,6 @@ function renderJoinApplyRemoveCheckboxes() {
 el("btn-joinapply-back").addEventListener("click", () => {
   currentJoinApplyCompId = null;
   renderJoinApplyList();
-});
-
-el("btn-joinapply-manage").addEventListener("click", () => {
-  el("joinapply-add-panel").classList.add("hidden");
-  el("joinapply-remove-panel").classList.add("hidden");
-  el("joinapply-manage-choice").classList.toggle("hidden");
 });
 
 el("btn-joinapply-mode-add").addEventListener("click", () => {
