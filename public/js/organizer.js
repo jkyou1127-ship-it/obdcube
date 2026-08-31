@@ -981,6 +981,124 @@ el("form-joinapply").addEventListener("submit", async (e) => {
   }
 });
 
+// ---- 피드백 (참가자 → 주최팀 전용 의견, 별도 탭) ----
+
+async function renderFeedbackList() {
+  el("feedback-detail-view").classList.add("hidden");
+  el("feedback-list-view").classList.remove("hidden");
+
+  const container = el("feedback-comp-list");
+  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+  const comps = await fetchCompetitions();
+  const relevant = [];
+  for (const comp of comps) {
+    const isOrg = isUserOrganizerOf(comp);
+    const events = await fetchEvents(comp.id);
+    let participated = false;
+    for (const ev of events) {
+      if (await fetchMyParticipant(comp.id, ev.id).catch(() => null)) { participated = true; break; }
+    }
+    if (isOrg || participated) relevant.push({ comp, isOrg, participated });
+  }
+
+  if (relevant.length === 0) {
+    container.innerHTML = "<p class='desc'>피드백을 남기거나 확인할 수 있는 대회가 없습니다. (참가했거나 주최 중인 대회만 해당)</p>";
+    return;
+  }
+  container.innerHTML = relevant.map(({ comp, isOrg, participated }) => `
+    <div class="item-card">
+      <div class="info">
+        <strong>${escapeHtml(comp.title)}</strong>
+        <span>${[isOrg ? "주최자" : "", participated ? "참가자" : ""].filter(Boolean).join(" · ")}</span>
+      </div>
+      <div class="actions">
+        <button class="btn small btn-open-feedback" data-id="${comp.id}" data-title="${escapeHtml(comp.title)}">열기</button>
+      </div>
+    </div>
+  `).join("");
+  container.querySelectorAll(".btn-open-feedback").forEach(btn => {
+    btn.addEventListener("click", () => openFeedbackDetail(btn.dataset.id, btn.dataset.title));
+  });
+}
+
+let currentFeedbackCompId = null;
+
+async function openFeedbackDetail(compId, title) {
+  const comp = await fetchCompetition(compId);
+  if (!comp) {
+    showToast("대회 정보를 찾을 수 없습니다.", "error");
+    return;
+  }
+  currentFeedbackCompId = compId;
+  el("feedback-detail-title").textContent = title || comp.title;
+  el("feedback-list-view").classList.add("hidden");
+  el("feedback-detail-view").classList.remove("hidden");
+  el("feedback-text").value = "";
+
+  const isOrg = isUserOrganizerOf(comp);
+  const events = await fetchEvents(compId);
+  let participated = false;
+  for (const ev of events) {
+    if (await fetchMyParticipant(compId, ev.id).catch(() => null)) { participated = true; break; }
+  }
+
+  el("feedback-submit-panel").classList.toggle("hidden", !participated);
+  el("feedback-view-panel").classList.toggle("hidden", !isOrg);
+  if (isOrg) await renderFeedbackViewList(compId);
+}
+
+async function renderFeedbackViewList(compId) {
+  const container = el("feedback-list");
+  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+  try {
+    const items = await fetchFeedback(compId);
+    if (items.length === 0) {
+      container.innerHTML = "<p class='desc'>아직 받은 피드백이 없습니다.</p>";
+      return;
+    }
+    container.innerHTML = items.map(item => `
+      <div class="item-card">
+        <div class="info">
+          <strong>${escapeHtml(item.authorNickname || "-")}</strong>
+          <span>${escapeHtml(item.text)}</span>
+        </div>
+        <div class="actions"><button class="btn small danger btn-del-feedback" data-id="${item.id}">삭제</button></div>
+      </div>
+    `).join("");
+    container.querySelectorAll(".btn-del-feedback").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        try {
+          await deleteFeedback(compId, btn.dataset.id);
+          await renderFeedbackViewList(compId);
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      });
+    });
+  } catch (err) {
+    container.innerHTML = "<p class='desc'>피드백을 불러오지 못했습니다.</p>";
+  }
+}
+
+el("btn-feedback-back").addEventListener("click", () => {
+  currentFeedbackCompId = null;
+  renderFeedbackList();
+});
+
+el("form-feedback-submit").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentFeedbackCompId) return;
+  const text = el("feedback-text").value.trim();
+  if (!text) return;
+  try {
+    await submitFeedback(currentFeedbackCompId, text);
+    el("feedback-text").value = "";
+    showToast("피드백을 제출했습니다.", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
 el("btn-start-competition").addEventListener("click", async () => {
   if (!currentCompId) return;
   if (!confirm("대회를 시작할까요? 시작 후에는 참가자들이 기록을 입력할 수 있습니다.")) return;

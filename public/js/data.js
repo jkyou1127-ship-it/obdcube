@@ -246,6 +246,28 @@ async function deleteScheduleItem(compId, itemId) {
   await db.collection("competitions").doc(compId).collection("schedule").doc(itemId).delete();
 }
 
+// 참가자 피드백 - 주최자/공동 주최자만 열람 가능(firestore.rules에서 강제)
+async function submitFeedback(compId, text) {
+  await db.collection("competitions").doc(compId).collection("feedback").add({
+    text,
+    authorUid: AppState.user.uid,
+    authorNickname: AppState.profile.nickname,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+async function fetchFeedback(compId) {
+  const snap = await db.collection("competitions").doc(compId).collection("feedback").get();
+  const list = [];
+  snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+  list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+  return list;
+}
+
+async function deleteFeedback(compId, feedbackId) {
+  await db.collection("competitions").doc(compId).collection("feedback").doc(feedbackId).delete();
+}
+
 // 전체 공지: 관리자만 설정 가능, 모든 로그인 사용자에게 화면 상단에 표시됨
 async function fetchGlobalAnnouncement() {
   const doc = await db.collection("settings").doc("globalAnnouncement").get();

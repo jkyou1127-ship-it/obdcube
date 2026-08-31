@@ -77,6 +77,7 @@ async function onNavigate(name) {
   switchView(name);
   if (name === "competitions") await renderCompetitionsList();
   if (name === "joinapply") await renderJoinApplyList();
+  if (name === "feedback") await renderFeedbackList();
   if (name === "mypage") await renderMyPage();
   if (name === "awards") await renderAwardsPanel();
   if (name === "rankings") await renderRankingsList();

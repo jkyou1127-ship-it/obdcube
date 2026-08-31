@@ -6,6 +6,8 @@ const SCRAMBLE_PRESETS = {
   "3x3x3 큐브": { faces: ["U", "D", "L", "R", "F", "B"], modifiers: ["", "'", "2"], length: 20, sameAxisNoRepeat: true },
   "4x4x4 큐브": { faces: ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw"], modifiers: ["", "'", "2"], length: 40, sameAxisNoRepeat: true },
   "5x5x5 큐브": { faces: ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw"], modifiers: ["", "'", "2"], length: 60, sameAxisNoRepeat: true },
+  "6x6x6 큐브": { faces: ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw"], modifiers: ["", "'", "2"], length: 80, sameAxisNoRepeat: true },
+  "7x7x7 큐브": { faces: ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw"], modifiers: ["", "'", "2"], length: 100, sameAxisNoRepeat: true },
   "한손(OH) 3x3x3": { faces: ["U", "D", "L", "R", "F", "B"], modifiers: ["", "'", "2"], length: 20, sameAxisNoRepeat: true },
   "피라밍크스": { faces: ["U", "L", "R", "B"], modifiers: ["", "'"], length: 11, sameAxisNoRepeat: true, tips: ["u", "l", "r", "b"] },
   "스큐브": { faces: ["R", "L", "U", "B"], modifiers: ["", "'"], length: 10, sameAxisNoRepeat: true }

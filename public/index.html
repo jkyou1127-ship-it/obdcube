@@ -61,6 +61,7 @@
     <nav class="nav">
       <button class="nav-btn" data-nav="competitions">대회 목록</button>
       <button class="nav-btn" data-nav="joinapply">참가 신청</button>
+      <button class="nav-btn" data-nav="feedback">피드백</button>
       <button class="nav-btn" data-nav="practice">심심풀이</button>
       <button class="nav-btn" data-nav="apply">대회 주최 신청</button>
       <button class="nav-btn" data-nav="mypage">마이페이지</button>
@@ -251,6 +252,33 @@
       </div>
     </section>
 
+    <!-- 피드백 (참가자가 대회 진행에 남기는 의견 - 주최자/공동 주최자만 열람 가능) -->
+    <section id="view-feedback" class="view hidden">
+      <div id="feedback-list-view">
+        <h2>피드백</h2>
+        <p class="desc">참가한 대회에 피드백을 남기거나, 주최 중인 대회에 달린 피드백을 확인할 수 있습니다.</p>
+        <div id="feedback-comp-list" class="card-list"></div>
+      </div>
+      <div id="feedback-detail-view" class="hidden">
+        <button class="btn small" id="btn-feedback-back">← 목록으로</button>
+        <h2 id="feedback-detail-title">-</h2>
+
+        <div id="feedback-submit-panel" class="panel hidden">
+          <h3>피드백 남기기</h3>
+          <p class="desc">이 피드백은 주최자·공동 주최자만 볼 수 있습니다.</p>
+          <form id="form-feedback-submit" class="inline-form">
+            <textarea id="feedback-text" rows="4" maxlength="1000" placeholder="대회 진행에 대한 의견을 남겨주세요." required></textarea>
+            <button type="submit" class="btn small primary">제출</button>
+          </form>
+        </div>
+
+        <div id="feedback-view-panel" class="panel hidden">
+          <h3>받은 피드백</h3>
+          <div id="feedback-list" class="card-list"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- 마이페이지 -->
     <section id="view-mypage" class="view hidden">
       <h2>마이페이지</h2>
@@ -390,6 +418,8 @@
             <option value="2x2x2 큐브">2x2x2 큐브</option>
             <option value="4x4x4 큐브">4x4x4 큐브</option>
             <option value="5x5x5 큐브">5x5x5 큐브</option>
+            <option value="6x6x6 큐브">6x6x6 큐브</option>
+            <option value="7x7x7 큐브">7x7x7 큐브</option>
             <option value="한손(OH) 3x3x3">한손(OH) 3x3x3</option>
             <option value="피라밍크스">피라밍크스</option>
             <option value="스큐브">스큐브</option>
