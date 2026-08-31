@@ -462,6 +462,25 @@
     <section id="view-admin" class="view hidden">
       <h2>관리자 페이지</h2>
       <div class="panel">
+        <h3>대회 직접 개최</h3>
+        <p class="desc">관리자는 신청·승인 절차 없이 바로 대회를 개최할 수 있습니다.</p>
+        <form id="form-admin-host" class="plain-form">
+          <label>대회명</label>
+          <input type="text" id="admin-host-title" required maxlength="40" />
+          <label>대회 소개</label>
+          <textarea id="admin-host-desc" rows="4" maxlength="500"></textarea>
+          <label>개최일 (시작일)</label>
+          <input type="date" id="admin-host-date" required />
+          <label>종료일 (2일 이상 진행되는 대회인 경우, 선택)</label>
+          <input type="date" id="admin-host-end-date" />
+          <label>종목 선택 (최소 1개)</label>
+          <div id="admin-host-events-checkboxes" class="checkbox-grid"></div>
+          <label>기타 종목 (쉼표로 구분, 선택)</label>
+          <input type="text" id="admin-host-events-custom" />
+          <button type="submit" class="btn primary">바로 개최하기</button>
+        </form>
+      </div>
+      <div class="panel">
         <h3>전체 공지</h3>
         <p class="desc">모든 이용자에게 화면 상단에 표시되는 공지입니다.</p>
         <p id="admin-announcement-current" class="desc announcement-text">공지 없음</p>

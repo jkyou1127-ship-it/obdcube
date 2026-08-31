@@ -107,7 +107,47 @@ async function renderAdminsList() {
   `).join("");
 }
 
+function initAdminHostEventsCheckboxes() {
+  const container = el("admin-host-events-checkboxes");
+  container.innerHTML = Object.keys(SCRAMBLE_PRESETS).map(name => `
+    <label><input type="checkbox" value="${escapeHtml(name)}" /> ${escapeHtml(name)}</label>
+  `).join("");
+}
+
 function initAdminForm() {
+  initAdminHostEventsCheckboxes();
+
+  el("form-admin-host").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const checked = Array.from(el("admin-host-events-checkboxes").querySelectorAll("input:checked")).map(cb => cb.value);
+    const custom = el("admin-host-events-custom").value.split(",").map(s => s.trim()).filter(Boolean);
+    const events = [...checked, ...custom];
+    if (events.length === 0) {
+      showToast("종목을 1개 이상 선택해주세요.", "error");
+      return;
+    }
+    const date = el("admin-host-date").value;
+    const endDate = el("admin-host-end-date").value;
+    if (endDate && endDate < date) {
+      showToast("종료일은 시작일보다 빠를 수 없습니다.", "error");
+      return;
+    }
+    try {
+      const compRef = await hostCompetitionDirectly({
+        title: el("admin-host-title").value.trim(),
+        description: el("admin-host-desc").value.trim(),
+        date,
+        endDate,
+        events
+      });
+      el("form-admin-host").reset();
+      showToast("대회를 바로 개최했습니다.", "success");
+      await openCompetitionDetail(compRef.id);
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  });
+
   el("form-add-admin").addEventListener("submit", async (e) => {
     e.preventDefault();
     const nickname = el("admin-target-nickname").value.trim();

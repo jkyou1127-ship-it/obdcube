@@ -84,6 +84,37 @@ async function approveApplication(app) {
   await batch.commit();
 }
 
+// 관리자 전용: 신청/승인 절차 없이 대회를 바로 개최한다(관리자 본인이 주최자가 됨).
+async function hostCompetitionDirectly({ title, description, date, endDate, events }) {
+  const batch = db.batch();
+  const compRef = db.collection("competitions").doc();
+  batch.set(compRef, {
+    title,
+    description: description || "",
+    startDate: date,
+    endDate: endDate || date,
+    organizerUid: AppState.user.uid,
+    organizerNickname: AppState.profile.nickname,
+    coOrganizerUids: [],
+    staffUids: [],
+    status: "active",
+    participationClosed: false,
+    participationStarted: false,
+    started: false,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  (events || []).forEach(eventName => {
+    const eventRef = compRef.collection("events").doc();
+    batch.set(eventRef, {
+      name: eventName,
+      format: "ao5",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  });
+  await batch.commit();
+  return compRef;
+}
+
 async function rejectApplication(app, reason) {
   await db.collection("applications").doc(app.id).update({
     status: "rejected",
