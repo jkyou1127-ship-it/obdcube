@@ -105,6 +105,13 @@ async function renderCompetitionsListFiltered() {
   const list = competitionsListCache.filter(c =>
     competitionsListFilter === "ended" ? c.status === "ended" : c.status !== "ended"
   );
+  // 진행중인 대회는 항상 최상단, 그 외에는 개최일 빠른 순으로 정렬한다.
+  list.sort((a, b) => {
+    const aStarted = !isNotStarted(a);
+    const bStarted = !isNotStarted(b);
+    if (aStarted !== bStarted) return aStarted ? -1 : 1;
+    return (a.startDate || "").localeCompare(b.startDate || "");
+  });
   if (list.length === 0) {
     container.innerHTML = `<p class='desc'>${competitionsListFilter === "ended" ? "종료된" : "진행중/예정인"} 대회가 없습니다.</p>`;
     return;
