@@ -996,10 +996,14 @@ async function renderFeedbackList() {
   const relevant = [];
   for (const comp of comps) {
     const isOrg = isUserOrganizerOf(comp);
-    const events = await fetchEvents(comp.id);
     let participated = false;
-    for (const ev of events) {
-      if (await fetchMyParticipant(comp.id, ev.id).catch(() => null)) { participated = true; break; }
+    try {
+      const events = await fetchEvents(comp.id);
+      for (const ev of events) {
+        if (await fetchMyParticipant(comp.id, ev.id).catch(() => null)) { participated = true; break; }
+      }
+    } catch (err) {
+      console.error(`대회(${comp.id}) 참가 여부 확인 실패:`, err);
     }
     if (isOrg || participated) relevant.push({ comp, isOrg, participated });
   }
@@ -1042,15 +1046,21 @@ async function openFeedbackDetail(compId, title) {
   el("feedback-text").value = "";
 
   const isOrg = isUserOrganizerOf(comp);
-  const events = await fetchEvents(compId);
-  let participated = false;
-  for (const ev of events) {
-    if (await fetchMyParticipant(compId, ev.id).catch(() => null)) { participated = true; break; }
-  }
-
-  el("feedback-submit-panel").classList.toggle("hidden", !participated);
+  // 주최자/공동 주최자의 피드백 열람은 참가 여부 확인과 무관하게 항상 먼저 보장한다.
+  // (참가 여부 확인 중 오류가 나더라도 주최자의 "받은 피드백" 패널은 반드시 보여야 함)
   el("feedback-view-panel").classList.toggle("hidden", !isOrg);
   if (isOrg) await renderFeedbackViewList(compId);
+
+  let participated = false;
+  try {
+    const events = await fetchEvents(compId);
+    for (const ev of events) {
+      if (await fetchMyParticipant(compId, ev.id).catch(() => null)) { participated = true; break; }
+    }
+  } catch (err) {
+    console.error("참가 여부 확인 실패:", err);
+  }
+  el("feedback-submit-panel").classList.toggle("hidden", !participated);
 }
 
 async function renderFeedbackViewList(compId) {
@@ -1082,7 +1092,8 @@ async function renderFeedbackViewList(compId) {
       });
     });
   } catch (err) {
-    container.innerHTML = "<p class='desc'>피드백을 불러오지 못했습니다.</p>";
+    console.error("피드백 로딩 실패:", err);
+    container.innerHTML = `<p class='desc'>피드백을 불러오지 못했습니다. (${escapeHtml(err.message || "")})</p>`;
   }
 }
 
