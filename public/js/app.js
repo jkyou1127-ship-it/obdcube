@@ -91,6 +91,8 @@ el("btn-back-to-list").addEventListener("click", () => onNavigate("competitions"
 // ---- 대회 목록 ----
 let competitionsListCache = [];
 let competitionsListFilter = "open"; // "closed" | "open" | "ongoing" | "upcoming" | "ended"
+let competitionsTypeFilter = "all"; // "all" | "미니" | "패스트"
+const COMPETITIONS_TYPE_TAB_KEYS = { all: null, mini: "미니", fast: "패스트" };
 
 // getCompetitionStatusInfo가 매기는 배지 라벨과 1:1로 대응시켜, 목록 필터와
 // 각 카드에 보이는 상태 배지가 항상 같은 기준으로 나뉘도록 한다.
@@ -120,10 +122,15 @@ async function renderCompetitionsListFiltered() {
   Object.keys(COMPETITIONS_FILTER_LABELS).forEach(key => {
     el(`competitions-filter-${key}`).classList.toggle("active", competitionsListFilter === key);
   });
+  Object.keys(COMPETITIONS_TYPE_TAB_KEYS).forEach(key => {
+    el(`competitions-type-${key}`).classList.toggle("active", competitionsTypeFilter === key);
+  });
 
   const container = el("competitions-list");
+  const typeValue = COMPETITIONS_TYPE_TAB_KEYS[competitionsTypeFilter];
   const list = competitionsListCache.filter(c =>
-    STATUS_LABEL_TO_FILTER_KEY[getCompetitionStatusInfo(c).label] === competitionsListFilter
+    STATUS_LABEL_TO_FILTER_KEY[getCompetitionStatusInfo(c).label] === competitionsListFilter &&
+    (typeValue == null || c.competitionType === typeValue)
   );
   // 개최일 빠른 순으로 정렬한다.
   list.sort((a, b) => (a.startDate || "").localeCompare(b.startDate || ""));
@@ -136,10 +143,13 @@ async function renderCompetitionsListFiltered() {
     const organizerText = await organizerDisplayText(c);
     const events = await fetchEvents(c.id);
     const eventNames = events.map(ev => ev.name).join(", ");
+    const typeMark = c.competitionType === "미니" ? `<span class="badge type-mini">미니</span>`
+      : c.competitionType === "패스트" ? `<span class="badge type-fast">패스트</span>`
+      : "";
     return `
     <div class="item-card">
       <div class="info">
-        <strong>${escapeHtml(c.title)}</strong>
+        <strong>${typeMark}${escapeHtml(c.title)}</strong>
         <span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))} · 주최자: ${escapeHtml(organizerText)}</span>
         <span>종목: ${eventNames ? escapeHtml(eventNames) : "-"}</span>
       </div>
@@ -159,6 +169,13 @@ async function renderCompetitionsListFiltered() {
 Object.keys(COMPETITIONS_FILTER_LABELS).forEach(key => {
   el(`competitions-filter-${key}`).addEventListener("click", () => {
     competitionsListFilter = key;
+    renderCompetitionsListFiltered();
+  });
+});
+
+Object.keys(COMPETITIONS_TYPE_TAB_KEYS).forEach(key => {
+  el(`competitions-type-${key}`).addEventListener("click", () => {
+    competitionsTypeFilter = key;
     renderCompetitionsListFiltered();
   });
 });
@@ -183,14 +200,18 @@ async function renderAwardsPanel() {
     for (const ev of events) {
       const participants = await fetchParticipants(comp.id, ev.id);
       const finalRound = effectiveFinalRound(ev);
-      for (const p of participants) {
-        const placement = placementAtRound(p, finalRound);
-        if (!placement || placement.rank > 3) continue;
-        const format = normalizeFormat(ev.format);
-        const times = (p.roundTimes && p.roundTimes[placement.round]) || [];
-        const best = bestSingleFromTimes(times);
-        const average = computeAverage(times, format);
-        awards.push({ comp, ev, evName: canonicalEventName(ev.name), format, best, average, nickname: p.nickname, ...placement });
+      const format = normalizeFormat(ev.format);
+      // 주최자가 순위를 직접 지정하지 않은 대회도, OBD Live와 동일하게 평균 기록
+      // 순으로 자동 계산한 결승 순위를 입상 내역에 반영한다.
+      const placements = computeAutoPlacements(participants, format, finalRound);
+      for (const placement of placements) {
+        if (placement.rank == null || placement.rank > 3) continue;
+        const best = bestSingleFromTimes(placement.times);
+        awards.push({
+          comp, ev, evName: canonicalEventName(ev.name), format,
+          best, average: placement.average, nickname: placement.p.nickname,
+          round: placement.round, rank: placement.rank
+        });
       }
     }
   }
@@ -433,7 +454,8 @@ el("form-apply").addEventListener("submit", async (e) => {
       description: el("apply-desc").value.trim(),
       date,
       endDate,
-      events
+      events,
+      competitionType: el("apply-type").value
     });
     el("form-apply").reset();
     showToast("대회 주최 신청이 접수되었습니다. 관리자 승인을 기다려주세요.", "success");

@@ -180,12 +180,40 @@ function effectiveFinalRound(ev) {
   return ev.maxScrambleRound || 1;
 }
 
-// 참가자 문서에서 특정(결승) 라운드의 순위를 찾는다. 주최자가 그 라운드에
-// 순위를 지정하지 않았다면 입상으로 보지 않는다(null).
-function placementAtRound(participant, round) {
-  const meta = (participant.roundMeta && participant.roundMeta[round]) || {};
-  if (meta.rank == null || meta.rank === "") return null;
-  return { round, rank: Number(meta.rank) };
+// 해당 라운드의 순위를 계산한다. 주최자가 순위(roundMeta.rank)를 직접 지정했으면
+// 그 값을 우선 순서로 쓰고, 지정하지 않은 참가자는 평균 기록순으로 자동 정렬해
+// 순위를 매긴다 - OBD Live 순위표와 같은 방식이라, 주최자가 순위를 따로 입력하지
+// 않은 대회도 결승 자동 순위가 입상 내역에 그대로 반영된다. 이전 라운드에서
+// 탈락했거나, 기권(전부 DNS)이라 유효 평균이 없는 참가자는 순위 없음(null)으로
+// 취급해 입상 내역에서 제외된다.
+function computeAutoPlacements(participants, format, round) {
+  let list = participants;
+  if (round > 1) {
+    list = list.filter(p => {
+      const prevMeta = p.roundMeta && p.roundMeta[round - 1];
+      return !prevMeta || prevMeta.status !== "eliminated";
+    });
+  }
+  const solveCount = solveCountForFormat(format);
+  const rows = list.map(p => {
+    const roundTimes = (p.roundTimes && p.roundTimes[round]) || [];
+    // solveCount 길이로 맞춰야 mo3/ao5 계산이 빈 배열에서 NaN이 되지 않는다
+    // (OBD Live 순위표와 동일하게 미입력 기록은 빈 문자열 = DNF로 취급).
+    const times = Array.isArray(roundTimes) && roundTimes.length === solveCount ? roundTimes : new Array(solveCount).fill("");
+    const meta = (p.roundMeta && p.roundMeta[round]) || {};
+    const average = computeAverage(times, format);
+    const manualRank = meta.rank != null && meta.rank !== "" ? Number(meta.rank) : null;
+    const sortKey = manualRank != null ? manualRank : 100000 + average;
+    return { p, times, average, sortKey };
+  }).sort((a, b) => a.sortKey - b.sortKey);
+
+  return rows.map((r, idx) => ({
+    p: r.p,
+    round,
+    times: r.times,
+    average: r.average,
+    rank: r.average === Infinity ? null : idx + 1
+  }));
 }
 
 function bestSingleFromTimes(times) {

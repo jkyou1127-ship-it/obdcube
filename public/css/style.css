@@ -443,6 +443,8 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 .badge.ended { background: rgba(163,168,201,.15); color: var(--text-dim); }
 .badge.upcoming { background: rgba(255,176,59,.15); color: var(--warn); }
 .badge.closed { background: rgba(163,168,201,.15); color: var(--text-dim); }
+.badge.type-mini { background: rgba(91,124,255,.15); color: var(--primary); margin-right: 6px; }
+.badge.type-fast { background: rgba(255,91,110,.15); color: var(--danger); margin-right: 6px; }
 
 .checkbox-grid {
   display: flex;

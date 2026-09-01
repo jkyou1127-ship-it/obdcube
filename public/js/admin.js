@@ -138,7 +138,8 @@ function initAdminForm() {
         description: el("admin-host-desc").value.trim(),
         date,
         endDate,
-        events
+        events,
+        competitionType: el("admin-host-type").value
       });
       el("form-admin-host").reset();
       showToast("대회를 바로 개최했습니다.", "success");

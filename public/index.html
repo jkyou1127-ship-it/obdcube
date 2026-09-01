@@ -98,6 +98,11 @@
         <button type="button" class="tab-pill" id="competitions-filter-upcoming">개최예정</button>
         <button type="button" class="tab-pill" id="competitions-filter-ended">종료된 대회</button>
       </div>
+      <div class="tab-row">
+        <button type="button" class="tab-pill small active" id="competitions-type-all">전체</button>
+        <button type="button" class="tab-pill small" id="competitions-type-mini">미니</button>
+        <button type="button" class="tab-pill small" id="competitions-type-fast">패스트</button>
+      </div>
       <div id="competitions-list" class="card-list"></div>
     </section>
 
@@ -217,6 +222,12 @@
       <form id="form-apply" class="plain-form">
         <label>대회명</label>
         <input type="text" id="apply-title" required maxlength="40" />
+        <label>대회 유형</label>
+        <select id="apply-type">
+          <option value="일반">일반</option>
+          <option value="미니">미니</option>
+          <option value="패스트">패스트</option>
+        </select>
         <label>대회 소개</label>
         <textarea id="apply-desc" rows="4" maxlength="500"></textarea>
         <label>희망 개최일 (시작일)</label>
@@ -527,6 +538,12 @@
         <form id="form-admin-host" class="plain-form">
           <label>대회명</label>
           <input type="text" id="admin-host-title" required maxlength="40" />
+          <label>대회 유형</label>
+          <select id="admin-host-type">
+            <option value="일반">일반</option>
+            <option value="미니">미니</option>
+            <option value="패스트">패스트</option>
+          </select>
           <label>대회 소개</label>
           <textarea id="admin-host-desc" rows="4" maxlength="500"></textarea>
           <label>개최일 (시작일)</label>

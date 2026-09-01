@@ -1,6 +1,6 @@
 // Firestore 데이터 접근 헬퍼: 대회 주최 신청 / 대회 / 종목 / 스크램블
 
-async function submitApplication({ title, description, date, endDate, events }) {
+async function submitApplication({ title, description, date, endDate, events, competitionType }) {
   return db.collection("applications").add({
     applicantUid: AppState.user.uid,
     applicantNickname: AppState.profile.nickname,
@@ -9,6 +9,7 @@ async function submitApplication({ title, description, date, endDate, events }) 
     proposedDate: date,
     proposedEndDate: endDate || date,
     events: events || [],
+    competitionType: competitionType || "일반",
     status: "pending",
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
@@ -71,6 +72,7 @@ async function approveApplication(app) {
     participationClosed: false,
     participationStarted: false,
     started: false,
+    competitionType: app.competitionType || "일반",
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   (app.events || []).forEach(eventName => {
@@ -85,7 +87,7 @@ async function approveApplication(app) {
 }
 
 // 관리자 전용: 신청/승인 절차 없이 대회를 바로 개최한다(관리자 본인이 주최자가 됨).
-async function hostCompetitionDirectly({ title, description, date, endDate, events }) {
+async function hostCompetitionDirectly({ title, description, date, endDate, events, competitionType }) {
   const batch = db.batch();
   const compRef = db.collection("competitions").doc();
   batch.set(compRef, {
@@ -101,6 +103,7 @@ async function hostCompetitionDirectly({ title, description, date, endDate, even
     participationClosed: false,
     participationStarted: false,
     started: false,
+    competitionType: competitionType || "일반",
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   (events || []).forEach(eventName => {
