@@ -177,7 +177,8 @@ let minifastListFilter = "open"; // "closed" | "open" | "ongoing" | "upcoming" |
 const MINIFAST_TABS = {
   list: { panel: "minifast-list-panel", btn: "minifast-tab-list", render: () => renderMinifastCompList() },
   apply: { panel: "minifast-apply-panel", btn: "minifast-tab-apply", render: () => renderMinifastApplyList() },
-  awards: { panel: "minifast-awards-panel", btn: "minifast-tab-awards", render: () => renderMinifastAwardsPanel() }
+  awards: { panel: "minifast-awards-panel", btn: "minifast-tab-awards", render: () => renderMinifastAwardsPanel() },
+  rankings: { panel: "minifast-rankings-panel", btn: "minifast-tab-rankings", render: () => renderMinifastRankingsPanel() }
 };
 
 function switchMinifastTab(name) {

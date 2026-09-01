@@ -69,197 +69,237 @@ el("form-add-schedule").addEventListener("submit", async (e) => {
 });
 
 // ---- OBD Live (WCA Live 스타일 읽기 전용 순위표, 별도 탭에서 대회를 선택해 열람) ----
-let rankingsCompId = null;
-let rankingsEventsCache = [];
-let currentRankingsEventId = null;
-let currentRankingsRound = null;
-let rankingsListCache = [];
-let rankingsListFilter = "active"; // "active"(진행 중) | "ended"(종료)
+// 일반 대회용/MINI·FAST 대회용 두 곳에서 똑같은 로직을 쓰므로 팩토리로 만들어
+// DOM id 접두사와 "이 대회가 이 탭 대상인지" 판단 함수만 다르게 넘겨 재사용한다.
+function createRankingsController(ids, isEligible) {
+  let compId = null;
+  let eventsCache = [];
+  let currentEventId = null;
+  let currentRound = null;
+  let listCache = [];
+  let listFilter = "active"; // "active"(진행 중) | "ended"(종료)
+
+  async function renderList() {
+    el(ids.detailView).classList.add("hidden");
+    el(ids.listView).classList.remove("hidden");
+
+    el(ids.compList).innerHTML = "<p class='desc'>불러오는 중...</p>";
+    listCache = await fetchCompetitions();
+    renderCompList();
+  }
+
+  function renderCompList() {
+    el(ids.filterActive).classList.toggle("active", listFilter === "active");
+    el(ids.filterEnded).classList.toggle("active", listFilter === "ended");
+
+    // 아직 시작하지 않은 대회는 진행 중/종료 어느 쪽에도 표시하지 않는다.
+    const comps = listCache.filter(c => {
+      if (!isEligible(c)) return false;
+      if (c.status === "ended") return listFilter === "ended";
+      return listFilter === "active" && !isNotStarted(c);
+    });
+
+    const container = el(ids.compList);
+    if (comps.length === 0) {
+      container.innerHTML = `<p class='desc'>${listFilter === "ended" ? "종료된" : "진행 중인"} 대회가 없습니다.</p>`;
+      return;
+    }
+    container.innerHTML = comps.map(c => `
+      <div class="item-card">
+        <div class="info"><strong>${escapeHtml(c.title)}</strong></div>
+        <button class="btn small btn-open-rankings" data-id="${c.id}" data-title="${escapeHtml(c.title)}">OBD Live 보기</button>
+      </div>
+    `).join("");
+    container.querySelectorAll(".btn-open-rankings").forEach(btn => {
+      btn.addEventListener("click", () => openDetail(btn.dataset.id, btn.dataset.title));
+    });
+  }
+
+  el(ids.filterActive).addEventListener("click", () => {
+    listFilter = "active";
+    renderCompList();
+  });
+  el(ids.filterEnded).addEventListener("click", () => {
+    listFilter = "ended";
+    renderCompList();
+  });
+
+  async function openDetail(compIdArg, title) {
+    const comp = await fetchCompetition(compIdArg);
+    if (!comp) {
+      showToast("대회 정보를 찾을 수 없습니다.", "error");
+      return;
+    }
+    el(ids.detailTitle).textContent = title || comp.title;
+    el(ids.listView).classList.add("hidden");
+    el(ids.detailView).classList.remove("hidden");
+    try {
+      await loadForComp(comp);
+    } catch (err) {
+      el(ids.tableContainer).innerHTML = "<p class='desc'>OBD Live 정보를 불러오지 못했습니다.</p>";
+    }
+  }
+
+  el(ids.backBtn).addEventListener("click", () => {
+    renderList();
+  });
+
+  async function loadForComp(comp) {
+    if (compId !== comp.id) {
+      compId = comp.id;
+      currentEventId = null;
+      currentRound = null;
+    }
+    const events = await fetchEvents(comp.id);
+    eventsCache = events;
+    const eventTabs = el(ids.eventTabs);
+    if (events.length === 0) {
+      eventTabs.innerHTML = "";
+      el(ids.roundTabs).innerHTML = "";
+      el(ids.tableContainer).innerHTML = "<p class='desc'>등록된 종목이 없습니다.</p>";
+      return;
+    }
+    if (!currentEventId || !events.some(ev => ev.id === currentEventId)) {
+      currentEventId = events[0].id;
+      currentRound = null;
+    }
+    eventTabs.innerHTML = events.map(ev => `
+      <button type="button" class="tab-pill ${ev.id === currentEventId ? "active" : ""}" data-event="${ev.id}">${escapeHtml(ev.name)}</button>
+    `).join("");
+    eventTabs.querySelectorAll(".tab-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (currentEventId === btn.dataset.event) return;
+        currentEventId = btn.dataset.event;
+        currentRound = null;
+        loadForComp(comp);
+      });
+    });
+    await renderRoundTabs(comp.id);
+  }
+
+  async function renderRoundTabs(compIdArg) {
+    const ev = eventsCache.find(e => e.id === currentEventId);
+    if (!ev) return;
+    const maxRound = Math.max(effectiveFinalRound(ev), 1);
+    if (currentRound == null) currentRound = 1;
+    const roundTabs = el(ids.roundTabs);
+    const roundNums = [];
+    for (let r = 1; r <= maxRound; r++) roundNums.push(r);
+    roundTabs.innerHTML = roundNums.map(r => `
+      <button type="button" class="tab-pill small ${r === currentRound ? "active" : ""}" data-round="${r}">${r === maxRound ? "결승" : `${r}라운드`}</button>
+    `).join("");
+    roundTabs.querySelectorAll(".tab-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        currentRound = parseInt(btn.dataset.round, 10);
+        roundTabs.querySelectorAll(".tab-pill").forEach(b => b.classList.toggle("active", b === btn));
+        renderTable(compIdArg, ev);
+      });
+    });
+    await renderTable(compIdArg, ev);
+  }
+
+  async function renderTable(compIdArg, ev) {
+    const container = el(ids.tableContainer);
+    container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+    const format = normalizeFormat(ev.format);
+    const solveCount = solveCountForFormat(format);
+    const resultLabel = resultLabelForFormat(format);
+    const round = currentRound;
+    const isFinalRound = round === effectiveFinalRound(ev);
+
+    let participants = await fetchParticipants(compIdArg, ev.id);
+    if (round > 1) {
+      participants = participants.filter(p => {
+        const prevMeta = p.roundMeta && p.roundMeta[round - 1];
+        return !prevMeta || prevMeta.status !== "eliminated";
+      });
+    }
+
+    const rows = participants.map(p => {
+      const roundTimes = (p.roundTimes && p.roundTimes[round]) || [];
+      const times = Array.isArray(roundTimes) && roundTimes.length === solveCount ? roundTimes : new Array(solveCount).fill("");
+      const meta = (p.roundMeta && p.roundMeta[round]) || {};
+      const average = computeAverage(times, format);
+      const rank = meta.rank != null && meta.rank !== "" ? Number(meta.rank) : null;
+      const sortKey = rank != null ? rank : 100000 + average;
+      return { p, times, status: meta.status || "", average, sortKey };
+    }).sort((a, b) => a.sortKey - b.sortKey);
+
+    if (rows.length === 0) {
+      container.innerHTML = "<p class='desc'>등록된 참가자가 없습니다.</p>";
+      return;
+    }
+
+    const rowsHtml = rows.map((r, idx) => {
+      const rankNum = r.average === Infinity ? null : idx + 1;
+      const hasAnyEntry = r.times.some(t => t.trim() !== "");
+      const resultValueLabel = hasAnyEntry ? formatSecondsToTime(r.average) : "-";
+      // 결승에서는 진출/탈락 처리가 곧 입상/미입상을 뜻하고, 기권(전부 DNS)도 미입상으로 본다.
+      const forfeited = isFinalRound && isForfeitedRound(r.times);
+      const finalStatus = forfeited ? "eliminated" : r.status;
+      const statusLabel = isFinalRound
+        ? ({ advanced: "입상", eliminated: "미입상" }[finalStatus] || "-")
+        : ({ advanced: "진출", eliminated: "탈락" }[r.status] || "-");
+      // 탈락(기권 포함)은 항상 빨강. 결승은 상위 3위만 초록으로, 그 외 라운드는 진출자만 초록으로 강조한다.
+      let rowCls = "";
+      if (finalStatus === "eliminated") rowCls = "eliminated";
+      else if (isFinalRound ? (rankNum != null && rankNum <= 3) : r.status === "advanced") rowCls = "advanced";
+      return `
+        <tr class="${rowCls}">
+          <td class="rank-cell">${rankNum || "-"}</td>
+          <td>${escapeHtml(r.p.nickname)}</td>
+          <td>${r.times.map(t => escapeHtml(t) || "-").join(" · ")}</td>
+          <td>${resultValueLabel}</td>
+          <td>${statusLabel}</td>
+        </tr>
+      `;
+    }).join("");
+
+    container.innerHTML = `
+      <div class="table-scroll">
+        <table class="wca-rank-table">
+          <thead><tr><th>순위</th><th>이름</th><th>기록 (${solveCount}회)</th><th>${resultLabel}</th><th>진출/탈락</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  return { renderList };
+}
+
+const regularRankings = createRankingsController({
+  listView: "rankings-list-view",
+  detailView: "rankings-detail-view",
+  compList: "rankings-comp-list",
+  filterActive: "rankings-filter-active",
+  filterEnded: "rankings-filter-ended",
+  detailTitle: "rankings-detail-title",
+  backBtn: "btn-rankings-back",
+  eventTabs: "rankings-event-tabs",
+  roundTabs: "rankings-round-tabs",
+  tableContainer: "rankings-table-container"
+}, c => !isMinifastCompetition(c));
 
 async function renderRankingsList() {
-  el("rankings-detail-view").classList.add("hidden");
-  el("rankings-list-view").classList.remove("hidden");
-
-  const container = el("rankings-comp-list");
-  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
-  rankingsListCache = await fetchCompetitions();
-  renderRankingsCompList();
+  await regularRankings.renderList();
 }
 
-function renderRankingsCompList() {
-  el("rankings-filter-active").classList.toggle("active", rankingsListFilter === "active");
-  el("rankings-filter-ended").classList.toggle("active", rankingsListFilter === "ended");
+const minifastRankings = createRankingsController({
+  listView: "minifast-rankings-list-view",
+  detailView: "minifast-rankings-detail-view",
+  compList: "minifast-rankings-comp-list",
+  filterActive: "minifast-rankings-filter-active",
+  filterEnded: "minifast-rankings-filter-ended",
+  detailTitle: "minifast-rankings-detail-title",
+  backBtn: "btn-minifast-rankings-back",
+  eventTabs: "minifast-rankings-event-tabs",
+  roundTabs: "minifast-rankings-round-tabs",
+  tableContainer: "minifast-rankings-table-container"
+}, isMinifastCompetition);
 
-  // 아직 시작하지 않은 대회는 진행 중/종료 어느 쪽에도 표시하지 않는다.
-  const comps = rankingsListCache.filter(c => {
-    if (c.status === "ended") return rankingsListFilter === "ended";
-    return rankingsListFilter === "active" && !isNotStarted(c);
-  });
-
-  const container = el("rankings-comp-list");
-  if (comps.length === 0) {
-    container.innerHTML = `<p class='desc'>${rankingsListFilter === "ended" ? "종료된" : "진행 중인"} 대회가 없습니다.</p>`;
-    return;
-  }
-  container.innerHTML = comps.map(c => `
-    <div class="item-card">
-      <div class="info"><strong>${escapeHtml(c.title)}</strong></div>
-      <button class="btn small btn-open-rankings" data-id="${c.id}" data-title="${escapeHtml(c.title)}">OBD Live 보기</button>
-    </div>
-  `).join("");
-  container.querySelectorAll(".btn-open-rankings").forEach(btn => {
-    btn.addEventListener("click", () => openRankingsView(btn.dataset.id, btn.dataset.title));
-  });
-}
-
-el("rankings-filter-active").addEventListener("click", () => {
-  rankingsListFilter = "active";
-  renderRankingsCompList();
-});
-el("rankings-filter-ended").addEventListener("click", () => {
-  rankingsListFilter = "ended";
-  renderRankingsCompList();
-});
-
-async function openRankingsView(compId, title) {
-  const comp = await fetchCompetition(compId);
-  if (!comp) {
-    showToast("대회 정보를 찾을 수 없습니다.", "error");
-    return;
-  }
-  el("rankings-detail-title").textContent = title || comp.title;
-  el("rankings-list-view").classList.add("hidden");
-  el("rankings-detail-view").classList.remove("hidden");
-  try {
-    await loadRankingsForComp(comp);
-  } catch (err) {
-    el("rankings-table-container").innerHTML = "<p class='desc'>OBD Live 정보를 불러오지 못했습니다.</p>";
-  }
-}
-
-el("btn-rankings-back").addEventListener("click", () => {
-  renderRankingsList();
-});
-
-async function loadRankingsForComp(comp) {
-  if (rankingsCompId !== comp.id) {
-    rankingsCompId = comp.id;
-    currentRankingsEventId = null;
-    currentRankingsRound = null;
-  }
-  const events = await fetchEvents(comp.id);
-  rankingsEventsCache = events;
-  const eventTabs = el("rankings-event-tabs");
-  if (events.length === 0) {
-    eventTabs.innerHTML = "";
-    el("rankings-round-tabs").innerHTML = "";
-    el("rankings-table-container").innerHTML = "<p class='desc'>등록된 종목이 없습니다.</p>";
-    return;
-  }
-  if (!currentRankingsEventId || !events.some(ev => ev.id === currentRankingsEventId)) {
-    currentRankingsEventId = events[0].id;
-    currentRankingsRound = null;
-  }
-  eventTabs.innerHTML = events.map(ev => `
-    <button type="button" class="tab-pill ${ev.id === currentRankingsEventId ? "active" : ""}" data-event="${ev.id}">${escapeHtml(ev.name)}</button>
-  `).join("");
-  eventTabs.querySelectorAll(".tab-pill").forEach(btn => {
-    btn.addEventListener("click", () => {
-      if (currentRankingsEventId === btn.dataset.event) return;
-      currentRankingsEventId = btn.dataset.event;
-      currentRankingsRound = null;
-      loadRankingsForComp(comp);
-    });
-  });
-  await renderRankingsRoundTabs(comp.id);
-}
-
-async function renderRankingsRoundTabs(compId) {
-  const ev = rankingsEventsCache.find(e => e.id === currentRankingsEventId);
-  if (!ev) return;
-  const maxRound = Math.max(effectiveFinalRound(ev), 1);
-  if (currentRankingsRound == null) currentRankingsRound = 1;
-  const roundTabs = el("rankings-round-tabs");
-  const roundNums = [];
-  for (let r = 1; r <= maxRound; r++) roundNums.push(r);
-  roundTabs.innerHTML = roundNums.map(r => `
-    <button type="button" class="tab-pill small ${r === currentRankingsRound ? "active" : ""}" data-round="${r}">${r === maxRound ? "결승" : `${r}라운드`}</button>
-  `).join("");
-  roundTabs.querySelectorAll(".tab-pill").forEach(btn => {
-    btn.addEventListener("click", () => {
-      currentRankingsRound = parseInt(btn.dataset.round, 10);
-      roundTabs.querySelectorAll(".tab-pill").forEach(b => b.classList.toggle("active", b === btn));
-      renderRankingsTable(compId, ev);
-    });
-  });
-  await renderRankingsTable(compId, ev);
-}
-
-async function renderRankingsTable(compId, ev) {
-  const container = el("rankings-table-container");
-  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
-  const format = normalizeFormat(ev.format);
-  const solveCount = solveCountForFormat(format);
-  const resultLabel = resultLabelForFormat(format);
-  const round = currentRankingsRound;
-  const isFinalRound = round === effectiveFinalRound(ev);
-
-  let participants = await fetchParticipants(compId, ev.id);
-  if (round > 1) {
-    participants = participants.filter(p => {
-      const prevMeta = p.roundMeta && p.roundMeta[round - 1];
-      return !prevMeta || prevMeta.status !== "eliminated";
-    });
-  }
-
-  const rows = participants.map(p => {
-    const roundTimes = (p.roundTimes && p.roundTimes[round]) || [];
-    const times = Array.isArray(roundTimes) && roundTimes.length === solveCount ? roundTimes : new Array(solveCount).fill("");
-    const meta = (p.roundMeta && p.roundMeta[round]) || {};
-    const average = computeAverage(times, format);
-    const rank = meta.rank != null && meta.rank !== "" ? Number(meta.rank) : null;
-    const sortKey = rank != null ? rank : 100000 + average;
-    return { p, times, status: meta.status || "", average, sortKey };
-  }).sort((a, b) => a.sortKey - b.sortKey);
-
-  if (rows.length === 0) {
-    container.innerHTML = "<p class='desc'>등록된 참가자가 없습니다.</p>";
-    return;
-  }
-
-  const rowsHtml = rows.map((r, idx) => {
-    const rankNum = r.average === Infinity ? null : idx + 1;
-    const hasAnyEntry = r.times.some(t => t.trim() !== "");
-    const resultValueLabel = hasAnyEntry ? formatSecondsToTime(r.average) : "-";
-    // 결승에서는 진출/탈락 처리가 곧 입상/미입상을 뜻하고, 기권(전부 DNS)도 미입상으로 본다.
-    const forfeited = isFinalRound && isForfeitedRound(r.times);
-    const finalStatus = forfeited ? "eliminated" : r.status;
-    const statusLabel = isFinalRound
-      ? ({ advanced: "입상", eliminated: "미입상" }[finalStatus] || "-")
-      : ({ advanced: "진출", eliminated: "탈락" }[r.status] || "-");
-    // 탈락(기권 포함)은 항상 빨강. 결승은 상위 3위만 초록으로, 그 외 라운드는 진출자만 초록으로 강조한다.
-    let rowCls = "";
-    if (finalStatus === "eliminated") rowCls = "eliminated";
-    else if (isFinalRound ? (rankNum != null && rankNum <= 3) : r.status === "advanced") rowCls = "advanced";
-    return `
-      <tr class="${rowCls}">
-        <td class="rank-cell">${rankNum || "-"}</td>
-        <td>${escapeHtml(r.p.nickname)}</td>
-        <td>${r.times.map(t => escapeHtml(t) || "-").join(" · ")}</td>
-        <td>${resultValueLabel}</td>
-        <td>${statusLabel}</td>
-      </tr>
-    `;
-  }).join("");
-
-  container.innerHTML = `
-    <div class="table-scroll">
-      <table class="wca-rank-table">
-        <thead><tr><th>순위</th><th>이름</th><th>기록 (${solveCount}회)</th><th>${resultLabel}</th><th>진출/탈락</th></tr></thead>
-        <tbody>${rowsHtml}</tbody>
-      </table>
-    </div>
-  `;
+async function renderMinifastRankingsPanel() {
+  await minifastRankings.renderList();
 }
 
 async function openCompetitionDetail(compId) {
