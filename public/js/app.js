@@ -77,6 +77,7 @@ async function onNavigate(name) {
   switchView(name);
   if (name === "competitions") await renderCompetitionsList();
   if (name === "joinapply") await renderJoinApplyList();
+  if (name === "minifast") await renderMinifastView();
   if (name === "feedback") await renderFeedbackList();
   if (name === "mypage") await renderMyPage();
   if (name === "awards") await renderAwardsPanel();
@@ -91,8 +92,6 @@ el("btn-back-to-list").addEventListener("click", () => onNavigate("competitions"
 // ---- 대회 목록 ----
 let competitionsListCache = [];
 let competitionsListFilter = "open"; // "closed" | "open" | "ongoing" | "upcoming" | "ended"
-let competitionsTypeFilter = "all"; // "all" | "미니" | "패스트"
-const COMPETITIONS_TYPE_TAB_KEYS = { all: null, mini: "미니", fast: "패스트" };
 
 // getCompetitionStatusInfo가 매기는 배지 라벨과 1:1로 대응시켜, 목록 필터와
 // 각 카드에 보이는 상태 배지가 항상 같은 기준으로 나뉘도록 한다.
@@ -118,19 +117,32 @@ async function renderCompetitionsList() {
   await renderCompetitionsListFiltered();
 }
 
+function buildCompetitionCardHtml(c, statusInfo, organizerText, eventNames, typeMark) {
+  return `
+    <div class="item-card">
+      <div class="info">
+        <strong>${typeMark || ""}${escapeHtml(c.title)}</strong>
+        <span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))} · 주최자: ${escapeHtml(organizerText)}</span>
+        <span>종목: ${eventNames ? escapeHtml(eventNames) : "-"}</span>
+      </div>
+      <div class="actions">
+        <span class="badge ${statusInfo.cls}">${statusInfo.label}</span>
+        <button class="btn small btn-open-comp" data-id="${c.id}">보기</button>
+      </div>
+    </div>
+  `;
+}
+
 async function renderCompetitionsListFiltered() {
   Object.keys(COMPETITIONS_FILTER_LABELS).forEach(key => {
     el(`competitions-filter-${key}`).classList.toggle("active", competitionsListFilter === key);
   });
-  Object.keys(COMPETITIONS_TYPE_TAB_KEYS).forEach(key => {
-    el(`competitions-type-${key}`).classList.toggle("active", competitionsTypeFilter === key);
-  });
 
   const container = el("competitions-list");
-  const typeValue = COMPETITIONS_TYPE_TAB_KEYS[competitionsTypeFilter];
+  // MINI/FAST 대회는 이 목록에서 제외하고, 별도의 MINI/FAST 탭에서만 보여준다.
   const list = competitionsListCache.filter(c =>
-    STATUS_LABEL_TO_FILTER_KEY[getCompetitionStatusInfo(c).label] === competitionsListFilter &&
-    (typeValue == null || c.competitionType === typeValue)
+    !isMinifastCompetition(c) &&
+    STATUS_LABEL_TO_FILTER_KEY[getCompetitionStatusInfo(c).label] === competitionsListFilter
   );
   // 개최일 빠른 순으로 정렬한다.
   list.sort((a, b) => (a.startDate || "").localeCompare(b.startDate || ""));
@@ -143,22 +155,7 @@ async function renderCompetitionsListFiltered() {
     const organizerText = await organizerDisplayText(c);
     const events = await fetchEvents(c.id);
     const eventNames = events.map(ev => ev.name).join(", ");
-    const typeMark = c.competitionType === "미니" ? `<span class="badge type-mini">미니</span>`
-      : c.competitionType === "패스트" ? `<span class="badge type-fast">패스트</span>`
-      : "";
-    return `
-    <div class="item-card">
-      <div class="info">
-        <strong>${typeMark}${escapeHtml(c.title)}</strong>
-        <span>개최일: ${escapeHtml(formatDateRange(c.startDate, c.endDate))} · 주최자: ${escapeHtml(organizerText)}</span>
-        <span>종목: ${eventNames ? escapeHtml(eventNames) : "-"}</span>
-      </div>
-      <div class="actions">
-        <span class="badge ${statusInfo.cls}">${statusInfo.label}</span>
-        <button class="btn small btn-open-comp" data-id="${c.id}">보기</button>
-      </div>
-    </div>
-  `;
+    return buildCompetitionCardHtml(c, statusInfo, organizerText, eventNames);
   }));
   container.innerHTML = cards.join("");
   container.querySelectorAll(".btn-open-comp").forEach(btn => {
@@ -173,10 +170,69 @@ Object.keys(COMPETITIONS_FILTER_LABELS).forEach(key => {
   });
 });
 
-Object.keys(COMPETITIONS_TYPE_TAB_KEYS).forEach(key => {
-  el(`competitions-type-${key}`).addEventListener("click", () => {
-    competitionsTypeFilter = key;
-    renderCompetitionsListFiltered();
+// ---- MINI/FAST 대회 (일반 대회 목록·참가 신청과 완전히 분리된 전용 탭) ----
+let minifastListCache = [];
+let minifastListFilter = "open"; // "closed" | "open" | "ongoing" | "upcoming" | "ended"
+
+async function renderMinifastView() {
+  el("minifast-apply-panel").classList.add("hidden");
+  el("minifast-list-panel").classList.remove("hidden");
+  el("minifast-tab-list").classList.add("active");
+  el("minifast-tab-apply").classList.remove("active");
+  await renderMinifastCompList();
+}
+
+el("minifast-tab-list").addEventListener("click", () => {
+  el("minifast-apply-panel").classList.add("hidden");
+  el("minifast-list-panel").classList.remove("hidden");
+  el("minifast-tab-list").classList.add("active");
+  el("minifast-tab-apply").classList.remove("active");
+  renderMinifastCompList();
+});
+
+el("minifast-tab-apply").addEventListener("click", () => {
+  el("minifast-list-panel").classList.add("hidden");
+  el("minifast-apply-panel").classList.remove("hidden");
+  el("minifast-tab-apply").classList.add("active");
+  el("minifast-tab-list").classList.remove("active");
+  renderMinifastApplyList();
+});
+
+async function renderMinifastCompList() {
+  Object.keys(COMPETITIONS_FILTER_LABELS).forEach(key => {
+    el(`minifast-filter-${key}`).classList.toggle("active", minifastListFilter === key);
+  });
+
+  const container = el("minifast-comp-list");
+  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+  minifastListCache = await fetchCompetitions();
+  const list = minifastListCache.filter(c =>
+    isMinifastCompetition(c) &&
+    STATUS_LABEL_TO_FILTER_KEY[getCompetitionStatusInfo(c).label] === minifastListFilter
+  );
+  list.sort((a, b) => (a.startDate || "").localeCompare(b.startDate || ""));
+  if (list.length === 0) {
+    container.innerHTML = `<p class='desc'>${COMPETITIONS_FILTER_LABELS[minifastListFilter]} MINI/FAST 대회가 없습니다.</p>`;
+    return;
+  }
+  const cards = await Promise.all(list.map(async c => {
+    const statusInfo = getCompetitionStatusInfo(c);
+    const organizerText = await organizerDisplayText(c);
+    const events = await fetchEvents(c.id);
+    const eventNames = events.map(ev => ev.name).join(", ");
+    const typeMark = `<span class="badge ${c.competitionType === "MINI" ? "type-mini" : "type-fast"}">${c.competitionType}</span>`;
+    return buildCompetitionCardHtml(c, statusInfo, organizerText, eventNames, typeMark);
+  }));
+  container.innerHTML = cards.join("");
+  container.querySelectorAll(".btn-open-comp").forEach(btn => {
+    btn.addEventListener("click", () => openCompetitionDetail(btn.dataset.id));
+  });
+}
+
+Object.keys(COMPETITIONS_FILTER_LABELS).forEach(key => {
+  el(`minifast-filter-${key}`).addEventListener("click", () => {
+    minifastListFilter = key;
+    renderMinifastCompList();
   });
 });
 

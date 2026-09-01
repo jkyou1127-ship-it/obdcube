@@ -61,6 +61,7 @@
     <nav class="nav">
       <button class="nav-btn" data-nav="competitions">대회 목록</button>
       <button class="nav-btn" data-nav="joinapply">참가 신청</button>
+      <button class="nav-btn" data-nav="minifast">MINI/FAST</button>
       <button class="nav-btn" data-nav="feedback">피드백</button>
       <button class="nav-btn" data-nav="practice">심심풀이</button>
       <button class="nav-btn" data-nav="apply">대회 주최 신청</button>
@@ -97,11 +98,6 @@
         <button type="button" class="tab-pill" id="competitions-filter-ongoing">진행중</button>
         <button type="button" class="tab-pill" id="competitions-filter-upcoming">개최예정</button>
         <button type="button" class="tab-pill" id="competitions-filter-ended">종료된 대회</button>
-      </div>
-      <div class="tab-row">
-        <button type="button" class="tab-pill small active" id="competitions-type-all">전체</button>
-        <button type="button" class="tab-pill small" id="competitions-type-mini">미니</button>
-        <button type="button" class="tab-pill small" id="competitions-type-fast">패스트</button>
       </div>
       <div id="competitions-list" class="card-list"></div>
     </section>
@@ -225,8 +221,8 @@
         <label>대회 유형</label>
         <select id="apply-type">
           <option value="일반">일반</option>
-          <option value="미니">미니</option>
-          <option value="패스트">패스트</option>
+          <option value="MINI">MINI</option>
+          <option value="FAST">FAST</option>
         </select>
         <label>대회 소개</label>
         <textarea id="apply-desc" rows="4" maxlength="500"></textarea>
@@ -260,6 +256,45 @@
           <div id="joinapply-events-checkboxes" class="checkbox-grid"></div>
           <button type="submit" class="btn primary">저장</button>
         </form>
+      </div>
+    </section>
+
+    <!-- MINI/FAST 대회 (일반 대회 목록·참가 신청과 완전히 분리된 전용 탭) -->
+    <section id="view-minifast" class="view hidden">
+      <h2>MINI / FAST</h2>
+      <div class="tab-row">
+        <button type="button" class="tab-pill active" id="minifast-tab-list">대회 목록</button>
+        <button type="button" class="tab-pill" id="minifast-tab-apply">참가 신청</button>
+      </div>
+
+      <div id="minifast-list-panel">
+        <div class="tab-row">
+          <button type="button" class="tab-pill" id="minifast-filter-closed">신청마감</button>
+          <button type="button" class="tab-pill active" id="minifast-filter-open">참가신청중</button>
+          <button type="button" class="tab-pill" id="minifast-filter-ongoing">진행중</button>
+          <button type="button" class="tab-pill" id="minifast-filter-upcoming">개최예정</button>
+          <button type="button" class="tab-pill" id="minifast-filter-ended">종료된 대회</button>
+        </div>
+        <div id="minifast-comp-list" class="card-list"></div>
+      </div>
+
+      <div id="minifast-apply-panel" class="hidden">
+        <div id="minifast-apply-list-view">
+          <p class="desc">참가 신청을 받고 있는 MINI/FAST 대회 목록입니다.</p>
+          <div id="minifast-apply-comp-list" class="card-list"></div>
+        </div>
+        <div id="minifast-apply-form-view" class="hidden">
+          <button class="btn small" id="btn-minifast-apply-back">← 목록으로</button>
+          <h2 id="minifast-apply-title">-</h2>
+          <p class="desc">참가할 종목은 체크하고, 취소할 종목은 체크를 해제한 뒤 저장하세요.</p>
+          <p id="minifast-apply-not-started-msg" class="desc hidden">아직 참가 신청을 받지 않는 대회입니다.</p>
+          <p id="minifast-apply-closed-msg" class="desc hidden">참가 신청이 마감되었습니다.</p>
+          <form id="form-minifast-apply" class="inline-form">
+            <button type="button" class="btn small" id="btn-minifast-apply-select-all">전 종목 선택</button>
+            <div id="minifast-apply-events-checkboxes" class="checkbox-grid"></div>
+            <button type="submit" class="btn primary">저장</button>
+          </form>
+        </div>
       </div>
     </section>
 
@@ -541,8 +576,8 @@
           <label>대회 유형</label>
           <select id="admin-host-type">
             <option value="일반">일반</option>
-            <option value="미니">미니</option>
-            <option value="패스트">패스트</option>
+            <option value="MINI">MINI</option>
+            <option value="FAST">FAST</option>
           </select>
           <label>대회 소개</label>
           <textarea id="admin-host-desc" rows="4" maxlength="500"></textarea>

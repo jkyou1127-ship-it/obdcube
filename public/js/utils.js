@@ -59,6 +59,12 @@ async function organizerDisplayText(comp) {
   return `${comp.organizerNickname || "-"} (공동주최: ${coNames.join(", ")})`;
 }
 
+// MINI/FAST 대회는 일반 대회 목록·참가 신청에서는 제외하고, 별도의 MINI/FAST
+// 탭에서만 다룬다.
+function isMinifastCompetition(comp) {
+  return !!comp && (comp.competitionType === "MINI" || comp.competitionType === "FAST");
+}
+
 function isUserOrganizerOf(comp) {
   if (!AppState.user || !comp) return false;
   if (comp.organizerUid === AppState.user.uid) return true;
