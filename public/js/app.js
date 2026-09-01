@@ -174,28 +174,26 @@ Object.keys(COMPETITIONS_FILTER_LABELS).forEach(key => {
 let minifastListCache = [];
 let minifastListFilter = "open"; // "closed" | "open" | "ongoing" | "upcoming" | "ended"
 
-async function renderMinifastView() {
-  el("minifast-apply-panel").classList.add("hidden");
-  el("minifast-list-panel").classList.remove("hidden");
-  el("minifast-tab-list").classList.add("active");
-  el("minifast-tab-apply").classList.remove("active");
-  await renderMinifastCompList();
+const MINIFAST_TABS = {
+  list: { panel: "minifast-list-panel", btn: "minifast-tab-list", render: () => renderMinifastCompList() },
+  apply: { panel: "minifast-apply-panel", btn: "minifast-tab-apply", render: () => renderMinifastApplyList() },
+  awards: { panel: "minifast-awards-panel", btn: "minifast-tab-awards", render: () => renderMinifastAwardsPanel() }
+};
+
+function switchMinifastTab(name) {
+  Object.entries(MINIFAST_TABS).forEach(([key, tab]) => {
+    el(tab.panel).classList.toggle("hidden", key !== name);
+    el(tab.btn).classList.toggle("active", key === name);
+  });
+  return MINIFAST_TABS[name].render();
 }
 
-el("minifast-tab-list").addEventListener("click", () => {
-  el("minifast-apply-panel").classList.add("hidden");
-  el("minifast-list-panel").classList.remove("hidden");
-  el("minifast-tab-list").classList.add("active");
-  el("minifast-tab-apply").classList.remove("active");
-  renderMinifastCompList();
-});
+async function renderMinifastView() {
+  await switchMinifastTab("list");
+}
 
-el("minifast-tab-apply").addEventListener("click", () => {
-  el("minifast-list-panel").classList.add("hidden");
-  el("minifast-apply-panel").classList.remove("hidden");
-  el("minifast-tab-apply").classList.add("active");
-  el("minifast-tab-list").classList.remove("active");
-  renderMinifastApplyList();
+Object.entries(MINIFAST_TABS).forEach(([key, tab]) => {
+  el(tab.btn).addEventListener("click", () => switchMinifastTab(key));
 });
 
 async function renderMinifastCompList() {
@@ -237,74 +235,10 @@ Object.keys(COMPETITIONS_FILTER_LABELS).forEach(key => {
 });
 
 // ---- 입상 내역 ----
-let awardsCache = [];
-let awardsViewMode = "all"; // "all"(전체) | "event"(종목별) | "comp"(대회별)
-let currentAwardsEventName = null;
-let currentAwardsCompId = null;
-let currentAwardsCompEventName = null;
+// 일반 대회용/MINI·FAST 대회용 두 곳에서 똑같은 로직을 쓰므로 팩토리로 만들어
+// DOM id 접두사와 "이 대회가 이 탭 대상인지" 판단 함수만 다르게 넘겨 재사용한다.
 
-async function renderAwardsPanel() {
-  const container = el("awards-list");
-  container.innerHTML = "<p class='desc'>불러오는 중...</p>";
-  el("awards-event-tabs").innerHTML = "";
-  el("awards-sub-tabs").innerHTML = "";
-
-  const comps = (await fetchCompetitions()).filter(c => c.status === "ended");
-  const awards = [];
-  for (const comp of comps) {
-    const events = await fetchEvents(comp.id);
-    for (const ev of events) {
-      const participants = await fetchParticipants(comp.id, ev.id);
-      const finalRound = effectiveFinalRound(ev);
-      const format = normalizeFormat(ev.format);
-      // 주최자가 순위를 직접 지정하지 않은 대회도, OBD Live와 동일하게 평균 기록
-      // 순으로 자동 계산한 결승 순위를 입상 내역에 반영한다.
-      const placements = computeAutoPlacements(participants, format, finalRound);
-      for (const placement of placements) {
-        if (placement.rank == null || placement.rank > 3) continue;
-        const best = bestSingleFromTimes(placement.times);
-        awards.push({
-          comp, ev, evName: canonicalEventName(ev.name), format,
-          best, average: placement.average, nickname: placement.p.nickname,
-          round: placement.round, rank: placement.rank
-        });
-      }
-    }
-  }
-  awardsCache = awards;
-
-  if (awards.length === 0) {
-    container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
-    return;
-  }
-
-  renderAwardsView();
-}
-
-el("awards-mode-all").addEventListener("click", () => { awardsViewMode = "all"; updateAwardsModeButtons(); renderAwardsView(); });
-el("awards-mode-event").addEventListener("click", () => { awardsViewMode = "event"; updateAwardsModeButtons(); renderAwardsView(); });
-el("awards-mode-comp").addEventListener("click", () => { awardsViewMode = "comp"; updateAwardsModeButtons(); renderAwardsView(); });
-
-function updateAwardsModeButtons() {
-  el("awards-mode-all").classList.toggle("active", awardsViewMode === "all");
-  el("awards-mode-event").classList.toggle("active", awardsViewMode === "event");
-  el("awards-mode-comp").classList.toggle("active", awardsViewMode === "comp");
-}
-
-function renderAwardsView() {
-  if (awardsViewMode === "all") {
-    el("awards-event-tabs").innerHTML = "";
-    el("awards-sub-tabs").innerHTML = "";
-    renderAwardsAllList();
-  } else if (awardsViewMode === "event") {
-    el("awards-sub-tabs").innerHTML = "";
-    renderAwardsEventTabs();
-  } else {
-    renderAwardsCompTabs();
-  }
-}
-
-// 입상 내역 한 줄(참가자 1명) 카드 HTML - 세 모드가 공용으로 사용한다.
+// 입상 내역 한 줄(참가자 1명) 카드 HTML - 두 컨트롤러가 공용으로 사용한다.
 function renderAwardItemsHtml(items) {
   return items.slice().sort((a, b) => a.rank - b.rank).map(a => `
     <div class="item-card">
@@ -320,123 +254,212 @@ function renderAwardItemsHtml(items) {
   `).join("");
 }
 
-// ---- 전체: 대회별로 묶고, 그 안에서 종목별로 다시 묶어 보여준다 ----
-function renderAwardsAllList() {
-  const container = el("awards-list");
-  const byComp = new Map();
-  awardsCache.forEach(a => {
-    if (!byComp.has(a.comp.id)) byComp.set(a.comp.id, { comp: a.comp, byEvent: new Map() });
-    const entry = byComp.get(a.comp.id);
-    if (!entry.byEvent.has(a.evName)) entry.byEvent.set(a.evName, []);
-    entry.byEvent.get(a.evName).push(a);
-  });
-  const compGroups = [...byComp.values()].sort((x, y) => (y.comp.startDate || "").localeCompare(x.comp.startDate || ""));
+function createAwardsController(ids, isEligible) {
+  let cache = [];
+  let viewMode = "all"; // "all"(전체) | "event"(종목별) | "comp"(대회별)
+  let currentEventName = null;
+  let currentCompId = null;
+  let currentCompEventName = null;
 
-  container.innerHTML = compGroups.map(cg => `
-    <div class="roster-block">
-      <strong>${escapeHtml(cg.comp.title)}</strong>
-      <span class="desc">${escapeHtml(formatDateRange(cg.comp.startDate, cg.comp.endDate))}</span>
-      ${[...cg.byEvent.entries()].map(([evName, items]) => `
-        <p class="desc"><strong>${escapeHtml(evName)}</strong></p>
-        ${renderAwardItemsHtml(items)}
-      `).join("")}
-    </div>
-  `).join("");
-}
+  async function renderPanel() {
+    const container = el(ids.list);
+    container.innerHTML = "<p class='desc'>불러오는 중...</p>";
+    el(ids.eventTabs).innerHTML = "";
+    el(ids.subTabs).innerHTML = "";
 
-// ---- 종목별: 종목 탭을 고르면 그 종목의 입상 내역을 대회별로 묶어 보여준다 ----
-function renderAwardsEventTabs() {
-  const eventNames = [...new Set(awardsCache.map(a => a.evName))];
-  if (!currentAwardsEventName || !eventNames.includes(currentAwardsEventName)) {
-    currentAwardsEventName = eventNames[0];
+    const comps = (await fetchCompetitions()).filter(c => c.status === "ended" && isEligible(c));
+    const awards = [];
+    for (const comp of comps) {
+      const events = await fetchEvents(comp.id);
+      for (const ev of events) {
+        const participants = await fetchParticipants(comp.id, ev.id);
+        const finalRound = effectiveFinalRound(ev);
+        const format = normalizeFormat(ev.format);
+        // 주최자가 순위를 직접 지정하지 않은 대회도, OBD Live와 동일하게 평균 기록
+        // 순으로 자동 계산한 결승 순위를 입상 내역에 반영한다.
+        const placements = computeAutoPlacements(participants, format, finalRound);
+        for (const placement of placements) {
+          if (placement.rank == null || placement.rank > 3) continue;
+          const best = bestSingleFromTimes(placement.times);
+          awards.push({
+            comp, ev, evName: canonicalEventName(ev.name), format,
+            best, average: placement.average, nickname: placement.p.nickname,
+            round: placement.round, rank: placement.rank
+          });
+        }
+      }
+    }
+    cache = awards;
+
+    if (awards.length === 0) {
+      container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
+      return;
+    }
+
+    renderView();
   }
-  const tabsContainer = el("awards-event-tabs");
-  tabsContainer.innerHTML = eventNames.map(name => `
-    <button type="button" class="tab-pill ${name === currentAwardsEventName ? "active" : ""}" data-event-name="${escapeHtml(name)}">${escapeHtml(name)}</button>
-  `).join("");
-  tabsContainer.querySelectorAll(".tab-pill").forEach(btn => {
-    btn.addEventListener("click", () => {
-      currentAwardsEventName = btn.dataset.eventName;
-      renderAwardsEventTabs();
+
+  function updateModeButtons() {
+    el(ids.modeAll).classList.toggle("active", viewMode === "all");
+    el(ids.modeEvent).classList.toggle("active", viewMode === "event");
+    el(ids.modeComp).classList.toggle("active", viewMode === "comp");
+  }
+
+  function renderView() {
+    if (viewMode === "all") {
+      el(ids.eventTabs).innerHTML = "";
+      el(ids.subTabs).innerHTML = "";
+      renderAllList();
+    } else if (viewMode === "event") {
+      el(ids.subTabs).innerHTML = "";
+      renderEventTabs();
+    } else {
+      renderCompTabs();
+    }
+  }
+
+  // ---- 전체: 대회별로 묶고, 그 안에서 종목별로 다시 묶어 보여준다 ----
+  function renderAllList() {
+    const container = el(ids.list);
+    const byComp = new Map();
+    cache.forEach(a => {
+      if (!byComp.has(a.comp.id)) byComp.set(a.comp.id, { comp: a.comp, byEvent: new Map() });
+      const entry = byComp.get(a.comp.id);
+      if (!entry.byEvent.has(a.evName)) entry.byEvent.set(a.evName, []);
+      entry.byEvent.get(a.evName).push(a);
     });
-  });
-  renderAwardsByEventList();
-}
+    const compGroups = [...byComp.values()].sort((x, y) => (y.comp.startDate || "").localeCompare(x.comp.startDate || ""));
 
-function renderAwardsByEventList() {
-  const container = el("awards-list");
-  const filtered = awardsCache.filter(a => a.evName === currentAwardsEventName);
-
-  if (filtered.length === 0) {
-    container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
-    return;
+    container.innerHTML = compGroups.map(cg => `
+      <div class="roster-block">
+        <strong>${escapeHtml(cg.comp.title)}</strong>
+        <span class="desc">${escapeHtml(formatDateRange(cg.comp.startDate, cg.comp.endDate))}</span>
+        ${[...cg.byEvent.entries()].map(([evName, items]) => `
+          <p class="desc"><strong>${escapeHtml(evName)}</strong></p>
+          ${renderAwardItemsHtml(items)}
+        `).join("")}
+      </div>
+    `).join("");
   }
 
-  const byComp = new Map();
-  filtered.forEach(a => {
-    if (!byComp.has(a.comp.id)) byComp.set(a.comp.id, { comp: a.comp, items: [] });
-    byComp.get(a.comp.id).items.push(a);
-  });
-  const groups = [...byComp.values()].sort((x, y) => (y.comp.startDate || "").localeCompare(x.comp.startDate || ""));
-
-  container.innerHTML = groups.map(g => `
-    <div class="roster-block">
-      <strong>${escapeHtml(g.comp.title)}</strong>
-      <span class="desc">${escapeHtml(formatDateRange(g.comp.startDate, g.comp.endDate))}</span>
-      ${renderAwardItemsHtml(g.items)}
-    </div>
-  `).join("");
-}
-
-// ---- 대회별: 대회 탭을 고른 뒤, 그 대회 안의 종목을 다시 골라 보여준다 ----
-function renderAwardsCompTabs() {
-  const comps = [...new Map(awardsCache.map(a => [a.comp.id, a.comp])).values()]
-    .sort((x, y) => (y.startDate || "").localeCompare(x.startDate || ""));
-  if (!currentAwardsCompId || !comps.some(c => c.id === currentAwardsCompId)) {
-    currentAwardsCompId = comps[0].id;
-    currentAwardsCompEventName = null;
-  }
-  const tabsContainer = el("awards-event-tabs");
-  tabsContainer.innerHTML = comps.map(c => `
-    <button type="button" class="tab-pill ${c.id === currentAwardsCompId ? "active" : ""}" data-comp-id="${c.id}">${escapeHtml(c.title)}</button>
-  `).join("");
-  tabsContainer.querySelectorAll(".tab-pill").forEach(btn => {
-    btn.addEventListener("click", () => {
-      currentAwardsCompId = btn.dataset.compId;
-      currentAwardsCompEventName = null;
-      renderAwardsCompTabs();
+  // ---- 종목별: 종목 탭을 고르면 그 종목의 입상 내역을 대회별로 묶어 보여준다 ----
+  function renderEventTabs() {
+    const eventNames = [...new Set(cache.map(a => a.evName))];
+    if (!currentEventName || !eventNames.includes(currentEventName)) {
+      currentEventName = eventNames[0];
+    }
+    const tabsContainer = el(ids.eventTabs);
+    tabsContainer.innerHTML = eventNames.map(name => `
+      <button type="button" class="tab-pill ${name === currentEventName ? "active" : ""}" data-event-name="${escapeHtml(name)}">${escapeHtml(name)}</button>
+    `).join("");
+    tabsContainer.querySelectorAll(".tab-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        currentEventName = btn.dataset.eventName;
+        renderEventTabs();
+      });
     });
-  });
-  renderAwardsCompEventSubTabs();
-}
-
-function renderAwardsCompEventSubTabs() {
-  const compAwards = awardsCache.filter(a => a.comp.id === currentAwardsCompId);
-  const eventNames = [...new Set(compAwards.map(a => a.evName))];
-  if (!currentAwardsCompEventName || !eventNames.includes(currentAwardsCompEventName)) {
-    currentAwardsCompEventName = eventNames[0];
+    renderByEventList();
   }
-  const subTabs = el("awards-sub-tabs");
-  subTabs.innerHTML = eventNames.map(name => `
-    <button type="button" class="tab-pill small ${name === currentAwardsCompEventName ? "active" : ""}" data-event-name="${escapeHtml(name)}">${escapeHtml(name)}</button>
-  `).join("");
-  subTabs.querySelectorAll(".tab-pill").forEach(btn => {
-    btn.addEventListener("click", () => {
-      currentAwardsCompEventName = btn.dataset.eventName;
-      renderAwardsCompEventSubTabs();
+
+  function renderByEventList() {
+    const container = el(ids.list);
+    const filtered = cache.filter(a => a.evName === currentEventName);
+
+    if (filtered.length === 0) {
+      container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
+      return;
+    }
+
+    const byComp = new Map();
+    filtered.forEach(a => {
+      if (!byComp.has(a.comp.id)) byComp.set(a.comp.id, { comp: a.comp, items: [] });
+      byComp.get(a.comp.id).items.push(a);
     });
-  });
-  renderAwardsCompList();
+    const groups = [...byComp.values()].sort((x, y) => (y.comp.startDate || "").localeCompare(x.comp.startDate || ""));
+
+    container.innerHTML = groups.map(g => `
+      <div class="roster-block">
+        <strong>${escapeHtml(g.comp.title)}</strong>
+        <span class="desc">${escapeHtml(formatDateRange(g.comp.startDate, g.comp.endDate))}</span>
+        ${renderAwardItemsHtml(g.items)}
+      </div>
+    `).join("");
+  }
+
+  // ---- 대회별: 대회 탭을 고른 뒤, 그 대회 안의 종목을 다시 골라 보여준다 ----
+  function renderCompTabs() {
+    const comps = [...new Map(cache.map(a => [a.comp.id, a.comp])).values()]
+      .sort((x, y) => (y.startDate || "").localeCompare(x.startDate || ""));
+    if (!currentCompId || !comps.some(c => c.id === currentCompId)) {
+      currentCompId = comps[0].id;
+      currentCompEventName = null;
+    }
+    const tabsContainer = el(ids.eventTabs);
+    tabsContainer.innerHTML = comps.map(c => `
+      <button type="button" class="tab-pill ${c.id === currentCompId ? "active" : ""}" data-comp-id="${c.id}">${escapeHtml(c.title)}</button>
+    `).join("");
+    tabsContainer.querySelectorAll(".tab-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        currentCompId = btn.dataset.compId;
+        currentCompEventName = null;
+        renderCompTabs();
+      });
+    });
+    renderCompEventSubTabs();
+  }
+
+  function renderCompEventSubTabs() {
+    const compAwards = cache.filter(a => a.comp.id === currentCompId);
+    const eventNames = [...new Set(compAwards.map(a => a.evName))];
+    if (!currentCompEventName || !eventNames.includes(currentCompEventName)) {
+      currentCompEventName = eventNames[0];
+    }
+    const subTabs = el(ids.subTabs);
+    subTabs.innerHTML = eventNames.map(name => `
+      <button type="button" class="tab-pill small ${name === currentCompEventName ? "active" : ""}" data-event-name="${escapeHtml(name)}">${escapeHtml(name)}</button>
+    `).join("");
+    subTabs.querySelectorAll(".tab-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        currentCompEventName = btn.dataset.eventName;
+        renderCompEventSubTabs();
+      });
+    });
+    renderCompList();
+  }
+
+  function renderCompList() {
+    const container = el(ids.list);
+    const filtered = cache.filter(a => a.comp.id === currentCompId && a.evName === currentCompEventName);
+    if (filtered.length === 0) {
+      container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
+      return;
+    }
+    container.innerHTML = renderAwardItemsHtml(filtered);
+  }
+
+  el(ids.modeAll).addEventListener("click", () => { viewMode = "all"; updateModeButtons(); renderView(); });
+  el(ids.modeEvent).addEventListener("click", () => { viewMode = "event"; updateModeButtons(); renderView(); });
+  el(ids.modeComp).addEventListener("click", () => { viewMode = "comp"; updateModeButtons(); renderView(); });
+
+  return { renderPanel };
 }
 
-function renderAwardsCompList() {
-  const container = el("awards-list");
-  const filtered = awardsCache.filter(a => a.comp.id === currentAwardsCompId && a.evName === currentAwardsCompEventName);
-  if (filtered.length === 0) {
-    container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
-    return;
-  }
-  container.innerHTML = renderAwardItemsHtml(filtered);
+const regularAwards = createAwardsController({
+  list: "awards-list", eventTabs: "awards-event-tabs", subTabs: "awards-sub-tabs",
+  modeAll: "awards-mode-all", modeEvent: "awards-mode-event", modeComp: "awards-mode-comp"
+}, c => !isMinifastCompetition(c));
+
+async function renderAwardsPanel() {
+  await regularAwards.renderPanel();
+}
+
+const minifastAwards = createAwardsController({
+  list: "minifast-awards-list", eventTabs: "minifast-awards-event-tabs", subTabs: "minifast-awards-sub-tabs",
+  modeAll: "minifast-awards-mode-all", modeEvent: "minifast-awards-mode-event", modeComp: "minifast-awards-mode-comp"
+}, isMinifastCompetition);
+
+async function renderMinifastAwardsPanel() {
+  await minifastAwards.renderPanel();
 }
 
 // ---- 참가 현황 (내가 참가 신청한 대회) ----
@@ -670,6 +693,7 @@ initAdminForm();
 initAnnouncementToggle("btn-detail-announcement-toggle", "detail-announcement-detail");
 initAnnouncementToggle("btn-messenger-announcement-toggle", "messenger-announcement-detail");
 initAnnouncementToggle("btn-global-announcement-toggle", "global-announcement-detail");
+initAnnouncementToggle("btn-global-announcement-toggle-2", "global-announcement-detail-2");
 
 auth.onAuthStateChanged(async (user) => {
   AppState.user = user;
@@ -708,11 +732,18 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 async function applyGlobalAnnouncementBanner() {
-  const announcement = await fetchGlobalAnnouncement();
-  const banner = el("global-announcement-banner");
+  await Promise.all([
+    applyGlobalAnnouncementBannerSlot(1, "global-announcement-banner", "global-announcement-text", "global-announcement-hint"),
+    applyGlobalAnnouncementBannerSlot(2, "global-announcement-banner-2", "global-announcement-text-2", "global-announcement-hint-2")
+  ]);
+}
+
+async function applyGlobalAnnouncementBannerSlot(slot, bannerId, textId, hintId) {
+  const announcement = await fetchGlobalAnnouncement(slot);
+  const banner = el(bannerId);
   if (announcement && announcement.text) {
-    el("global-announcement-text").textContent = announcement.text;
-    el("global-announcement-hint").textContent = `${summarizeAnnouncement(announcement.text)} (누르면 펼치기)`;
+    el(textId).textContent = announcement.text;
+    el(hintId).textContent = `${summarizeAnnouncement(announcement.text)} (누르면 펼치기)`;
     banner.classList.remove("hidden");
   } else {
     banner.classList.add("hidden");

@@ -86,6 +86,14 @@
       <span id="global-announcement-text" class="announcement-text"></span>
     </div>
   </div>
+  <div id="global-announcement-banner-2" class="announcement-banner hidden">
+    <button type="button" class="announcement-toggle" id="btn-global-announcement-toggle-2">
+      <strong>📢 공지 2</strong><span id="global-announcement-hint-2" class="announcement-hint">(누르면 펼치기)</span>
+    </button>
+    <div id="global-announcement-detail-2" class="announcement-detail hidden">
+      <span id="global-announcement-text-2" class="announcement-text"></span>
+    </div>
+  </div>
 
   <main class="content">
 
@@ -265,6 +273,7 @@
       <div class="tab-row">
         <button type="button" class="tab-pill active" id="minifast-tab-list">대회 목록</button>
         <button type="button" class="tab-pill" id="minifast-tab-apply">참가 신청</button>
+        <button type="button" class="tab-pill" id="minifast-tab-awards">입상 내역</button>
       </div>
 
       <div id="minifast-list-panel">
@@ -295,6 +304,18 @@
             <button type="submit" class="btn primary">저장</button>
           </form>
         </div>
+      </div>
+
+      <div id="minifast-awards-panel" class="hidden">
+        <p class="desc">종료된 MINI/FAST 대회에서 3등 이내 입상자만 표시됩니다.</p>
+        <div class="tab-row">
+          <button type="button" class="tab-pill active" id="minifast-awards-mode-all">전체</button>
+          <button type="button" class="tab-pill" id="minifast-awards-mode-event">종목별</button>
+          <button type="button" class="tab-pill" id="minifast-awards-mode-comp">대회별</button>
+        </div>
+        <div id="minifast-awards-event-tabs" class="tab-row"></div>
+        <div id="minifast-awards-sub-tabs" class="tab-row"></div>
+        <div id="minifast-awards-list" class="card-list"></div>
       </div>
     </section>
 
@@ -381,7 +402,7 @@
     <!-- 대회 상세 -->
     <section id="view-detail" class="view hidden">
       <button class="btn small" id="btn-back-to-list">← 목록으로</button>
-      <h2 id="detail-title">-</h2>
+      <h2><span id="detail-type-mark"></span><span id="detail-title">-</span></h2>
       <p id="detail-desc" class="desc"></p>
       <p class="meta">개최일: <span id="detail-date"></span> · 주최자: <span id="detail-organizer"></span> · 상태: <span id="detail-status" class="badge"></span></p>
 
@@ -502,7 +523,7 @@
     <!-- 입상 내역 -->
     <section id="view-awards" class="view hidden">
       <h2>입상 내역</h2>
-      <p class="desc">종료된 대회에서 주최자가 순위를 지정한 종목 중 3등 이내만 표시됩니다.</p>
+      <p class="desc">종료된 대회에서 3등 이내 입상자만 표시됩니다. (MINI/FAST 대회는 MINI/FAST 탭에서 따로 확인하세요)</p>
       <div class="tab-row">
         <button type="button" class="tab-pill active" id="awards-mode-all">전체</button>
         <button type="button" class="tab-pill" id="awards-mode-event">종목별</button>
@@ -594,11 +615,16 @@
       </div>
       <div class="panel">
         <h3>전체 공지</h3>
-        <p class="desc">모든 이용자에게 화면 상단에 표시되는 공지입니다.</p>
+        <p class="desc">모든 이용자에게 화면 상단에 표시되는 공지입니다. 최대 2개까지 동시에 띄울 수 있습니다.</p>
         <p id="admin-announcement-current" class="desc announcement-text">공지 없음</p>
         <form id="form-admin-announcement" class="inline-form">
           <textarea id="admin-announcement-input" placeholder="공지 내용 (비우고 저장하면 삭제됨, Enter로 줄바꿈 가능)" maxlength="500" rows="3"></textarea>
           <button type="submit" class="btn small">공지 저장</button>
+        </form>
+        <p id="admin-announcement-current-2" class="desc announcement-text">공지 2 없음</p>
+        <form id="form-admin-announcement-2" class="inline-form">
+          <textarea id="admin-announcement-input-2" placeholder="공지 2 내용 (비우고 저장하면 삭제됨, Enter로 줄바꿈 가능)" maxlength="500" rows="3"></textarea>
+          <button type="submit" class="btn small">공지 2 저장</button>
         </form>
       </div>
       <div class="panel">

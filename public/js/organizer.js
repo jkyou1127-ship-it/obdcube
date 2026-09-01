@@ -271,6 +271,9 @@ async function openCompetitionDetail(compId) {
   }
 
   el("detail-title").textContent = comp.title;
+  el("detail-type-mark").innerHTML = comp.competitionType === "MINI" ? '<span class="badge type-mini">MINI</span> '
+    : comp.competitionType === "FAST" ? '<span class="badge type-fast">FAST</span> '
+    : "";
   el("detail-desc").textContent = comp.description || "";
   el("detail-date").textContent = formatDateRange(comp.startDate, comp.endDate);
   el("detail-organizer").textContent = comp.organizerNickname || "-";

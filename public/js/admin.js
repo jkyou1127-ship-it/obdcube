@@ -5,11 +5,18 @@ async function renderAdminView() {
 }
 
 async function renderGlobalAnnouncementAdmin() {
-  const announcement = await fetchGlobalAnnouncement();
-  el("admin-announcement-current").textContent = announcement && announcement.text
+  await Promise.all([
+    renderGlobalAnnouncementAdminSlot(1, "admin-announcement-current", "admin-announcement-input", "공지 없음"),
+    renderGlobalAnnouncementAdminSlot(2, "admin-announcement-current-2", "admin-announcement-input-2", "공지 2 없음")
+  ]);
+}
+
+async function renderGlobalAnnouncementAdminSlot(slot, currentId, inputId, emptyLabel) {
+  const announcement = await fetchGlobalAnnouncement(slot);
+  el(currentId).textContent = announcement && announcement.text
     ? `현재 공지: ${summarizeAnnouncement(announcement.text)}`
-    : "공지 없음";
-  el("admin-announcement-input").value = announcement && announcement.text ? announcement.text : "";
+    : emptyLabel;
+  el(inputId).value = announcement && announcement.text ? announcement.text : "";
 }
 
 async function renderPendingApplications() {
@@ -168,8 +175,21 @@ function initAdminForm() {
     e.preventDefault();
     const text = el("admin-announcement-input").value.trim();
     try {
-      await setGlobalAnnouncement(text);
+      await setGlobalAnnouncement(text, 1);
       showToast(text ? "전체 공지를 저장했습니다." : "전체 공지를 삭제했습니다.", "success");
+      await renderGlobalAnnouncementAdmin();
+      await applyGlobalAnnouncementBanner();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  });
+
+  el("form-admin-announcement-2").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = el("admin-announcement-input-2").value.trim();
+    try {
+      await setGlobalAnnouncement(text, 2);
+      showToast(text ? "전체 공지 2를 저장했습니다." : "전체 공지 2를 삭제했습니다.", "success");
       await renderGlobalAnnouncementAdmin();
       await applyGlobalAnnouncementBanner();
     } catch (err) {

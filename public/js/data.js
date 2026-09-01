@@ -293,14 +293,20 @@ async function deleteAppFeedback(feedbackId) {
   await db.collection("appFeedback").doc(feedbackId).delete();
 }
 
-// 전체 공지: 관리자만 설정 가능, 모든 로그인 사용자에게 화면 상단에 표시됨
-async function fetchGlobalAnnouncement() {
-  const doc = await db.collection("settings").doc("globalAnnouncement").get();
+// 전체 공지: 관리자만 설정 가능, 모든 로그인 사용자에게 화면 상단에 표시됨.
+// 최대 2개까지 동시에 띄울 수 있어 slot(1|2)으로 구분한다 - slot 1은 기존
+// globalAnnouncement 문서를 그대로 쓰고(기존 공지 유지), slot 2만 새 문서.
+function globalAnnouncementDocId(slot) {
+  return slot === 2 ? "globalAnnouncement2" : "globalAnnouncement";
+}
+
+async function fetchGlobalAnnouncement(slot) {
+  const doc = await db.collection("settings").doc(globalAnnouncementDocId(slot)).get();
   return doc.exists ? doc.data() : null;
 }
 
-async function setGlobalAnnouncement(text) {
-  const ref = db.collection("settings").doc("globalAnnouncement");
+async function setGlobalAnnouncement(text, slot) {
+  const ref = db.collection("settings").doc(globalAnnouncementDocId(slot));
   if (!text) {
     await ref.delete();
     return;
