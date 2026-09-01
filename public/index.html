@@ -244,8 +244,11 @@
         <textarea id="apply-desc" rows="4" maxlength="500"></textarea>
         <label>희망 개최일 (시작일)</label>
         <input type="date" id="apply-date" required />
-        <label>종료일 (2일 이상 진행되는 대회인 경우, 선택)</label>
-        <input type="date" id="apply-end-date" />
+        <div id="apply-end-date-wrap">
+          <label>종료일 (2일 이상 진행되는 대회인 경우, 선택)</label>
+          <input type="date" id="apply-end-date" />
+        </div>
+        <p id="apply-minifast-notice" class="desc hidden">MINI/FAST 대회는 하루만 개최할 수 있습니다.</p>
         <label>종목 선택 (최소 1개)</label>
         <div id="apply-events-checkboxes" class="checkbox-grid"></div>
         <label>기타 종목 (쉼표로 구분, 선택)</label>
@@ -631,8 +634,11 @@
           <textarea id="admin-host-desc" rows="4" maxlength="500"></textarea>
           <label>개최일 (시작일)</label>
           <input type="date" id="admin-host-date" required />
-          <label>종료일 (2일 이상 진행되는 대회인 경우, 선택)</label>
-          <input type="date" id="admin-host-end-date" />
+          <div id="admin-host-end-date-wrap">
+            <label>종료일 (2일 이상 진행되는 대회인 경우, 선택)</label>
+            <input type="date" id="admin-host-end-date" />
+          </div>
+          <p id="admin-host-minifast-notice" class="desc hidden">MINI/FAST 대회는 하루만 개최할 수 있습니다.</p>
           <label>종목 선택 (최소 1개)</label>
           <div id="admin-host-events-checkboxes" class="checkbox-grid"></div>
           <label>기타 종목 (쉼표로 구분, 선택)</label>

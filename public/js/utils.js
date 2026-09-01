@@ -65,6 +65,14 @@ function isMinifastCompetition(comp) {
   return !!comp && (comp.competitionType === "MINI" || comp.competitionType === "FAST");
 }
 
+// MINI/FAST 배지 HTML - MINI/FAST는 하루만 개최 가능하므로 개최일을 함께 표시한다.
+// 일반 대회면 빈 문자열을 반환한다.
+function minifastMarkHtml(comp) {
+  if (!isMinifastCompetition(comp)) return "";
+  const cls = comp.competitionType === "MINI" ? "type-mini" : "type-fast";
+  return `<span class="badge ${cls}">${escapeHtml(comp.competitionType)} ${escapeHtml(comp.startDate || "")}</span>`;
+}
+
 function isUserOrganizerOf(comp) {
   if (!AppState.user || !comp) return false;
   if (comp.organizerUid === AppState.user.uid) return true;

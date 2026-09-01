@@ -121,8 +121,17 @@ function initAdminHostEventsCheckboxes() {
   `).join("");
 }
 
+// MINI/FAST 대회는 하루만 개최 가능하므로, 유형 선택에 따라 종료일 입력을 숨긴다.
+function updateAdminHostMinifastNotice() {
+  const isMinifast = el("admin-host-type").value === "MINI" || el("admin-host-type").value === "FAST";
+  el("admin-host-end-date-wrap").classList.toggle("hidden", isMinifast);
+  el("admin-host-minifast-notice").classList.toggle("hidden", !isMinifast);
+  if (isMinifast) el("admin-host-end-date").value = "";
+}
+
 function initAdminForm() {
   initAdminHostEventsCheckboxes();
+  el("admin-host-type").addEventListener("change", updateAdminHostMinifastNotice);
 
   el("form-admin-host").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -134,8 +143,11 @@ function initAdminForm() {
       return;
     }
     const date = el("admin-host-date").value;
-    const endDate = el("admin-host-end-date").value;
-    if (endDate && endDate < date) {
+    const competitionType = el("admin-host-type").value;
+    const isMinifast = competitionType === "MINI" || competitionType === "FAST";
+    // MINI/FAST는 하루만 개최 가능하므로 종료일을 시작일과 항상 같게 강제한다.
+    const endDate = isMinifast ? date : el("admin-host-end-date").value;
+    if (!isMinifast && endDate && endDate < date) {
       showToast("종료일은 시작일보다 빠를 수 없습니다.", "error");
       return;
     }
@@ -146,9 +158,10 @@ function initAdminForm() {
         date,
         endDate,
         events,
-        competitionType: el("admin-host-type").value
+        competitionType
       });
       el("form-admin-host").reset();
+      updateAdminHostMinifastNotice();
       showToast("대회를 바로 개최했습니다.", "success");
       await openCompetitionDetail(compRef.id);
     } catch (err) {

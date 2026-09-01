@@ -219,8 +219,7 @@ async function renderMinifastCompList() {
     const organizerText = await organizerDisplayText(c);
     const events = await fetchEvents(c.id);
     const eventNames = events.map(ev => ev.name).join(", ");
-    const typeMark = `<span class="badge ${c.competitionType === "MINI" ? "type-mini" : "type-fast"}">${c.competitionType}</span>`;
-    return buildCompetitionCardHtml(c, statusInfo, organizerText, eventNames, typeMark);
+    return buildCompetitionCardHtml(c, statusInfo, organizerText, eventNames, minifastMarkHtml(c));
   }));
   container.innerHTML = cards.join("");
   container.querySelectorAll(".btn-open-comp").forEach(btn => {
@@ -513,6 +512,15 @@ function initApplyEventsCheckboxes() {
   `).join("");
 }
 
+// MINI/FAST 대회는 하루만 개최 가능하므로, 유형 선택에 따라 종료일 입력을 숨긴다.
+function updateApplyMinifastNotice() {
+  const isMinifast = el("apply-type").value === "MINI" || el("apply-type").value === "FAST";
+  el("apply-end-date-wrap").classList.toggle("hidden", isMinifast);
+  el("apply-minifast-notice").classList.toggle("hidden", !isMinifast);
+  if (isMinifast) el("apply-end-date").value = "";
+}
+el("apply-type").addEventListener("change", updateApplyMinifastNotice);
+
 el("form-apply").addEventListener("submit", async (e) => {
   e.preventDefault();
   const checked = Array.from(el("apply-events-checkboxes").querySelectorAll("input:checked")).map(cb => cb.value);
@@ -523,8 +531,11 @@ el("form-apply").addEventListener("submit", async (e) => {
     return;
   }
   const date = el("apply-date").value;
-  const endDate = el("apply-end-date").value;
-  if (endDate && endDate < date) {
+  const competitionType = el("apply-type").value;
+  const isMinifast = competitionType === "MINI" || competitionType === "FAST";
+  // MINI/FAST는 하루만 개최 가능하므로 종료일을 시작일과 항상 같게 강제한다.
+  const endDate = isMinifast ? date : el("apply-end-date").value;
+  if (!isMinifast && endDate && endDate < date) {
     showToast("종료일은 시작일보다 빠를 수 없습니다.", "error");
     return;
   }
@@ -535,9 +546,10 @@ el("form-apply").addEventListener("submit", async (e) => {
       date,
       endDate,
       events,
-      competitionType: el("apply-type").value
+      competitionType
     });
     el("form-apply").reset();
+    updateApplyMinifastNotice();
     showToast("대회 주최 신청이 접수되었습니다. 관리자 승인을 기다려주세요.", "success");
   } catch (err) {
     showToast(err.message, "error");
