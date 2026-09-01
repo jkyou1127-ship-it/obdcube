@@ -695,6 +695,7 @@ initAnnouncementToggle("btn-detail-announcement-toggle", "detail-announcement-de
 initAnnouncementToggle("btn-messenger-announcement-toggle", "messenger-announcement-detail");
 initAnnouncementToggle("btn-global-announcement-toggle", "global-announcement-detail");
 initAnnouncementToggle("btn-global-announcement-toggle-2", "global-announcement-detail-2");
+initAnnouncementToggle("btn-open-competitions-toggle", "open-competitions-detail");
 
 auth.onAuthStateChanged(async (user) => {
   AppState.user = user;
@@ -729,6 +730,7 @@ auth.onAuthStateChanged(async (user) => {
   el("nav-admin").classList.toggle("hidden", !AppState.isAdmin);
   showAppScreen();
   applyGlobalAnnouncementBanner().catch(() => {});
+  applyOpenCompetitionsBanner().catch(() => {});
   await onNavigate("competitions");
 });
 
@@ -737,6 +739,20 @@ async function applyGlobalAnnouncementBanner() {
     applyGlobalAnnouncementBannerSlot(1, "global-announcement-banner", "global-announcement-text", "global-announcement-hint"),
     applyGlobalAnnouncementBannerSlot(2, "global-announcement-banner-2", "global-announcement-text-2", "global-announcement-hint-2")
   ]);
+}
+
+// 참가 신청중 상태인 대회를 자동으로 모아 공지 배너로 보여준다 (관리자가 직접
+// 쓰는 전체 공지와 달리, 대회 상태에 따라 자동으로 갱신되는 안내).
+async function applyOpenCompetitionsBanner() {
+  const banner = el("open-competitions-banner");
+  const comps = (await fetchCompetitions()).filter(c => getCompetitionStatusInfo(c).label === "참가신청중");
+  if (comps.length === 0) {
+    banner.classList.add("hidden");
+    return;
+  }
+  el("open-competitions-text").textContent = comps.map(c => c.title).join("\n");
+  el("open-competitions-hint").textContent = `${comps.length}개 대회 참가 신청 중 (누르면 펼치기)`;
+  banner.classList.remove("hidden");
 }
 
 async function applyGlobalAnnouncementBannerSlot(slot, bannerId, textId, hintId) {
