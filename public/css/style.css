@@ -88,7 +88,13 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
   width: 100%;
   max-width: 380px;
 }
-.brand { margin: 0; font-size: 26px; text-align: center; }
+.brand {
+  margin: 0; font-size: 26px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.brand-word { display: inline-flex; align-items: baseline; gap: 0.22em; font-family: "Outfit", system-ui, sans-serif; }
+.brand-word-obd { font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 800; }
+.brand-word-cube { font-weight: 600; color: var(--text-dim); }
 .sub { text-align: center; color: var(--text-dim); margin-top: 4px; font-size: 13px; }
 .tabs { display: flex; margin: 20px 0 10px; border-bottom: 1px solid var(--border); }
 .tab-btn {
@@ -118,7 +124,7 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
 }
-.brand-mini { font-weight: 700; font-size: 18px; }
+.brand-mini { display: flex; align-items: center; gap: 8px; font-size: 18px; }
 .nav { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
 .nav-btn {
   background: none; border: 1px solid transparent; color: var(--text-dim);
