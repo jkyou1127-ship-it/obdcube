@@ -257,63 +257,6 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 .mine-cell.n7 { color: var(--text); }
 .mine-cell.n8 { color: var(--text-dim); }
 
-/* 왁스볼 부수기 - 겉은 왁스 껍질, 속은 말랑이 */
-.wax-ball-wrap { display: flex; justify-content: center; margin: 24px 0; }
-.wax-ball {
-  position: relative;
-  width: 160px;
-  height: 160px;
-  border: none;
-  border-radius: 50%;
-  padding: 0;
-  cursor: pointer;
-  background: radial-gradient(circle at 35% 30%, var(--wax-hi, #ffe9c7), var(--wax-lo, #d98c3f) 75%);
-  box-shadow: 0 6px 14px rgba(0,0,0,.35), inset 0 -8px 12px rgba(0,0,0,.25);
-  transition: transform .05s ease;
-}
-.wax-ball:active { transform: scale(.94); }
-.wax-ball.shake { animation: wax-shake .15s ease; }
-@keyframes wax-shake {
-  0%, 100% { transform: translate(0, 0) rotate(0); }
-  25% { transform: translate(-3px, 2px) rotate(-3deg); }
-  75% { transform: translate(3px, -2px) rotate(3deg); }
-}
-
-.wax-crack {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 2px;
-  background: rgba(35, 20, 5, .8);
-  opacity: 0;
-  transition: opacity .15s ease;
-}
-.wax-crack.show { opacity: 1; }
-.wax-crack-1 { height: 68px; transform: translate(-50%, -100%) rotate(12deg); transform-origin: bottom center; }
-.wax-crack-2 { height: 58px; transform: translate(-50%, -100%) rotate(-38deg); transform-origin: bottom center; }
-.wax-crack-3 { height: 55px; transform: translate(-50%, 0) rotate(65deg); transform-origin: top center; }
-.wax-crack-4 { height: 64px; transform: translate(-50%, 0) rotate(142deg); transform-origin: top center; }
-.wax-crack-5 { height: 50px; transform: translate(-50%, 0) rotate(-112deg); transform-origin: top center; }
-.wax-crack-6 { height: 46px; transform: translate(-50%, 0) rotate(-168deg); transform-origin: top center; }
-
-.wax-ball.broken {
-  background: radial-gradient(circle at 35% 30%, #ffd9ec, #ff7fb8 75%);
-  border-radius: 46% 54% 60% 40% / 55% 45% 55% 45%;
-  box-shadow: 0 6px 14px rgba(0,0,0,.3), inset 0 -8px 12px rgba(255,255,255,.35);
-  animation: wax-mochi-idle 2.4s ease-in-out infinite;
-}
-.wax-ball.broken .wax-crack { display: none; }
-.wax-ball.broken.squish { animation: wax-mochi-squish .18s ease; }
-@keyframes wax-mochi-idle {
-  0%, 100% { transform: scale(1, 1); }
-  50% { transform: scale(1.03, .97); }
-}
-@keyframes wax-mochi-squish {
-  0% { transform: scale(1, 1); }
-  40% { transform: scale(1.15, .82); }
-  100% { transform: scale(1, 1); }
-}
-
 /* 카카오톡 느낌의 메신저 UI (고정 배색 - 라이트/다크 테마와 무관) */
 .kakao-chat {
   max-height: 55vh;
