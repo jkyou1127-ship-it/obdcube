@@ -1387,6 +1387,18 @@ el("form-edit-dates").addEventListener("submit", async (e) => {
   }
 });
 
+// 대회 전체 종목 중, 주어진 uid가 참가자로 실제 신청한 종목 이름만 골라낸다.
+// 주최자/공동주최자/스태프라도 명찰에는 대회 전체 종목이 아니라 이렇게 본인이
+// 참가자로 신청한 종목만 표시하며, 신청한 종목이 없으면 빈 배열을 돌려준다.
+async function fetchPersonalEventNames(compId, events, uid) {
+  const rosterByEvent = await Promise.all(events.map(ev => fetchRoster(compId, ev.id).catch(() => [])));
+  const names = [];
+  rosterByEvent.forEach((list, i) => {
+    if (list.some(r => r.uid === uid)) names.push(canonicalEventName(events[i].name));
+  });
+  return names;
+}
+
 el("btn-badge-maker").addEventListener("click", async () => {
   if (!currentCompId || !currentCompData) return;
   try {
@@ -1398,15 +1410,17 @@ el("btn-badge-maker").addEventListener("click", async () => {
       events: events.map(ev => canonicalEventName(ev.name)),
       mainOrganizer: currentCompData.organizerNickname || "-"
     };
-    await openBadgeModal(buildBadgeData(AppState.profile.nickname, isMainOrganizer ? "organizer" : "coorganizer", ctx));
+    const personalEvents = await fetchPersonalEventNames(currentCompId, events, AppState.user.uid);
+    await openBadgeModal(buildBadgeData(AppState.profile.nickname, isMainOrganizer ? "organizer" : "coorganizer", ctx, personalEvents));
   } catch (err) {
     showToast("명찰 생성에 실패했습니다: " + err.message, "error");
   }
 });
 
 // 주최자/공동주최자/스태프뿐 아니라 이 대회에 참가 신청한 모든 참가자까지
-// 포함해 명찰을 한 번에 만든다. 여러 종목에 신청했거나 운영진이 동시에
-// 참가자이기도 한 경우 uid 기준으로 한 사람당 명찰 1장만 생성한다.
+// 포함해 명찰을 한 번에 만든다. 역할과 무관하게 누구나 본인이 참가자로
+// 신청한 종목만 명찰에 표시되며(운영진도 예외 없음), 여러 종목에 신청했거나
+// 운영진이 동시에 참가자이기도 한 경우 uid 기준으로 한 사람당 명찰 1장만 생성한다.
 el("btn-badge-maker-bulk").addEventListener("click", async () => {
   if (!currentCompId || !currentCompData) return;
   try {
@@ -1430,27 +1444,28 @@ el("btn-badge-maker-bulk").addEventListener("click", async () => {
       ))
     ]);
 
-    const people = [{ name: ctx.mainOrganizer, role: "organizer" }];
-    coProfiles.forEach(p => { if (p && p.nickname) people.push({ name: p.nickname, role: "coorganizer" }); });
-    staffProfiles.forEach(p => { if (p && p.nickname) people.push({ name: p.nickname, role: "staff" }); });
-
-    // 참가자는 대회 전체 종목이 아니라 본인이 실제로 신청한 종목만 명찰에 표시한다.
-    const participantsByUid = new Map();
+    // uid -> 본인이 참가자로 실제 신청한 종목 목록 + 닉네임 (역할과 무관하게 전원 공통 적용)
+    const personalByUid = new Map();
     rosterByEvent.forEach(({ ev, list }) => {
       list.forEach(r => {
-        if (!participantsByUid.has(r.uid)) participantsByUid.set(r.uid, { nickname: r.nickname, events: [] });
-        participantsByUid.get(r.uid).events.push(canonicalEventName(ev.name));
+        if (!personalByUid.has(r.uid)) personalByUid.set(r.uid, { nickname: r.nickname, events: [] });
+        personalByUid.get(r.uid).events.push(canonicalEventName(ev.name));
       });
     });
+    const personalEventsOf = (uid) => (personalByUid.get(uid) || { events: [] }).events;
 
-    const seenUids = new Set([currentCompData.organizerUid, ...coUids, ...staffUids]);
-    participantsByUid.forEach((info, uid) => {
+    const people = [{ uid: currentCompData.organizerUid, name: ctx.mainOrganizer, role: "organizer" }];
+    coUids.forEach((uid, i) => { const p = coProfiles[i]; if (p && p.nickname) people.push({ uid, name: p.nickname, role: "coorganizer" }); });
+    staffUids.forEach((uid, i) => { const p = staffProfiles[i]; if (p && p.nickname) people.push({ uid, name: p.nickname, role: "staff" }); });
+
+    const seenUids = new Set(people.map(p => p.uid));
+    personalByUid.forEach((info, uid) => {
       if (seenUids.has(uid)) return;
       seenUids.add(uid);
-      people.push({ name: info.nickname, role: "participant", events: info.events });
+      people.push({ uid, name: info.nickname, role: "participant" });
     });
 
-    openBulkEditModal("badge", people.map(p => buildBadgeData(p.name, p.role, ctx, p.events)));
+    openBulkEditModal("badge", people.map(p => buildBadgeData(p.name, p.role, ctx, personalEventsOf(p.uid))));
   } catch (err) {
     showToast("명찰 일괄 발급에 실패했습니다: " + err.message, "error");
   }
