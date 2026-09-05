@@ -479,7 +479,7 @@ function createAwardsController(ids, isEligible) {
   el(ids.modeAll).addEventListener("click", () => { viewMode = "all"; updateModeButtons(); renderView(); });
   el(ids.modeEvent).addEventListener("click", () => { viewMode = "event"; updateModeButtons(); renderView(); });
   el(ids.modeComp).addEventListener("click", () => { viewMode = "comp"; updateModeButtons(); renderView(); });
-  el(ids.bulkCert).addEventListener("click", () => bulkDownloadCertificates(cache.map(awardToCertData)));
+  el(ids.bulkCert).addEventListener("click", () => openBulkEditModal("cert", cache.map(awardToCertData)));
 
   return { renderPanel };
 }

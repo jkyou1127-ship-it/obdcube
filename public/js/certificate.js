@@ -249,6 +249,63 @@ async function downloadFilesAsZip(files, zipFilename) {
   setTimeout(() => URL.revokeObjectURL(link.href), 10000);
 }
 
+// 일괄 발급 전에 사람마다 이름(닉네임)을 실명 등으로 확인·수정할 수 있는 모달.
+// kind: "cert"(nickname 필드 편집) | "badge"(name 필드 편집)
+let bulkEditKind = null;
+let bulkEditDataList = [];
+
+function bulkEditContextLabel(kind, data) {
+  if (kind === "cert") return `${data.rank}등 · ${data.evName}`;
+  return (BADGE_ROLE_META[data.role] || BADGE_ROLE_META.participant).subtitle;
+}
+
+function openBulkEditModal(kind, dataList) {
+  if (dataList.length === 0) {
+    showToast(kind === "cert" ? "다운로드할 상장이 없습니다." : "발급할 명찰이 없습니다.", "error");
+    return;
+  }
+  bulkEditKind = kind;
+  bulkEditDataList = dataList.map(d => ({ ...d }));
+  const nameKey = kind === "cert" ? "nickname" : "name";
+
+  el("bulk-edit-title").textContent = kind === "cert"
+    ? `상장 ${dataList.length}장 일괄 발급`
+    : `명찰 ${dataList.length}장 일괄 발급`;
+
+  const list = el("bulk-edit-list");
+  list.innerHTML = bulkEditDataList.map((d, i) => `
+    <div class="bulk-edit-row">
+      <span class="bulk-edit-context">${escapeHtml(bulkEditContextLabel(kind, d))}</span>
+      <input type="text" class="bulk-edit-name-input" data-idx="${i}" value="${escapeHtml(d[nameKey])}" maxlength="30" />
+    </div>
+  `).join("");
+  list.querySelectorAll(".bulk-edit-name-input").forEach(input => {
+    input.addEventListener("input", () => {
+      bulkEditDataList[Number(input.dataset.idx)][nameKey] = input.value.trim() || "-";
+    });
+  });
+
+  el("bulk-edit-modal").classList.remove("hidden");
+}
+
+function closeBulkEditModal() {
+  el("bulk-edit-modal").classList.add("hidden");
+}
+
+el("btn-close-bulk-edit-modal").addEventListener("click", closeBulkEditModal);
+el("bulk-edit-modal").addEventListener("click", (e) => {
+  if (e.target.id === "bulk-edit-modal") closeBulkEditModal();
+});
+
+el("btn-bulk-edit-confirm").addEventListener("click", async () => {
+  closeBulkEditModal();
+  if (bulkEditKind === "cert") {
+    await bulkDownloadCertificates(bulkEditDataList);
+  } else if (bulkEditKind === "badge") {
+    await bulkDownloadBadges(bulkEditDataList);
+  }
+});
+
 // dataList: openCertificateModal에 넘기는 것과 동일한 형태의 객체 배열
 async function bulkDownloadCertificates(dataList) {
   if (dataList.length === 0) {

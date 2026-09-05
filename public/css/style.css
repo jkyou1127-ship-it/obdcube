@@ -596,3 +596,29 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
   background: var(--bg-soft);
 }
 .modal-actions { display: flex; gap: 10px; }
+
+.modal-box.bulk-edit-box { max-width: 640px; align-items: stretch; }
+.modal-box.bulk-edit-box h3 { margin: 0; padding-right: 24px; }
+.bulk-edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.bulk-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+}
+.bulk-edit-row .bulk-edit-context {
+  flex: 0 0 auto;
+  min-width: 90px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.bulk-edit-row input { flex: 1 1 auto; }

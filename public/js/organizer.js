@@ -1437,7 +1437,7 @@ el("btn-badge-maker-bulk").addEventListener("click", async () => {
       people.push({ name: r.nickname, role: "participant" });
     });
 
-    await bulkDownloadBadges(people.map(p => buildBadgeData(p.name, p.role, ctx)));
+    openBulkEditModal("badge", people.map(p => buildBadgeData(p.name, p.role, ctx)));
   } catch (err) {
     showToast("명찰 일괄 발급에 실패했습니다: " + err.message, "error");
   }
