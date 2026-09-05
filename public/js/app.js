@@ -241,18 +241,32 @@ Object.keys(COMPETITIONS_FILTER_LABELS).forEach(key => {
 
 // 입상 내역 한 줄(참가자 1명) 카드 HTML - 두 컨트롤러가 공용으로 사용한다.
 function renderAwardItemsHtml(items) {
-  return items.slice().sort((a, b) => a.rank - b.rank).map(a => `
+  return items.slice().sort((a, b) => a.rank - b.rank).map(a => {
+    const bestStr = a.best === Infinity ? "-" : formatSecondsToTime(a.best);
+    const avgStr = a.average === Infinity ? "-" : formatSecondsToTime(a.average);
+    return `
     <div class="item-card">
       <div class="info">
         <span>${escapeHtml(a.nickname || "-")}</span>
         <span>(결승 ${a.round}라운드 기준)</span>
-        <span>최고기록: ${a.best === Infinity ? "-" : formatSecondsToTime(a.best)} · 평균기록: ${a.average === Infinity ? "-" : formatSecondsToTime(a.average)}</span>
+        <span>최고기록: ${bestStr} · 평균기록: ${avgStr}</span>
       </div>
       <div class="actions">
         <span class="badge active">${a.rank}등</span>
+        <button type="button" class="btn small btn-award-cert"
+          data-title="${escapeHtml(a.comp.title)}"
+          data-event="${escapeHtml(a.evName)}"
+          data-nickname="${escapeHtml(a.nickname || "-")}"
+          data-rank="${a.rank}"
+          data-best="${escapeHtml(bestStr)}"
+          data-average="${escapeHtml(avgStr)}"
+          data-organizer="${escapeHtml(a.comp.organizerNickname || "-")}"
+          data-date="${escapeHtml(formatDateRange(a.comp.startDate, a.comp.endDate))}"
+        >상장 발급</button>
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function createAwardsController(ids, isEligible) {
