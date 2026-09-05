@@ -92,16 +92,6 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
   margin: 0; font-size: 26px;
   display: flex; align-items: center; justify-content: center; gap: 10px;
 }
-.brand-word { display: inline-flex; align-items: baseline; gap: 0.22em; font-family: "Outfit", system-ui, sans-serif; }
-.brand-word-obd {
-  font-family: "Fredoka", ui-rounded, system-ui, sans-serif;
-  font-weight: 700;
-  background: linear-gradient(90deg, #5b7cff, #8a5bff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.brand-word-cube { font-weight: 600; color: var(--text-dim); }
 .sub { text-align: center; color: var(--text-dim); margin-top: 4px; font-size: 13px; }
 .tabs { display: flex; margin: 20px 0 10px; border-bottom: 1px solid var(--border); }
 .tab-btn {
@@ -144,14 +134,6 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 .content { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
 .view h2 { margin-top: 0; }
 
-#view-rules .updated { color: var(--text-dim); font-size: 13px; margin-bottom: 10px; }
-#view-rules h3 { font-size: 16px; margin-top: 28px; border-left: 3px solid var(--primary); padding-left: 10px; }
-#view-rules p, #view-rules li { color: var(--text-dim); font-size: 14px; line-height: 1.7; }
-#view-rules ul, #view-rules ol { padding-left: 20px; }
-#view-rules .notice {
-  background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--warn);
-  border-radius: 8px; padding: 14px 16px; margin: 16px 0;
-}
 .desc { color: var(--text-dim); font-size: 14px; }
 .meta { color: var(--text-dim); font-size: 13px; }
 

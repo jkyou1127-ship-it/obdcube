@@ -85,7 +85,6 @@ async function onNavigate(name) {
   if (name === "practice") initPracticeTab();
   if (name === "messenger") await renderMessengerList();
   if (name === "admin") await renderAdminView();
-  if (name === "rules") {} // 정적 콘텐츠, 별도 렌더링 불필요
 }
 
 el("btn-back-to-list").addEventListener("click", () => onNavigate("competitions"));
