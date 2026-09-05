@@ -357,6 +357,12 @@ function createAwardsController(ids, isEligible) {
     }
   }
 
+  // 대회별 상장 일괄 다운로드 버튼 - 입상 내역이 어떤 보기 모드로 묶여 있든
+  // (전체/종목별/대회별) 그 안에서 특정 대회 하나의 상장만 모아 받을 수 있게 한다.
+  function compBulkCertButtonHtml(compId) {
+    return `<button type="button" class="btn small btn-comp-bulk-cert" data-comp-id="${compId}">이 대회 상장 일괄 다운로드</button>`;
+  }
+
   // ---- 전체: 대회별로 묶고, 그 안에서 종목별로 다시 묶어 보여준다 ----
   function renderAllList() {
     const container = el(ids.list);
@@ -373,6 +379,7 @@ function createAwardsController(ids, isEligible) {
       <div class="roster-block">
         <strong>${escapeHtml(cg.comp.title)}</strong>
         <span class="desc">${escapeHtml(formatDateRange(cg.comp.startDate, cg.comp.endDate))}</span>
+        ${compBulkCertButtonHtml(cg.comp.id)}
         ${[...cg.byEvent.entries()].map(([evName, items]) => `
           <p class="desc"><strong>${escapeHtml(evName)}</strong></p>
           ${renderAwardItemsHtml(items)}
@@ -420,6 +427,7 @@ function createAwardsController(ids, isEligible) {
       <div class="roster-block">
         <strong>${escapeHtml(g.comp.title)}</strong>
         <span class="desc">${escapeHtml(formatDateRange(g.comp.startDate, g.comp.endDate))}</span>
+        ${compBulkCertButtonHtml(g.comp.id)}
         ${renderAwardItemsHtml(g.items)}
       </div>
     `).join("");
@@ -469,25 +477,34 @@ function createAwardsController(ids, isEligible) {
   function renderCompList() {
     const container = el(ids.list);
     const filtered = cache.filter(a => a.comp.id === currentCompId && a.evName === currentCompEventName);
+    // 이 버튼은 현재 선택된 종목 탭이 아니라 대회 전체(모든 종목)의 상장을 받는다.
+    const compButton = compBulkCertButtonHtml(currentCompId);
     if (filtered.length === 0) {
-      container.innerHTML = "<p class='desc'>아직 입상 내역이 없습니다.</p>";
+      container.innerHTML = compButton + "<p class='desc'>아직 입상 내역이 없습니다.</p>";
       return;
     }
-    container.innerHTML = renderAwardItemsHtml(filtered);
+    container.innerHTML = compButton + renderAwardItemsHtml(filtered);
   }
 
   el(ids.modeAll).addEventListener("click", () => { viewMode = "all"; updateModeButtons(); renderView(); });
   el(ids.modeEvent).addEventListener("click", () => { viewMode = "event"; updateModeButtons(); renderView(); });
   el(ids.modeComp).addEventListener("click", () => { viewMode = "comp"; updateModeButtons(); renderView(); });
-  el(ids.bulkCert).addEventListener("click", () => openBulkEditModal("cert", cache.map(awardToCertData)));
+
+  // 대회별 상장 일괄 다운로드 버튼은 렌더링될 때마다 새로 그려지므로, 리스트
+  // 컨테이너 자체에 위임 리스너를 한 번만 걸어둔다.
+  el(ids.list).addEventListener("click", (e) => {
+    const btn = e.target.closest(".btn-comp-bulk-cert");
+    if (!btn) return;
+    const dataList = cache.filter(a => a.comp.id === btn.dataset.compId).map(awardToCertData);
+    openBulkEditModal("cert", dataList);
+  });
 
   return { renderPanel };
 }
 
 const regularAwards = createAwardsController({
   list: "awards-list", eventTabs: "awards-event-tabs", subTabs: "awards-sub-tabs",
-  modeAll: "awards-mode-all", modeEvent: "awards-mode-event", modeComp: "awards-mode-comp",
-  bulkCert: "awards-bulk-cert"
+  modeAll: "awards-mode-all", modeEvent: "awards-mode-event", modeComp: "awards-mode-comp"
 }, c => !isMinifastCompetition(c));
 
 async function renderAwardsPanel() {
@@ -496,8 +513,7 @@ async function renderAwardsPanel() {
 
 const minifastAwards = createAwardsController({
   list: "minifast-awards-list", eventTabs: "minifast-awards-event-tabs", subTabs: "minifast-awards-sub-tabs",
-  modeAll: "minifast-awards-mode-all", modeEvent: "minifast-awards-mode-event", modeComp: "minifast-awards-mode-comp",
-  bulkCert: "minifast-awards-bulk-cert"
+  modeAll: "minifast-awards-mode-all", modeEvent: "minifast-awards-mode-event", modeComp: "minifast-awards-mode-comp"
 }, isMinifastCompetition);
 
 async function renderMinifastAwardsPanel() {

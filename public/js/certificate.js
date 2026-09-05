@@ -363,38 +363,153 @@ const BADGE_ROLE_META = {
 };
 
 // ctx: { title, year, events, mainOrganizer } - 대회 공통 정보. role: BADGE_ROLE_META의 키.
+// personalEvents: 참가자 본인이 실제로 신청한 종목 목록. 생략하면(주최자/공동주최자/
+// 스태프는 전체 종목을 관리하므로) ctx.events(대회 전체 종목)를 그대로 쓴다.
 // footerBox2Value는 role에 따라 매번 다시 계산해야 하므로(대표 주최자는 항상
 // "OBD Cube", 나머지는 항상 자기 이름) role을 그대로 들고 다니고 drawBadge에서 계산한다.
-function buildBadgeData(name, role, ctx) {
+function buildBadgeData(name, role, ctx, personalEvents) {
   const meta = BADGE_ROLE_META[role] || BADGE_ROLE_META.participant;
   return {
     title: ctx.title,
     year: ctx.year,
     name,
     role,
-    events: ctx.events,
+    events: personalEvents || ctx.events,
     mainOrganizer: ctx.mainOrganizer,
     roleLabel: meta.subtitle,
     footerBox2Label: meta.footerLabel
   };
 }
 
-function wrapCenteredText(ctx, text, cx, y, maxWidth, lineHeight) {
-  const words = text.split(" ");
-  let line = "";
-  const lines = [];
-  for (const word of words) {
-    const test = line ? line + " " + word : word;
-    if (line && ctx.measureText(test).width > maxWidth) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = test;
-    }
+// ---- 종목 아이콘 (WCA 종목을 본뜬 간단한 픽토그램) ----
+// WCA 공식 아이콘을 그대로 쓰는 대신, 종목별 특징을 살린 자체 도안을 그린다
+// (이 서비스는 WCA와 무관한 독립 플랫폼이라는 규정과도 일치).
+
+function cubeGridIconSvg(n, color) {
+  const pad = 8, size = 100, inner = size - pad * 2;
+  let lines = "";
+  for (let i = 1; i < n; i++) {
+    const pos = pad + (inner / n) * i;
+    lines += `<line x1="${pos}" y1="${pad}" x2="${pos}" y2="${size - pad}" stroke="${color}" stroke-width="4"/>`;
+    lines += `<line x1="${pad}" y1="${pos}" x2="${size - pad}" y2="${pos}" stroke="${color}" stroke-width="4"/>`;
   }
-  if (line) lines.push(line);
-  const startY = y - ((lines.length - 1) * lineHeight) / 2;
-  lines.forEach((l, i) => ctx.fillText(l, cx, startY + i * lineHeight));
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}">
+    <rect x="${pad}" y="${pad}" width="${inner}" height="${inner}" rx="10" fill="none" stroke="${color}" stroke-width="6"/>
+    ${lines}
+  </svg>`;
+}
+
+function ohIconSvg(color) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    ${cubeGridIconSvg(3, color).replace(/^<svg[^>]*>|<\/svg>$/g, "")}
+    <circle cx="82" cy="82" r="16" fill="${color}"/>
+    <text x="82" y="89" font-size="20" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle" fill="#12152a">1</text>
+  </svg>`;
+}
+
+function pyraminxIconSvg(color) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <polygon points="50,10 90,80 10,80" fill="none" stroke="${color}" stroke-width="6" stroke-linejoin="round"/>
+    <polygon points="70,45 50,80 30,45" fill="none" stroke="${color}" stroke-width="5" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+function skewbIconSvg(color) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect x="10" y="10" width="80" height="80" rx="10" fill="none" stroke="${color}" stroke-width="6"/>
+    <line x1="12" y1="12" x2="88" y2="88" stroke="${color}" stroke-width="5"/>
+    <line x1="88" y1="12" x2="12" y2="88" stroke="${color}" stroke-width="5"/>
+  </svg>`;
+}
+
+function clockIconSvg(color) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="40" fill="none" stroke="${color}" stroke-width="6"/>
+    <line x1="50" y1="50" x2="50" y2="22" stroke="${color}" stroke-width="6" stroke-linecap="round"/>
+    <line x1="50" y1="50" x2="72" y2="60" stroke="${color}" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="50" cy="50" r="5" fill="${color}"/>
+  </svg>`;
+}
+
+// WCA 공인 종목이 아닌 특수 종목(자체 신청 종목)용 - 이름 앞 두 글자만 박스에 넣는다.
+function genericEventIconSvg(name, color) {
+  const short = escapeHtml(String(name || "?").trim().slice(0, 2));
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect x="10" y="10" width="80" height="80" rx="16" fill="none" stroke="${color}" stroke-width="6"/>
+    <text x="50" y="63" font-size="32" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" fill="${color}">${short}</text>
+  </svg>`;
+}
+
+// 종목 이름 문자열을 아이콘 종류로 분류한다. 알아볼 수 없는(WCA 공인이 아닌) 종목은 null.
+function classifyEventIcon(name) {
+  const n = String(name || "");
+  if (n.includes("한손") || /\bOH\b/i.test(n)) return "OH";
+  if (n.includes("피라밍크스") || /pyraminx/i.test(n)) return "PYRA";
+  if (n.includes("스큐브") || /skewb/i.test(n)) return "SKEWB";
+  if (n.includes("클락") || /clock/i.test(n)) return "CLOCK";
+  for (const size of [2, 3, 4, 5, 6, 7]) {
+    if (n.includes(`${size}x${size}x${size}`)) return `CUBE${size}`;
+  }
+  return null;
+}
+
+const EVENT_ICON_COLOR = "#c7cbe6";
+const eventIconImageCache = {};
+
+function loadEventIcon(eventName) {
+  const key = classifyEventIcon(eventName) || `CUSTOM:${eventName}`;
+  if (eventIconImageCache[key]) return eventIconImageCache[key];
+
+  let svg;
+  const kind = classifyEventIcon(eventName);
+  if (kind === "OH") svg = ohIconSvg(EVENT_ICON_COLOR);
+  else if (kind === "PYRA") svg = pyraminxIconSvg(EVENT_ICON_COLOR);
+  else if (kind === "SKEWB") svg = skewbIconSvg(EVENT_ICON_COLOR);
+  else if (kind === "CLOCK") svg = clockIconSvg(EVENT_ICON_COLOR);
+  else if (kind && kind.startsWith("CUBE")) svg = cubeGridIconSvg(Number(kind.slice(4)), EVENT_ICON_COLOR);
+  else svg = genericEventIconSvg(eventName, EVENT_ICON_COLOR);
+
+  const promise = new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("종목 아이콘을 불러오지 못했습니다."));
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+  });
+  eventIconImageCache[key] = promise;
+  return promise;
+}
+
+// 종목 아이콘을 가운데 정렬로 줄바꿈하며 그린다 (텍스트 목록 대신 픽토그램으로 표시).
+async function drawEventIconsRow(ctx, events, cx, y, maxWidth, iconSize, gap) {
+  const icons = await Promise.all(events.map(name => loadEventIcon(name).catch(() => null)));
+  const valid = icons.filter(Boolean);
+  if (valid.length === 0) return;
+
+  const rows = [];
+  let row = [], rowWidth = 0;
+  valid.forEach(img => {
+    const w = iconSize + gap;
+    if (row.length > 0 && rowWidth + w > maxWidth) {
+      rows.push(row);
+      row = [];
+      rowWidth = 0;
+    }
+    row.push(img);
+    rowWidth += w;
+  });
+  if (row.length) rows.push(row);
+
+  const totalHeight = rows.length * (iconSize + gap) - gap;
+  let rowY = y - totalHeight / 2;
+  rows.forEach(rowIcons => {
+    const rowW = rowIcons.length * iconSize + (rowIcons.length - 1) * gap;
+    let x = cx - rowW / 2;
+    rowIcons.forEach(img => {
+      ctx.drawImage(img, x, rowY, iconSize, iconSize);
+      x += iconSize + gap;
+    });
+    rowY += iconSize + gap;
+  });
 }
 
 async function drawBadge(canvas, data) {
@@ -432,10 +547,8 @@ async function drawBadge(canvas, data) {
   ctx.font = `400 ${Math.round(H * 0.17)}px ${CERT_FONT_DISPLAY}`;
   ctx.fillText(data.name, W / 2, H * 0.56);
 
-  // 종목 목록 (줄바꿈)
-  ctx.fillStyle = "#c7cbe6";
-  ctx.font = `600 ${Math.round(H * 0.032)}px ${CERT_FONT_BODY}`;
-  wrapCenteredText(ctx, data.events.join(" · "), W / 2, H * 0.685, W - pad * 2, H * 0.045);
+  // 종목 아이콘 (WCA 종목을 본뜬 픽토그램) - 참가자는 본인이 신청한 종목만 표시된다.
+  await drawEventIconsRow(ctx, data.events, W / 2, H * 0.665, W - pad * 2, H * 0.085, H * 0.018);
 
   // 하단 박스: 왼쪽은 항상 대표 주최자, 오른쪽은 역할별 라벨(플랫폼/공동주최/스태프/참가자)
   const boxY = H * 0.78;

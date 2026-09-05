@@ -1420,24 +1420,37 @@ el("btn-badge-maker-bulk").addEventListener("click", async () => {
 
     const coUids = currentCompData.coOrganizerUids || [];
     const staffUids = currentCompData.staffUids || [];
-    const [coProfiles, staffProfiles, rosterLists] = await Promise.all([
+    const [coProfiles, staffProfiles, rosterByEvent] = await Promise.all([
       Promise.all(coUids.map(uid => fetchUserProfile(uid).catch(() => null))),
       Promise.all(staffUids.map(uid => fetchUserProfile(uid).catch(() => null))),
-      Promise.all(events.map(ev => fetchRoster(currentCompId, ev.id).catch(() => [])))
+      Promise.all(events.map(ev =>
+        fetchRoster(currentCompId, ev.id)
+          .then(list => ({ ev, list }))
+          .catch(() => ({ ev, list: [] }))
+      ))
     ]);
 
     const people = [{ name: ctx.mainOrganizer, role: "organizer" }];
     coProfiles.forEach(p => { if (p && p.nickname) people.push({ name: p.nickname, role: "coorganizer" }); });
     staffProfiles.forEach(p => { if (p && p.nickname) people.push({ name: p.nickname, role: "staff" }); });
 
-    const seenUids = new Set([currentCompData.organizerUid, ...coUids, ...staffUids]);
-    rosterLists.flat().forEach(r => {
-      if (seenUids.has(r.uid)) return;
-      seenUids.add(r.uid);
-      people.push({ name: r.nickname, role: "participant" });
+    // 참가자는 대회 전체 종목이 아니라 본인이 실제로 신청한 종목만 명찰에 표시한다.
+    const participantsByUid = new Map();
+    rosterByEvent.forEach(({ ev, list }) => {
+      list.forEach(r => {
+        if (!participantsByUid.has(r.uid)) participantsByUid.set(r.uid, { nickname: r.nickname, events: [] });
+        participantsByUid.get(r.uid).events.push(canonicalEventName(ev.name));
+      });
     });
 
-    openBulkEditModal("badge", people.map(p => buildBadgeData(p.name, p.role, ctx)));
+    const seenUids = new Set([currentCompData.organizerUid, ...coUids, ...staffUids]);
+    participantsByUid.forEach((info, uid) => {
+      if (seenUids.has(uid)) return;
+      seenUids.add(uid);
+      people.push({ name: info.nickname, role: "participant", events: info.events });
+    });
+
+    openBulkEditModal("badge", people.map(p => buildBadgeData(p.name, p.role, ctx, p.events)));
   } catch (err) {
     showToast("명찰 일괄 발급에 실패했습니다: " + err.message, "error");
   }
