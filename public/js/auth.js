@@ -45,10 +45,12 @@ async function signUp(nickname, email, password) {
   const uid = cred.user.uid;
 
   try {
+    const obdId = await generateObdId(nickname);
     await db.collection("nicknames").doc(nickname).set({ uid });
     await db.collection("users").doc(uid).set({
       nickname,
       email,
+      obdId,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     await cred.user.updateProfile({ displayName: nickname });

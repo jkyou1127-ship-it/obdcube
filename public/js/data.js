@@ -1,5 +1,22 @@
 // Firestore 데이터 접근 헬퍼: 대회 주최 신청 / 대회 / 종목 / 스크램블
 
+// WCA ID(예: 2015DOEJ01 = 가입연도 + 이름 4자 + 2자리 일련번호)를 본떠 만든
+// OBD ID. 가입 시 한 번 발급되며 이후 바뀌지 않는다. 같은 연도·이름 앞 4글자
+// 조합이 겹치면 obdIdCounters/{prefix} 트랜잭션으로 뒤 번호만 증가시켜 구분한다.
+async function generateObdId(nickname) {
+  const year = new Date().getFullYear();
+  const nameCode = String(nickname || "").replace(/\s/g, "").slice(0, 4).toUpperCase().padEnd(4, "X");
+  const prefix = `${year}${nameCode}`;
+  const counterRef = db.collection("obdIdCounters").doc(prefix);
+  const seq = await db.runTransaction(async (tx) => {
+    const doc = await tx.get(counterRef);
+    const next = (doc.exists ? doc.data().count : 0) + 1;
+    tx.set(counterRef, { count: next });
+    return next;
+  });
+  return `${prefix}${String(seq).padStart(2, "0")}`;
+}
+
 async function submitApplication({ title, description, date, endDate, events, competitionType }) {
   return db.collection("applications").add({
     applicantUid: AppState.user.uid,

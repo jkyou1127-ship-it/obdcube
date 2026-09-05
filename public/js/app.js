@@ -668,6 +668,7 @@ el("btn-delete-account-final").addEventListener("click", async () => {
 
 async function renderMyPage() {
   el("mypage-nickname").value = AppState.profile.nickname;
+  el("mypage-obdid").textContent = AppState.profile.obdId || "미발급 (가입일 이후 도입된 기능입니다)";
   el("delete-account-flow").classList.add("hidden");
   el("form-delete-account").classList.remove("hidden");
   el("delete-account-final").classList.add("hidden");

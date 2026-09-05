@@ -44,6 +44,13 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // OBD ID(WCA ID를 본뜬 가입연도+이름+일련번호 형식) 발급용 일련번호 카운터.
+    // 문서 id는 "연도+이름 4자" 접두어이고, 값은 그 접두어를 가진 사람 수뿐이라 민감하지 않다.
+    match /obdIdCounters/{prefix} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
     // 관리자 목록
     match /admins/{uid} {
       allow read: if isSignedIn();
