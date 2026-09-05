@@ -1,6 +1,7 @@
 // 대회 상세 화면: 종목/스크램블 표시 및 주최자 관리 도구
 
 let currentCompId = null;
+let currentCompData = null;
 const participantRoundByEvent = {}; // eventId -> 현재 표시 중인 라운드 번호
 let teamChatUnsub = null;
 
@@ -309,6 +310,8 @@ async function openCompetitionDetail(compId) {
     showToast("대회 정보를 찾을 수 없습니다.", "error");
     return;
   }
+  currentCompData = comp;
+  el("form-edit-dates").classList.add("hidden");
 
   el("detail-title").textContent = comp.title;
   const detailMark = minifastMarkHtml(comp);
@@ -334,6 +337,7 @@ async function openCompetitionDetail(compId) {
   el("btn-close-participation").classList.toggle("hidden", isEnded || !isParticipationStarted(comp) || comp.participationClosed === true);
   el("btn-close-events").classList.toggle("hidden", eventsClosed);
   el("btn-reopen-events").classList.toggle("hidden", isEnded || comp.eventsClosed !== true);
+  el("btn-edit-dates").classList.toggle("hidden", isEnded);
   el("btn-end-competition").classList.toggle("hidden", isEnded);
   el("coorganizer-panel").classList.toggle("hidden", !canManage);
   el("staff-panel").classList.toggle("hidden", !canManage);
@@ -1337,6 +1341,46 @@ el("btn-reopen-events").addEventListener("click", async () => {
   try {
     await reopenEventAdditions(currentCompId);
     showToast("종목추가를 다시 열었습니다.", "success");
+    await openCompetitionDetail(currentCompId);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+// MINI/FAST 대회는 하루만 개최 가능하므로, 유형에 따라 종료일 입력을 숨긴다.
+function updateEditDatesMinifastNotice() {
+  const isMinifast = currentCompData && isMinifastCompetition(currentCompData);
+  el("edit-enddate-wrap").classList.toggle("hidden", isMinifast);
+  el("edit-dates-minifast-notice").classList.toggle("hidden", !isMinifast);
+  if (isMinifast) el("edit-enddate").value = "";
+}
+
+el("btn-edit-dates").addEventListener("click", () => {
+  if (!currentCompData) return;
+  el("edit-startdate").value = currentCompData.startDate || "";
+  el("edit-enddate").value = currentCompData.endDate || currentCompData.startDate || "";
+  updateEditDatesMinifastNotice();
+  el("form-edit-dates").classList.remove("hidden");
+});
+
+el("btn-cancel-edit-dates").addEventListener("click", () => {
+  el("form-edit-dates").classList.add("hidden");
+});
+
+el("form-edit-dates").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentCompId || !currentCompData) return;
+  const startDate = el("edit-startdate").value;
+  const isMinifast = isMinifastCompetition(currentCompData);
+  const endDate = isMinifast ? startDate : (el("edit-enddate").value || startDate);
+  if (!isMinifast && endDate < startDate) {
+    showToast("종료일은 시작일보다 빠를 수 없습니다.", "error");
+    return;
+  }
+  try {
+    await updateCompetitionDates(currentCompId, startDate, endDate);
+    showToast("대회 날짜를 변경했습니다.", "success");
+    el("form-edit-dates").classList.add("hidden");
     await openCompetitionDetail(currentCompId);
   } catch (err) {
     showToast(err.message, "error");

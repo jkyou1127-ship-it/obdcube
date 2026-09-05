@@ -462,9 +462,24 @@
         <button type="button" class="btn small" id="btn-close-participation">참가 신청 마감</button>
         <button type="button" class="btn small" id="btn-close-events">대회 종목추가 종료</button>
         <button type="button" class="btn small" id="btn-reopen-events">종목추가 재개</button>
+        <button type="button" class="btn small" id="btn-edit-dates">날짜 변경</button>
         <button type="button" class="btn small" id="btn-end-competition">대회 종료</button>
         <button type="button" class="btn small danger" id="btn-delete-competition">대회 삭제</button>
       </div>
+
+      <form id="form-edit-dates" class="plain-form hidden">
+        <label>시작일</label>
+        <input type="date" id="edit-startdate" required />
+        <div id="edit-enddate-wrap">
+          <label>종료일</label>
+          <input type="date" id="edit-enddate" />
+        </div>
+        <p id="edit-dates-minifast-notice" class="desc hidden">MINI/FAST 대회는 하루만 개최할 수 있어 종료일이 시작일과 같게 저장됩니다.</p>
+        <div class="inline-form">
+          <button type="submit" class="btn small primary">저장</button>
+          <button type="button" class="btn small" id="btn-cancel-edit-dates">취소</button>
+        </div>
+      </form>
 
       <div id="coorganizer-panel" class="panel hidden">
         <h3>공동 주최자 관리</h3>

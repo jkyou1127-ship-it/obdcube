@@ -323,6 +323,13 @@ async function fetchCompetition(compId) {
   return doc.exists ? { id: doc.id, ...doc.data() } : null;
 }
 
+async function updateCompetitionDates(compId, startDate, endDate) {
+  await db.collection("competitions").doc(compId).update({
+    startDate,
+    endDate: endDate || startDate
+  });
+}
+
 async function startCompetition(compId) {
   await db.collection("competitions").doc(compId).update({
     started: true,
