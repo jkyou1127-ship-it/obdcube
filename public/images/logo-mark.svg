@@ -7,6 +7,9 @@
       <path d="M100,11.62 L180,57.81 L100,104 L20,57.81 Z" fill="#f5f5f5" stroke="#12152a" stroke-width="2.5" stroke-linejoin="round"/>
       <path d="M20,57.81 L100,104 L100,196.38 L20,150.19 Z" fill="#009a44" stroke="#12152a" stroke-width="2.5" stroke-linejoin="round"/>
       <path d="M100,104 L180,57.81 L180,150.19 L100,196.38 Z" fill="#c8102e" stroke="#12152a" stroke-width="2.5" stroke-linejoin="round"/>
+      <!-- OBD 글자를 큐브의 흰색 윗면 위에 새긴다 -->
+      <text x="100" y="68" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800"
+            font-size="30" letter-spacing="0.5" fill="#12152a">OBD</text>
     </g>
 
     <!-- Stand: three different puzzle silhouettes on three podium heights -
@@ -24,8 +27,4 @@
       <circle cx="144" cy="180" r="16" fill="#5b7cff"/>
     </g>
   </g>
-
-  <!-- OBD wordmark baked into the mark itself, so the icon alone (favicon, app icon) still carries it -->
-  <text x="100" y="190" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800"
-        font-size="34" letter-spacing="1" fill="#f5f5f5" stroke="#12152a" stroke-width="3" paint-order="stroke" stroke-linejoin="round">OBD</text>
 </svg>
