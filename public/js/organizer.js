@@ -339,6 +339,7 @@ async function openCompetitionDetail(compId) {
   el("btn-reopen-events").classList.toggle("hidden", isEnded || comp.eventsClosed !== true);
   el("btn-edit-dates").classList.toggle("hidden", isEnded);
   el("btn-end-competition").classList.toggle("hidden", isEnded);
+  renderDayEndActions(comp, canManage, isEnded);
   el("coorganizer-panel").classList.toggle("hidden", !canManage);
   el("staff-panel").classList.toggle("hidden", !canManage);
   el("event-request-panel").classList.toggle("hidden", eventsClosed);
@@ -1347,6 +1348,40 @@ el("btn-reopen-events").addEventListener("click", async () => {
   }
 });
 
+// 다일차(2일 이상) 대회에서, 대회 전체를 종료하지 않고도 그날 배정된 종목들의
+// 결선 결과를 먼저 입상 내역/상장 발급에 공개할 수 있게 하는 "N일차 종료" 버튼들.
+// 이미 종료된 일차는 비활성화된 채로 표시된다.
+function renderDayEndActions(comp, canManage, isEnded) {
+  const container = el("day-end-actions");
+  const totalDays = competitionTotalDays(comp);
+  if (!canManage || isEnded || totalDays <= 1) {
+    container.classList.add("hidden");
+    container.innerHTML = "";
+    return;
+  }
+  const endedDays = comp.endedDays || [];
+  container.classList.remove("hidden");
+  container.innerHTML = Array.from({ length: totalDays }, (_, i) => i + 1).map(day => {
+    const done = endedDays.includes(day);
+    return `<button type="button" class="btn small day-end-btn" data-day="${day}" ${done ? "disabled" : ""}>
+      ${day}일차 ${done ? "종료됨" : "종료"}
+    </button>`;
+  }).join("");
+  container.querySelectorAll(".day-end-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const day = parseInt(btn.dataset.day, 10);
+      if (!confirm(`${day}일차를 종료할까요? 그날로 지정된 종목들의 결선 결과가 입상 내역/상장 발급에서 공개됩니다.`)) return;
+      try {
+        await endCompetitionDay(currentCompId, day);
+        showToast(`${day}일차를 종료했습니다.`, "success");
+        await openCompetitionDetail(currentCompId);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+}
+
 // MINI/FAST 대회는 하루만 개최 가능하므로, 유형에 따라 종료일 입력을 숨긴다.
 function updateEditDatesMinifastNotice() {
   const isMinifast = currentCompData && isMinifastCompetition(currentCompData);
@@ -1492,6 +1527,7 @@ async function renderEventsList(comp, isEnded) {
   container.innerHTML = "<p class='desc'>불러오는 중...</p>";
   const canAddMore = canManageEvents && !isEnded && comp.eventsClosed !== true;
   const recordsLocked = isRecordsLocked(comp);
+  const totalDays = competitionTotalDays(comp);
 
   const events = await fetchEvents(comp.id);
   if (events.length === 0) {
@@ -1539,6 +1575,7 @@ async function renderEventsList(comp, isEnded) {
       <div class="event-block" data-event-id="${ev.id}">
         <h4>${escapeHtml(ev.name)}
           <span class="badge ${isOfficialWcaEvent(ev.name) ? "official" : "unofficial"}">${isOfficialWcaEvent(ev.name) ? "공인" : "비공인"}</span>
+          ${totalDays > 1 && !canManageEvents ? `<span class="badge active">${ev.dayNumber || 1}일차</span>` : ""}
           ${canManageEvents ? `
             <select class="event-format-select" data-event="${ev.id}" style="width:auto">
               <option value="ao5" ${normalizeFormat(ev.format) === "ao5" ? "selected" : ""}>Ao5 (5회 평균)</option>
@@ -1549,6 +1586,13 @@ async function renderEventsList(comp, isEnded) {
                    value="${ev.finalRoundOverride != null ? ev.finalRoundOverride : ""}"
                    placeholder="결승 ${ev.maxScrambleRound || 1}R(자동)" style="max-width:130px"
                    title="입상 내역 기준이 될 결승 라운드. 비워두면 스크램블이 마지막으로 등록된 라운드가 자동 적용됩니다." />
+            ${totalDays > 1 ? `
+              <select class="event-day-select" data-event="${ev.id}" style="width:auto" title="이 종목이 진행되는 일차">
+                ${Array.from({ length: totalDays }, (_, i) => i + 1).map(d => `
+                  <option value="${d}" ${(ev.dayNumber || 1) === d ? "selected" : ""}>${d}일차</option>
+                `).join("")}
+              </select>
+            ` : ""}
             <button class="btn small danger del-event" data-event="${ev.id}">종목 삭제</button>
           ` : `<span class="badge active">${formatLabel(normalizeFormat(ev.format))}</span>`}
         </h4>
@@ -1771,6 +1815,19 @@ function attachEventBlockHandlers(compId, canManage) {
         const comp = await fetchCompetition(compId);
         await renderEventsList(comp, comp.status === "ended");
         showToast("종목 형식을 변경했습니다.", "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+
+  el("events-list").querySelectorAll(".event-day-select").forEach(sel => {
+    sel.addEventListener("change", async () => {
+      try {
+        await setEventDay(compId, sel.dataset.event, parseInt(sel.value, 10));
+        const comp = await fetchCompetition(compId);
+        await renderEventsList(comp, comp.status === "ended");
+        showToast("종목 일차를 지정했습니다.", "success");
       } catch (err) {
         showToast(err.message, "error");
       }

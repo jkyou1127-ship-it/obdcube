@@ -69,6 +69,16 @@ function formatDateRange(start, end) {
   return `${start} ~ ${end}`;
 }
 
+// 대회가 총 며칠짜리인지 (시작일=종료일이면 1일). "N일차 종료" 버튼 개수와
+// 종목별 일차 지정 select의 선택지 수를 결정하는 데 쓰인다.
+function competitionTotalDays(comp) {
+  if (!comp || !comp.startDate || !comp.endDate || comp.startDate === comp.endDate) return 1;
+  const start = new Date(comp.startDate);
+  const end = new Date(comp.endDate);
+  const diff = Math.round((end - start) / 86400000);
+  return diff > 0 ? diff + 1 : 1;
+}
+
 // 주최자 표시용 문자열: 공동 주최자가 있으면 함께 표시한다.
 async function organizerDisplayText(comp) {
   const uids = comp.coOrganizerUids || [];

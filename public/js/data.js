@@ -337,6 +337,19 @@ async function startCompetition(compId) {
   });
 }
 
+// 종목이 대회의 몇 일차에 진행되는지 지정한다 (다일차 대회에서만 의미가 있음).
+async function setEventDay(compId, eventId, dayNumber) {
+  await db.collection("competitions").doc(compId).collection("events").doc(eventId).update({ dayNumber });
+}
+
+// 대회 전체를 종료하지 않고도, 그날 배정된 종목들의 결선이 끝났다는 것만
+// 표시해 입상 내역/상장 발급을 그 종목들에 한해 먼저 열어준다.
+async function endCompetitionDay(compId, dayNumber) {
+  await db.collection("competitions").doc(compId).update({
+    endedDays: firebase.firestore.FieldValue.arrayUnion(dayNumber)
+  });
+}
+
 // 한 대회의 매신저(팀 대화방) 메시지를 전부 삭제한다. Firestore 배치 한도(500)를
 // 넘는 경우를 대비해 400개씩 나눠서 지운다. 삭제한 메시지 수를 반환한다.
 async function deleteTeamChatMessages(compId) {
