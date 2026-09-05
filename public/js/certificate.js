@@ -33,19 +33,23 @@ function verticalGradient(ctx, y0, y1, stops) {
   return g;
 }
 
+// 라벨/값 폰트 크기를 박스 너비뿐 아니라 높이 기준으로도 제한해, 가로로
+// 넓고 낮은 박스(명찰)에서 글자가 위아래로 겹치지 않게 한다.
 function drawCertFooterBox(ctx, x, y, w, h, label, value) {
   ctx.fillStyle = "#ffffff";
   ctxRoundRect(ctx, x, y, w, h, 12);
   ctx.fill();
   ctx.textAlign = "center";
+  const labelSize = Math.min(w * 0.11, h * 0.3);
+  const valueSize = Math.min(w * 0.16, h * 0.4);
   ctx.fillStyle = "#6b6f85";
-  ctx.font = `600 ${Math.round(w * 0.11)}px "Segoe UI", Arial, sans-serif`;
-  ctx.fillText(label, x + w / 2, y + h * 0.4);
+  ctx.font = `600 ${Math.round(labelSize)}px "Segoe UI", Arial, sans-serif`;
+  ctx.fillText(label, x + w / 2, y + h * 0.36);
   const grad = ctx.createLinearGradient(x, y, x + w, y);
   grad.addColorStop(0, "#5b7cff");
   grad.addColorStop(1, "#8a5bff");
   ctx.fillStyle = grad;
-  ctx.font = `700 ${Math.round(w * 0.16)}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = `700 ${Math.round(valueSize)}px "Segoe UI", Arial, sans-serif`;
   ctx.fillText(value, x + w / 2, y + h * 0.8);
 }
 
@@ -160,6 +164,113 @@ el("btn-download-cert").addEventListener("click", () => {
   const canvas = el("certificate-canvas");
   const link = document.createElement("a");
   link.download = "OBD_Cube_상장.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+});
+
+// ---- 명찰 메이커 ----
+
+function wrapCenteredText(ctx, text, cx, y, maxWidth, lineHeight) {
+  const words = text.split(" ");
+  let line = "";
+  const lines = [];
+  for (const word of words) {
+    const test = line ? line + " " + word : word;
+    if (line && ctx.measureText(test).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  const startY = y - ((lines.length - 1) * lineHeight) / 2;
+  lines.forEach((l, i) => ctx.fillText(l, cx, startY + i * lineHeight));
+}
+
+async function drawBadge(canvas, data) {
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+
+  ctx.fillStyle = "#12152a";
+  ctxRoundRect(ctx, 0, 0, W, H, 28);
+  ctx.fill();
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "#5b7cff";
+  ctxRoundRect(ctx, 4, 4, W - 8, H - 8, 24);
+  ctx.stroke();
+
+  const pad = W * 0.05;
+
+  try {
+    const logo = await loadObdLogoImage();
+    const logoSize = H * 0.16;
+    ctx.drawImage(logo, pad, pad, logoSize, logoSize);
+  } catch (e) { /* 로고 없이도 명찰은 계속 생성한다 */ }
+
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#f5f5f5";
+  ctx.font = `700 ${Math.round(H * 0.05)}px "Segoe UI", Arial, sans-serif`;
+  ctx.fillText(data.title, W - pad, pad + H * 0.05);
+  ctx.fillStyle = "#8a90c0";
+  ctx.font = `600 ${Math.round(H * 0.032)}px "Segoe UI", Arial, sans-serif`;
+  ctx.fillText(`${data.year} · ORGANIZER`, W - pad, pad + H * 0.10);
+
+  // 이름 (큼직하게, 중앙)
+  ctx.textAlign = "center";
+  ctx.fillStyle = verticalGradient(ctx, H * 0.35, H * 0.58, ["#8a5bff", "#5b7cff"]);
+  ctx.font = `800 ${Math.round(H * 0.16)}px "Segoe UI", Arial, sans-serif`;
+  ctx.fillText(data.name, W / 2, H * 0.56);
+
+  // 종목 목록 (줄바꿈)
+  ctx.fillStyle = "#c7cbe6";
+  ctx.font = `500 ${Math.round(H * 0.032)}px "Segoe UI", Arial, sans-serif`;
+  wrapCenteredText(ctx, data.events.join(" · "), W / 2, H * 0.685, W - pad * 2, H * 0.045);
+
+  // 하단 박스: 주최 + (본인이 대표 주최자면 플랫폼, 공동 주최자면 공동주최 본인 이름)
+  const boxY = H * 0.78;
+  const boxH = H * 0.20;
+  const boxW = W * 0.34;
+  const gap = W * 0.05;
+  const leftX = W / 2 - gap / 2 - boxW;
+  const rightX = W / 2 + gap / 2;
+  drawCertFooterBox(ctx, leftX, boxY, boxW, boxH, "주최", data.mainOrganizer);
+  if (data.isMainOrganizer) {
+    drawCertFooterBox(ctx, rightX, boxY, boxW, boxH, "플랫폼", "OBD Cube");
+  } else {
+    drawCertFooterBox(ctx, rightX, boxY, boxW, boxH, "공동주최", data.name);
+  }
+}
+
+async function openBadgeModal(data) {
+  const canvas = el("badge-canvas");
+  canvas.width = 1000;
+  canvas.height = 600;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#12152a";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  el("badge-modal").classList.remove("hidden");
+  try {
+    await drawBadge(canvas, data);
+  } catch (err) {
+    showToast("명찰 생성에 실패했습니다: " + err.message, "error");
+  }
+}
+
+function closeBadgeModal() {
+  el("badge-modal").classList.add("hidden");
+}
+
+el("btn-close-badge-modal").addEventListener("click", closeBadgeModal);
+el("badge-modal").addEventListener("click", (e) => {
+  if (e.target.id === "badge-modal") closeBadgeModal();
+});
+
+el("btn-download-badge").addEventListener("click", () => {
+  const canvas = el("badge-canvas");
+  const link = document.createElement("a");
+  link.download = "OBD_Cube_명찰.png";
   link.href = canvas.toDataURL("image/png");
   link.click();
 });

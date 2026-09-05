@@ -1387,6 +1387,24 @@ el("form-edit-dates").addEventListener("submit", async (e) => {
   }
 });
 
+el("btn-badge-maker").addEventListener("click", async () => {
+  if (!currentCompId || !currentCompData) return;
+  try {
+    const events = await fetchEvents(currentCompId);
+    const isMainOrganizer = currentCompData.organizerUid === AppState.user.uid;
+    await openBadgeModal({
+      title: currentCompData.title,
+      year: (currentCompData.startDate || "").slice(0, 4),
+      name: AppState.profile.nickname,
+      events: events.map(ev => canonicalEventName(ev.name)),
+      mainOrganizer: currentCompData.organizerNickname || "-",
+      isMainOrganizer
+    });
+  } catch (err) {
+    showToast("명찰 생성에 실패했습니다: " + err.message, "error");
+  }
+});
+
 el("btn-delete-competition").addEventListener("click", async () => {
   if (!currentCompId) return;
   if (!confirm("이 대회를 완전히 삭제할까요? 되돌릴 수 없습니다.")) return;
