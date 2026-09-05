@@ -239,29 +239,43 @@ Object.keys(COMPETITIONS_FILTER_LABELS).forEach(key => {
 // 일반 대회용/MINI·FAST 대회용 두 곳에서 똑같은 로직을 쓰므로 팩토리로 만들어
 // DOM id 접두사와 "이 대회가 이 탭 대상인지" 판단 함수만 다르게 넘겨 재사용한다.
 
+// 입상 내역 항목(캐시 원본) -> 상장 메이커가 쓰는 평면 데이터로 변환.
+// 개별 "상장 발급" 버튼과 전체 일괄 다운로드가 이 변환을 함께 사용한다.
+function awardToCertData(a) {
+  return {
+    title: a.comp.title,
+    evName: a.evName,
+    nickname: a.nickname || "-",
+    rank: a.rank,
+    best: a.best === Infinity ? "-" : formatSecondsToTime(a.best),
+    average: a.average === Infinity ? "-" : formatSecondsToTime(a.average),
+    organizer: a.comp.organizerNickname || "-",
+    date: formatDateRange(a.comp.startDate, a.comp.endDate)
+  };
+}
+
 // 입상 내역 한 줄(참가자 1명) 카드 HTML - 두 컨트롤러가 공용으로 사용한다.
 function renderAwardItemsHtml(items) {
   return items.slice().sort((a, b) => a.rank - b.rank).map(a => {
-    const bestStr = a.best === Infinity ? "-" : formatSecondsToTime(a.best);
-    const avgStr = a.average === Infinity ? "-" : formatSecondsToTime(a.average);
+    const cert = awardToCertData(a);
     return `
     <div class="item-card">
       <div class="info">
         <span>${escapeHtml(a.nickname || "-")}</span>
         <span>(결승 ${a.round}라운드 기준)</span>
-        <span>최고기록: ${bestStr} · 평균기록: ${avgStr}</span>
+        <span>최고기록: ${cert.best} · 평균기록: ${cert.average}</span>
       </div>
       <div class="actions">
         <span class="badge active">${a.rank}등</span>
         <button type="button" class="btn small btn-award-cert"
-          data-title="${escapeHtml(a.comp.title)}"
-          data-event="${escapeHtml(a.evName)}"
-          data-nickname="${escapeHtml(a.nickname || "-")}"
-          data-rank="${a.rank}"
-          data-best="${escapeHtml(bestStr)}"
-          data-average="${escapeHtml(avgStr)}"
-          data-organizer="${escapeHtml(a.comp.organizerNickname || "-")}"
-          data-date="${escapeHtml(formatDateRange(a.comp.startDate, a.comp.endDate))}"
+          data-title="${escapeHtml(cert.title)}"
+          data-event="${escapeHtml(cert.evName)}"
+          data-nickname="${escapeHtml(cert.nickname)}"
+          data-rank="${cert.rank}"
+          data-best="${escapeHtml(cert.best)}"
+          data-average="${escapeHtml(cert.average)}"
+          data-organizer="${escapeHtml(cert.organizer)}"
+          data-date="${escapeHtml(cert.date)}"
         >상장 발급</button>
       </div>
     </div>
@@ -455,13 +469,15 @@ function createAwardsController(ids, isEligible) {
   el(ids.modeAll).addEventListener("click", () => { viewMode = "all"; updateModeButtons(); renderView(); });
   el(ids.modeEvent).addEventListener("click", () => { viewMode = "event"; updateModeButtons(); renderView(); });
   el(ids.modeComp).addEventListener("click", () => { viewMode = "comp"; updateModeButtons(); renderView(); });
+  el(ids.bulkCert).addEventListener("click", () => bulkDownloadCertificates(cache.map(awardToCertData)));
 
   return { renderPanel };
 }
 
 const regularAwards = createAwardsController({
   list: "awards-list", eventTabs: "awards-event-tabs", subTabs: "awards-sub-tabs",
-  modeAll: "awards-mode-all", modeEvent: "awards-mode-event", modeComp: "awards-mode-comp"
+  modeAll: "awards-mode-all", modeEvent: "awards-mode-event", modeComp: "awards-mode-comp",
+  bulkCert: "awards-bulk-cert"
 }, c => !isMinifastCompetition(c));
 
 async function renderAwardsPanel() {
@@ -470,7 +486,8 @@ async function renderAwardsPanel() {
 
 const minifastAwards = createAwardsController({
   list: "minifast-awards-list", eventTabs: "minifast-awards-event-tabs", subTabs: "minifast-awards-sub-tabs",
-  modeAll: "minifast-awards-mode-all", modeEvent: "minifast-awards-mode-event", modeComp: "minifast-awards-mode-comp"
+  modeAll: "minifast-awards-mode-all", modeEvent: "minifast-awards-mode-event", modeComp: "minifast-awards-mode-comp",
+  bulkCert: "minifast-awards-bulk-cert"
 }, isMinifastCompetition);
 
 async function renderMinifastAwardsPanel() {

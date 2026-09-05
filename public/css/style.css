@@ -93,7 +93,14 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
   display: flex; align-items: center; justify-content: center; gap: 10px;
 }
 .brand-word { display: inline-flex; align-items: baseline; gap: 0.22em; font-family: "Outfit", system-ui, sans-serif; }
-.brand-word-obd { font-family: "Fredoka", ui-rounded, system-ui, sans-serif; font-weight: 700; }
+.brand-word-obd {
+  font-family: "Fredoka", ui-rounded, system-ui, sans-serif;
+  font-weight: 700;
+  background: linear-gradient(90deg, #5b7cff, #8a5bff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 .brand-word-cube { font-weight: 600; color: var(--text-dim); }
 .sub { text-align: center; color: var(--text-dim); margin-top: 4px; font-size: 13px; }
 .tabs { display: flex; margin: 20px 0 10px; border-bottom: 1px solid var(--border); }

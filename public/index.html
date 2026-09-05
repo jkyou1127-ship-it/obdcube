@@ -6,7 +6,7 @@
 <title>OBD Cube - 온라인 큐브 대회</title>
 <link rel="icon" type="image/svg+xml" href="images/logo-mark.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Outfit:wght@600;700&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Fredoka:wght@600;700&family=Outfit:wght@600;700&display=swap" />
 <link rel="stylesheet" href="css/style.css" />
 <script>
   (function () {
@@ -312,6 +312,9 @@
           <button type="button" class="tab-pill" id="minifast-awards-mode-event">종목별</button>
           <button type="button" class="tab-pill" id="minifast-awards-mode-comp">대회별</button>
         </div>
+        <div class="inline-form">
+          <button type="button" class="btn small" id="minifast-awards-bulk-cert">전체 상장 일괄 다운로드</button>
+        </div>
         <div id="minifast-awards-event-tabs" class="tab-row"></div>
         <div id="minifast-awards-sub-tabs" class="tab-row"></div>
         <div id="minifast-awards-list" class="card-list"></div>
@@ -464,6 +467,7 @@
         <button type="button" class="btn small" id="btn-reopen-events">종목추가 재개</button>
         <button type="button" class="btn small" id="btn-edit-dates">날짜 변경</button>
         <button type="button" class="btn small" id="btn-badge-maker">명찰 발급</button>
+        <button type="button" class="btn small" id="btn-badge-maker-bulk">주최팀 명찰 일괄 발급</button>
         <button type="button" class="btn small" id="btn-end-competition">대회 종료</button>
         <button type="button" class="btn small danger" id="btn-delete-competition">대회 삭제</button>
       </div>
@@ -561,6 +565,9 @@
         <button type="button" class="tab-pill active" id="awards-mode-all">전체</button>
         <button type="button" class="tab-pill" id="awards-mode-event">종목별</button>
         <button type="button" class="tab-pill" id="awards-mode-comp">대회별</button>
+      </div>
+      <div class="inline-form">
+        <button type="button" class="btn small" id="awards-bulk-cert">전체 상장 일괄 다운로드</button>
       </div>
       <div id="awards-event-tabs" class="tab-row"></div>
       <div id="awards-sub-tabs" class="tab-row"></div>
@@ -834,6 +841,7 @@
 <script src="js/organizer.js"></script>
 <script src="js/practice.js"></script>
 <script src="js/admin.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="js/app.js"></script>
 <script src="js/certificate.js"></script>
 </body>

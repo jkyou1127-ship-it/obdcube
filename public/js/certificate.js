@@ -1,10 +1,28 @@
-// 상장 메이커: 입상 내역에서 캔버스로 상장 이미지를 그려 미리보기/다운로드로 제공한다.
+// 상장/명찰 메이커: 입상 내역·대회 상세 화면에서 캔버스로 이미지를 그려
+// 미리보기/다운로드로 제공한다.
 
 const CERT_RANK_STYLES = {
   1: { label: "1등", grad: ["#fff3b0", "#ffd700", "#c9971c"] },
   2: { label: "2등", grad: ["#f4f6fb", "#d7dbe6", "#9aa1b5"] },
   3: { label: "3등", grad: ["#f0b784", "#cd7f32", "#8b5a2b"] }
 };
+
+// Do Hyeon: 한글/영문 모두 지원하는 굵은 디스플레이 폰트 - 제목/이름 등 큰 글자에 사용.
+// Outfit: 날짜·기록 등 본문 텍스트에 사용.
+const CERT_FONT_DISPLAY = '"Do Hyeon", "Segoe UI", Arial, sans-serif';
+const CERT_FONT_BODY = '"Outfit", "Segoe UI", Arial, sans-serif';
+
+let certFontsLoadPromise = null;
+function ensureCertFontsLoaded() {
+  if (!certFontsLoadPromise) {
+    certFontsLoadPromise = Promise.all([
+      document.fonts.load('400 60px "Do Hyeon"'),
+      document.fonts.load('600 32px "Outfit"'),
+      document.fonts.load('700 32px "Outfit"')
+    ]).catch(() => {});
+  }
+  return certFontsLoadPromise;
+}
 
 let cachedObdLogoImage = null;
 function loadObdLogoImage() {
@@ -43,17 +61,18 @@ function drawCertFooterBox(ctx, x, y, w, h, label, value) {
   const labelSize = Math.min(w * 0.11, h * 0.3);
   const valueSize = Math.min(w * 0.16, h * 0.4);
   ctx.fillStyle = "#6b6f85";
-  ctx.font = `600 ${Math.round(labelSize)}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = `600 ${Math.round(labelSize)}px ${CERT_FONT_BODY}`;
   ctx.fillText(label, x + w / 2, y + h * 0.36);
   const grad = ctx.createLinearGradient(x, y, x + w, y);
   grad.addColorStop(0, "#5b7cff");
   grad.addColorStop(1, "#8a5bff");
   ctx.fillStyle = grad;
-  ctx.font = `700 ${Math.round(valueSize)}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = `400 ${Math.round(valueSize)}px ${CERT_FONT_DISPLAY}`;
   ctx.fillText(value, x + w / 2, y + h * 0.8);
 }
 
 async function drawCertificate(canvas, data) {
+  await ensureCertFontsLoaded();
   const ctx = canvas.getContext("2d");
   const W = canvas.width, H = canvas.height;
   const style = CERT_RANK_STYLES[data.rank] || CERT_RANK_STYLES[3];
@@ -84,28 +103,28 @@ async function drawCertificate(canvas, data) {
 
   // 상단 타이틀
   ctx.fillStyle = "#f5f5f5";
-  ctx.font = `700 ${Math.round(cardW * 0.078)}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = `400 ${Math.round(cardW * 0.082)}px ${CERT_FONT_DISPLAY}`;
   ctx.fillText("상   장", W / 2, cardY + cardH * 0.29);
 
   // 순위 라벨 (금/은/동 그라디언트)
   ctx.fillStyle = verticalGradient(ctx, cardY + cardH * 0.30, cardY + cardH * 0.38, style.grad);
-  ctx.font = `700 ${Math.round(cardW * 0.045)}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = `400 ${Math.round(cardW * 0.048)}px ${CERT_FONT_DISPLAY}`;
   ctx.fillText(style.label, W / 2, cardY + cardH * 0.37);
 
   // 참가자 닉네임 (크게, 순위 그라디언트)
   ctx.fillStyle = verticalGradient(ctx, cardY + cardH * 0.41, cardY + cardH * 0.51, style.grad);
-  ctx.font = `800 ${Math.round(cardW * 0.09)}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = `400 ${Math.round(cardW * 0.095)}px ${CERT_FONT_DISPLAY}`;
   ctx.fillText(data.nickname, W / 2, cardY + cardH * 0.495);
 
   // 대회명 / 종목 / 날짜
   ctx.fillStyle = "#c7cbe6";
-  ctx.font = `500 ${Math.round(cardW * 0.032)}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = `600 ${Math.round(cardW * 0.032)}px ${CERT_FONT_BODY}`;
   ctx.fillText(data.title, W / 2, cardY + cardH * 0.585);
   ctx.fillText(`${data.evName} · ${data.date}`, W / 2, cardY + cardH * 0.62);
 
   // 기록 통계
   ctx.fillStyle = "#f5f5f5";
-  ctx.font = `600 ${Math.round(cardW * 0.035)}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = `600 ${Math.round(cardW * 0.035)}px ${CERT_FONT_BODY}`;
   ctx.fillText(`평균기록 ${data.average}  ·  최고기록 ${data.best}`, W / 2, cardY + cardH * 0.70);
 
   // 하단: 주최/플랫폼 박스
@@ -168,6 +187,75 @@ el("btn-download-cert").addEventListener("click", () => {
   link.click();
 });
 
+// ---- 일괄 발급 공용 (상장/명찰 여러 장을 zip 하나로 묶어 다운로드) ----
+
+function canvasToPngBlob(canvas) {
+  return new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+}
+
+function sanitizeFilePart(s) {
+  return String(s).replace(/[\\/:*?"<>|]/g, "_");
+}
+
+async function downloadFilesAsZip(files, zipFilename) {
+  if (typeof JSZip === "undefined") {
+    showToast("압축 다운로드 기능을 불러오지 못했습니다.", "error");
+    return;
+  }
+  const zip = new JSZip();
+  files.forEach(f => zip.file(f.name, f.blob));
+  const zipBlob = await zip.generateAsync({ type: "blob" });
+  const link = document.createElement("a");
+  link.download = zipFilename;
+  link.href = URL.createObjectURL(zipBlob);
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+}
+
+// dataList: openCertificateModal에 넘기는 것과 동일한 형태의 객체 배열
+async function bulkDownloadCertificates(dataList) {
+  if (dataList.length === 0) {
+    showToast("다운로드할 상장이 없습니다.", "error");
+    return;
+  }
+  showToast(`상장 ${dataList.length}개를 생성하는 중입니다...`);
+  const canvas = document.createElement("canvas");
+  canvas.width = 900;
+  canvas.height = 1272;
+  const files = [];
+  let i = 0;
+  for (const data of dataList) {
+    i++;
+    await drawCertificate(canvas, data);
+    const blob = await canvasToPngBlob(canvas);
+    files.push({ name: `${i}_${sanitizeFilePart(data.rank + "등_" + data.nickname + "_" + data.evName)}.png`, blob });
+  }
+  await downloadFilesAsZip(files, "OBD_Cube_상장_전체.zip");
+  showToast("상장 일괄 다운로드가 완료되었습니다.", "success");
+}
+
+// dataList: openBadgeModal에 넘기는 것과 동일한 형태의 객체 배열
+async function bulkDownloadBadges(dataList) {
+  if (dataList.length === 0) {
+    showToast("발급할 명찰이 없습니다.", "error");
+    return;
+  }
+  showToast(`명찰 ${dataList.length}개를 생성하는 중입니다...`);
+  const canvas = document.createElement("canvas");
+  canvas.width = 1000;
+  canvas.height = 600;
+  const files = [];
+  let i = 0;
+  for (const data of dataList) {
+    i++;
+    await drawBadge(canvas, data);
+    const blob = await canvasToPngBlob(canvas);
+    files.push({ name: `${i}_${sanitizeFilePart(data.name)}.png`, blob });
+  }
+  await downloadFilesAsZip(files, "OBD_Cube_명찰_전체.zip");
+  showToast("명찰 일괄 발급이 완료되었습니다.", "success");
+}
+
 // ---- 명찰 메이커 ----
 
 function wrapCenteredText(ctx, text, cx, y, maxWidth, lineHeight) {
@@ -189,6 +277,7 @@ function wrapCenteredText(ctx, text, cx, y, maxWidth, lineHeight) {
 }
 
 async function drawBadge(canvas, data) {
+  await ensureCertFontsLoaded();
   const ctx = canvas.getContext("2d");
   const W = canvas.width, H = canvas.height;
 
@@ -210,21 +299,21 @@ async function drawBadge(canvas, data) {
 
   ctx.textAlign = "right";
   ctx.fillStyle = "#f5f5f5";
-  ctx.font = `700 ${Math.round(H * 0.05)}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = `700 ${Math.round(H * 0.05)}px ${CERT_FONT_BODY}`;
   ctx.fillText(data.title, W - pad, pad + H * 0.05);
   ctx.fillStyle = "#8a90c0";
-  ctx.font = `600 ${Math.round(H * 0.032)}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = `600 ${Math.round(H * 0.032)}px ${CERT_FONT_BODY}`;
   ctx.fillText(`${data.year} · ORGANIZER`, W - pad, pad + H * 0.10);
 
   // 이름 (큼직하게, 중앙)
   ctx.textAlign = "center";
   ctx.fillStyle = verticalGradient(ctx, H * 0.35, H * 0.58, ["#8a5bff", "#5b7cff"]);
-  ctx.font = `800 ${Math.round(H * 0.16)}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = `400 ${Math.round(H * 0.17)}px ${CERT_FONT_DISPLAY}`;
   ctx.fillText(data.name, W / 2, H * 0.56);
 
   // 종목 목록 (줄바꿈)
   ctx.fillStyle = "#c7cbe6";
-  ctx.font = `500 ${Math.round(H * 0.032)}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = `600 ${Math.round(H * 0.032)}px ${CERT_FONT_BODY}`;
   wrapCenteredText(ctx, data.events.join(" · "), W / 2, H * 0.685, W - pad * 2, H * 0.045);
 
   // 하단 박스: 주최 + (본인이 대표 주최자면 플랫폼, 공동 주최자면 공동주최 본인 이름)

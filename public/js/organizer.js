@@ -1405,6 +1405,34 @@ el("btn-badge-maker").addEventListener("click", async () => {
   }
 });
 
+el("btn-badge-maker-bulk").addEventListener("click", async () => {
+  if (!currentCompId || !currentCompData) return;
+  try {
+    const events = await fetchEvents(currentCompId);
+    const eventNames = events.map(ev => canonicalEventName(ev.name));
+    const mainOrganizer = currentCompData.organizerNickname || "-";
+    const year = (currentCompData.startDate || "").slice(0, 4);
+
+    const people = [{ name: mainOrganizer, isMainOrganizer: true }];
+    const coUids = currentCompData.coOrganizerUids || [];
+    const coProfiles = await Promise.all(coUids.map(uid => fetchUserProfile(uid).catch(() => null)));
+    coProfiles.forEach(p => {
+      if (p && p.nickname) people.push({ name: p.nickname, isMainOrganizer: false });
+    });
+
+    await bulkDownloadBadges(people.map(p => ({
+      title: currentCompData.title,
+      year,
+      name: p.name,
+      events: eventNames,
+      mainOrganizer,
+      isMainOrganizer: p.isMainOrganizer
+    })));
+  } catch (err) {
+    showToast("명찰 일괄 발급에 실패했습니다: " + err.message, "error");
+  }
+});
+
 el("btn-delete-competition").addEventListener("click", async () => {
   if (!currentCompId) return;
   if (!confirm("이 대회를 완전히 삭제할까요? 되돌릴 수 없습니다.")) return;
