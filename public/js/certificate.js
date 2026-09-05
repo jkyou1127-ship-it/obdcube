@@ -146,10 +146,13 @@ async function drawCertificate(canvas, data) {
   ctx.fillText(data.title, W / 2, cardY + cardH * 0.585);
   ctx.fillText(`${data.evName} · ${data.date}`, W / 2, cardY + cardH * 0.62);
 
+  // 종목 아이콘 (입상한 종목을 한눈에 알아볼 수 있도록 픽토그램으로 표시)
+  await drawEventIconsRow(ctx, [data.evName], W / 2, cardY + cardH * 0.665, cardW, cardW * 0.07, 0);
+
   // 기록 통계
   ctx.fillStyle = "#f5f5f5";
   ctx.font = `600 ${Math.round(cardW * 0.035)}px ${CERT_FONT_BODY}`;
-  ctx.fillText(`평균기록 ${data.average}  ·  최고기록 ${data.best}`, W / 2, cardY + cardH * 0.70);
+  ctx.fillText(`평균기록 ${data.average}  ·  최고기록 ${data.best}`, W / 2, cardY + cardH * 0.715);
 
   // 하단: 주최/플랫폼 박스
   const boxY = cardY + cardH * 0.80;
