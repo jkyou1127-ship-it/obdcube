@@ -248,7 +248,7 @@ function createRankingsController(ids, isEligible) {
       return `
         <tr class="${rowCls}">
           <td class="rank-cell">${rankNum || "-"}</td>
-          <td>${escapeHtml(r.p.nickname)}</td>
+          <td>${escapeHtml(r.p.nickname)}${r.p.obdId ? ` <span class="meta">(${escapeHtml(r.p.obdId)})</span>` : ""}</td>
           <td>${r.times.map(t => escapeHtml(t) || "-").join(" · ")}</td>
           <td>${resultValueLabel}</td>
           <td>${statusLabel}</td>
@@ -427,7 +427,7 @@ async function renderCompetitionRoster(comp) {
   const byUid = new Map();
   rosterLists.forEach(({ ev, list }) => {
     list.forEach(r => {
-      if (!byUid.has(r.uid)) byUid.set(r.uid, { nickname: r.nickname, events: [] });
+      if (!byUid.has(r.uid)) byUid.set(r.uid, { nickname: r.nickname, obdId: r.obdId, events: [] });
       byUid.get(r.uid).events.push(ev.name);
     });
   });
@@ -443,7 +443,11 @@ async function renderCompetitionRoster(comp) {
       <div class="card-list">
         ${entries.map(e => `
           <div class="item-card">
-            <div class="info"><strong>${escapeHtml(e.nickname)}</strong><span>${e.events.map(n => escapeHtml(n)).join(", ")}</span></div>
+            <div class="info">
+              <strong>${escapeHtml(e.nickname)}</strong>
+              ${e.obdId ? `<span>OBD ID ${escapeHtml(e.obdId)}</span>` : ""}
+              <span>${e.events.map(n => escapeHtml(n)).join(", ")}</span>
+            </div>
           </div>
         `).join("")}
       </div>

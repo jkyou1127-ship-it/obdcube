@@ -361,20 +361,22 @@ async function bulkDownloadBadges(dataList) {
 // ---- 명찰 메이커 ----
 
 // 역할별 명찰 부제("2026 · ORGANIZER" 등)와 하단 오른쪽 박스 라벨.
-// 대표 주최자만 하단 오른쪽 박스가 "플랫폼/OBD Cube"이고, 나머지는 모두
-// 본인 이름을 다시 보여준다 (왼쪽 "주최" 박스는 항상 대표 주최자 이름).
+// 대표 주최자와 참가자는 하단 오른쪽 박스가 "플랫폼/OBD Cube"이고(이름이 이미
+// 중앙에 크게 나오므로 참가자 칸에 이름을 또 반복하지 않는다), 공동주최자/
+// 스태프처럼 대회 운영에도 참여한다는 사실 자체가 의미 있는 역할만 본인 이름을
+// 다시 보여준다 (왼쪽 "주최" 박스는 항상 대표 주최자 이름).
 const BADGE_ROLE_META = {
   organizer: { subtitle: "ORGANIZER", footerLabel: "플랫폼" },
   coorganizer: { subtitle: "CO-ORGANIZER", footerLabel: "공동주최" },
   staff: { subtitle: "STAFF", footerLabel: "스태프" },
-  participant: { subtitle: "PARTICIPANT", footerLabel: "참가자" }
+  participant: { subtitle: "PARTICIPANT", footerLabel: "플랫폼" }
 };
 
 // ctx: { title, year, events, mainOrganizer } - 대회 공통 정보. role: BADGE_ROLE_META의 키.
 // personalEvents: 참가자 본인이 실제로 신청한 종목 목록. 생략하면(주최자/공동주최자/
 // 스태프는 전체 종목을 관리하므로) ctx.events(대회 전체 종목)를 그대로 쓴다.
-// footerBox2Value는 role에 따라 매번 다시 계산해야 하므로(대표 주최자는 항상
-// "OBD Cube", 나머지는 항상 자기 이름) role을 그대로 들고 다니고 drawBadge에서 계산한다.
+// footerBox2Value는 role에 따라 매번 다시 계산해야 하므로(대표 주최자·참가자는 항상
+// "OBD Cube", 공동주최자/스태프는 항상 자기 이름) role을 그대로 들고 다니고 drawBadge에서 계산한다.
 function buildBadgeData(name, role, ctx, personalEvents, obdId) {
   const meta = BADGE_ROLE_META[role] || BADGE_ROLE_META.participant;
   return {
@@ -408,11 +410,15 @@ function cubeGridIconSvg(n, color) {
   </svg>`;
 }
 
+// 한손(OH) 종목 - 작은 크기에서도 알아보기 쉽도록 큐브 위에 숫자를 얹는 대신,
+// 펼친 손바닥(손가락 4개 + 엄지) 모양 자체를 아이콘으로 쓴다.
 function ohIconSvg(color) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    ${cubeGridIconSvg(3, color).replace(/^<svg[^>]*>|<\/svg>$/g, "")}
-    <circle cx="82" cy="82" r="16" fill="${color}"/>
-    <text x="82" y="89" font-size="20" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle" fill="#12152a">1</text>
+    <rect x="30" y="46" width="40" height="38" rx="14" fill="none" stroke="${color}" stroke-width="6"/>
+    <rect x="34" y="10" width="10" height="42" rx="5" fill="none" stroke="${color}" stroke-width="5"/>
+    <rect x="46" y="6" width="10" height="46" rx="5" fill="none" stroke="${color}" stroke-width="5"/>
+    <rect x="58" y="10" width="10" height="42" rx="5" fill="none" stroke="${color}" stroke-width="5"/>
+    <rect x="10" y="50" width="24" height="11" rx="5.5" fill="none" stroke="${color}" stroke-width="5" transform="rotate(-30 22 55.5)"/>
   </svg>`;
 }
 
@@ -574,14 +580,14 @@ async function drawBadge(canvas, data) {
   // 종목 아이콘 (WCA 종목을 본뜬 픽토그램) - 참가자는 본인이 신청한 종목만 표시된다.
   await drawEventIconsRow(ctx, data.events, W / 2, H * 0.665, W - pad * 2, H * 0.085, H * 0.018);
 
-  // 하단 박스: 왼쪽은 항상 대표 주최자, 오른쪽은 역할별 라벨(플랫폼/공동주최/스태프/참가자)
+  // 하단 박스: 왼쪽은 항상 대표 주최자, 오른쪽은 역할별 라벨(플랫폼/공동주최/스태프)
   const boxY = H * 0.78;
   const boxH = H * 0.20;
   const boxW = W * 0.34;
   const gap = W * 0.05;
   const leftX = W / 2 - gap / 2 - boxW;
   const rightX = W / 2 + gap / 2;
-  const footerBox2Value = data.role === "organizer" ? "OBD Cube" : data.name;
+  const footerBox2Value = (data.role === "organizer" || data.role === "participant") ? "OBD Cube" : data.name;
   drawCertFooterBox(ctx, leftX, boxY, boxW, boxH, "주최", data.mainOrganizer);
   drawCertFooterBox(ctx, rightX, boxY, boxW, boxH, data.footerBox2Label, footerBox2Value);
 }

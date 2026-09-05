@@ -570,6 +570,7 @@ async function applyToParticipate(compId, eventId) {
     // 않으므로, 이미 신청한 경우 여기서 권한 거부로 자연스럽게 막힌다.
     await eventRef.collection("roster").doc(uid).set({
       nickname: AppState.profile.nickname,
+      obdId: AppState.profile.obdId || null,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   } catch (err) {
@@ -581,6 +582,7 @@ async function applyToParticipate(compId, eventId) {
 
   return eventRef.collection("participants").add({
     nickname: AppState.profile.nickname,
+    obdId: AppState.profile.obdId || null,
     uid,
     roundTimes: { 1: [] },
     roundMeta: { 1: { status: "", rank: null } },
