@@ -410,6 +410,8 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 .badge.closed { background: rgba(163,168,201,.15); color: var(--text-dim); }
 .badge.type-mini { background: rgba(91,124,255,.15); color: var(--primary); margin-right: 6px; }
 .badge.type-fast { background: rgba(255,91,110,.15); color: var(--danger); margin-right: 6px; }
+.badge.official { background: rgba(55,200,119,.15); color: var(--success); margin-left: 6px; }
+.badge.unofficial { background: rgba(163,168,201,.15); color: var(--text-dim); margin-left: 6px; }
 
 .checkbox-grid {
   display: flex;

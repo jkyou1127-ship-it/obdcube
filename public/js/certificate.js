@@ -440,28 +440,16 @@ function genericEventIconSvg(name, color) {
   </svg>`;
 }
 
-// 종목 이름 문자열을 아이콘 종류로 분류한다. 알아볼 수 없는(WCA 공인이 아닌) 종목은 null.
-function classifyEventIcon(name) {
-  const n = String(name || "");
-  if (n.includes("한손") || /\bOH\b/i.test(n)) return "OH";
-  if (n.includes("피라밍크스") || /pyraminx/i.test(n)) return "PYRA";
-  if (n.includes("스큐브") || /skewb/i.test(n)) return "SKEWB";
-  if (n.includes("클락") || /clock/i.test(n)) return "CLOCK";
-  for (const size of [2, 3, 4, 5, 6, 7]) {
-    if (n.includes(`${size}x${size}x${size}`)) return `CUBE${size}`;
-  }
-  return null;
-}
-
+// 종목 아이콘 분류는 utils.js의 classifyWcaEvent(공인/비공인 판정과 공용)를 그대로 쓴다.
 const EVENT_ICON_COLOR = "#c7cbe6";
 const eventIconImageCache = {};
 
 function loadEventIcon(eventName) {
-  const key = classifyEventIcon(eventName) || `CUSTOM:${eventName}`;
+  const key = classifyWcaEvent(eventName) || `CUSTOM:${eventName}`;
   if (eventIconImageCache[key]) return eventIconImageCache[key];
 
   let svg;
-  const kind = classifyEventIcon(eventName);
+  const kind = classifyWcaEvent(eventName);
   if (kind === "OH") svg = ohIconSvg(EVENT_ICON_COLOR);
   else if (kind === "PYRA") svg = pyraminxIconSvg(EVENT_ICON_COLOR);
   else if (kind === "SKEWB") svg = skewbIconSvg(EVENT_ICON_COLOR);

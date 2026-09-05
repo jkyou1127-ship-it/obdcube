@@ -1523,6 +1523,7 @@ async function renderEventsList(comp, isEnded) {
     return `
       <div class="event-block" data-event-id="${ev.id}">
         <h4>${escapeHtml(ev.name)}
+          <span class="badge ${isOfficialWcaEvent(ev.name) ? "official" : "unofficial"}">${isOfficialWcaEvent(ev.name) ? "공인" : "비공인"}</span>
           ${canManageEvents ? `
             <select class="event-format-select" data-event="${ev.id}" style="width:auto">
               <option value="ao5" ${normalizeFormat(ev.format) === "ao5" ? "selected" : ""}>Ao5 (5회 평균)</option>

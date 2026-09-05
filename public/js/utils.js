@@ -17,6 +17,26 @@ function canonicalEventName(name) {
   return trimmed;
 }
 
+// 종목 이름을 WCA 공인 종목 종류로 분류한다. 이 서비스가 기본 지원하는
+// 2x2x2~7x7x7, 한손(OH) 3x3x3, 피라밍크스, 스큐브, 클락이 "공인 종목"이고
+// (규정 5조), 그 외 "종목 추가 신청"으로 만들어진 종목은 전부 "비공인 종목"이다.
+// 상장/명찰의 종목 아이콘 선택과 종목 목록의 공인/비공인 표시가 모두 이 분류를 쓴다.
+function classifyWcaEvent(name) {
+  const n = String(name || "");
+  if (n.includes("한손") || /\bOH\b/i.test(n)) return "OH";
+  if (n.includes("피라밍크스") || /pyraminx/i.test(n)) return "PYRA";
+  if (n.includes("스큐브") || /skewb/i.test(n)) return "SKEWB";
+  if (n.includes("클락") || /clock/i.test(n)) return "CLOCK";
+  for (const size of [2, 3, 4, 5, 6, 7]) {
+    if (n.includes(`${size}x${size}x${size}`)) return `CUBE${size}`;
+  }
+  return null;
+}
+
+function isOfficialWcaEvent(name) {
+  return classifyWcaEvent(name) !== null;
+}
+
 // 공지 간략히 보기: 접혀 있을 때는 첫 줄만, 그것도 너무 길면 잘라서 보여준다.
 // 전체 내용은 펼쳤을 때(또는 관리자가 항상 볼 수 있는 전체 공지 배너에서만) 보인다.
 function summarizeAnnouncement(text, maxLen = 40) {
