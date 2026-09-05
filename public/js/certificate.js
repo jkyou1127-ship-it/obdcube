@@ -12,16 +12,33 @@ const CERT_RANK_STYLES = {
 const CERT_FONT_DISPLAY = '"Do Hyeon", "Segoe UI", Arial, sans-serif';
 const CERT_FONT_BODY = '"Outfit", "Segoe UI", Arial, sans-serif';
 
-let certFontsLoadPromise = null;
-function ensureCertFontsLoaded() {
-  if (!certFontsLoadPromise) {
-    certFontsLoadPromise = Promise.all([
-      document.fonts.load('400 60px "Do Hyeon"'),
-      document.fonts.load('600 32px "Outfit"'),
-      document.fonts.load('700 32px "Outfit"')
-    ]).catch(() => {});
-  }
-  return certFontsLoadPromise;
+// 상장/명찰에 고정으로 등장하는 문구 - 실제로 그려질 데이터와 합쳐서
+// document.fonts.load()에 넘길 텍스트를 만드는 데 쓴다.
+const CERT_STATIC_LABELS = "상장1등2등3등평균기록최고기록주최플랫폼공동주최스태프참가자OBD CubeORGANIZERCO-ORGANIZERSTAFFPARTICIPANT· ";
+
+// Do Hyeon 같은 한글 웹폰트는 글리프가 유니코드 범위별로 여러 @font-face로
+// 쪼개져 배포되기 때문에, document.fonts.load(font)를 텍스트 없이 부르면
+// (기본값이 공백 한 글자) 실제로 그릴 한글 구간의 서브셋은 로드되지 않고,
+// 캔버스는 그 구간에 대해 즉시 폴백 폰트로 그려버려 "글자가 깨져" 보인다.
+// 그리려는 데이터의 실제 문자열을 text로 넘겨서 필요한 서브셋을 확실히
+// 먼저 받아온 뒤에만 캔버스에 그린다.
+async function ensureCertFontsLoaded(sampleText) {
+  const text = CERT_STATIC_LABELS + (sampleText || "");
+  try {
+    await Promise.all([
+      document.fonts.load('400 32px "Do Hyeon"', text),
+      document.fonts.load('600 32px "Outfit"', text),
+      document.fonts.load('700 32px "Outfit"', text)
+    ]);
+  } catch (e) { /* 폰트 로드 실패해도 폴백 폰트로 계속 그린다 */ }
+}
+
+// data 객체의 문자열/배열 값을 전부 이어 붙여 document.fonts.load()에 넘길
+// 샘플 텍스트를 만든다 - 필드가 늘어나도 빠짐없이 커버되도록 값 기반으로 수집한다.
+function collectDataText(data) {
+  return Object.values(data)
+    .map(v => (Array.isArray(v) ? v.join("") : (typeof v === "string" ? v : "")))
+    .join("");
 }
 
 let cachedObdLogoImage = null;
@@ -72,7 +89,7 @@ function drawCertFooterBox(ctx, x, y, w, h, label, value) {
 }
 
 async function drawCertificate(canvas, data) {
-  await ensureCertFontsLoaded();
+  await ensureCertFontsLoaded(collectDataText(data));
   const ctx = canvas.getContext("2d");
   const W = canvas.width, H = canvas.height;
   const style = CERT_RANK_STYLES[data.rank] || CERT_RANK_STYLES[3];
@@ -324,7 +341,7 @@ function wrapCenteredText(ctx, text, cx, y, maxWidth, lineHeight) {
 }
 
 async function drawBadge(canvas, data) {
-  await ensureCertFontsLoaded();
+  await ensureCertFontsLoaded(collectDataText(data));
   const ctx = canvas.getContext("2d");
   const W = canvas.width, H = canvas.height;
 
