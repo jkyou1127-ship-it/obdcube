@@ -414,11 +414,11 @@ function pyraminxIconSvg(color) {
   </svg>`;
 }
 
+// 스큐브 실제 큐브 면 분할(각 변의 중점을 이어 중앙 다이아몬드 + 네 모서리 삼각형)을 본뜬 도안.
 function skewbIconSvg(color) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
     <rect x="10" y="10" width="80" height="80" rx="10" fill="none" stroke="${color}" stroke-width="6"/>
-    <line x1="12" y1="12" x2="88" y2="88" stroke="${color}" stroke-width="5"/>
-    <line x1="88" y1="12" x2="12" y2="88" stroke="${color}" stroke-width="5"/>
+    <polygon points="50,10 90,50 50,90 10,50" fill="none" stroke="${color}" stroke-width="5" stroke-linejoin="round"/>
   </svg>`;
 }
 
@@ -431,6 +431,18 @@ function clockIconSvg(color) {
   </svg>`;
 }
 
+// 릴레이(여러 큐브를 순서대로 이어 푸는) 종목용 - 정식 WCA 종목은 아니지만
+// 아이콘만 별도로 그려준다(공인/비공인 분류와는 무관, 아이콘 표시 전용).
+function relayIconSvg(color) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect x="6" y="38" width="22" height="22" rx="4" fill="none" stroke="${color}" stroke-width="6"/>
+    <rect x="39" y="38" width="22" height="22" rx="4" fill="none" stroke="${color}" stroke-width="6"/>
+    <rect x="72" y="38" width="22" height="22" rx="4" fill="none" stroke="${color}" stroke-width="6"/>
+    <path d="M30,49 L37,49 M34,45 L38,49 L34,53" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M63,49 L70,49 M67,45 L71,49 L67,53" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
 // WCA 공인 종목이 아닌 특수 종목(자체 신청 종목)용 - 이름 앞 두 글자만 박스에 넣는다.
 function genericEventIconSvg(name, color) {
   const short = escapeHtml(String(name || "?").trim().slice(0, 2));
@@ -440,20 +452,28 @@ function genericEventIconSvg(name, color) {
   </svg>`;
 }
 
-// 종목 아이콘 분류는 utils.js의 classifyWcaEvent(공인/비공인 판정과 공용)를 그대로 쓴다.
+// 아이콘 선택 전용 분류 - 공인/비공인 판정(classifyWcaEvent)과는 별개로,
+// 아이콘이 있는 비공인 종목(릴레이 등)을 먼저 확인한 뒤 WCA 공인 종목 분류로 넘어간다.
+function classifyEventForIcon(name) {
+  const n = String(name || "");
+  if (n.includes("릴레이") || /relay/i.test(n)) return "RELAY";
+  return classifyWcaEvent(name);
+}
+
 const EVENT_ICON_COLOR = "#c7cbe6";
 const eventIconImageCache = {};
 
 function loadEventIcon(eventName) {
-  const key = classifyWcaEvent(eventName) || `CUSTOM:${eventName}`;
+  const key = classifyEventForIcon(eventName) || `CUSTOM:${eventName}`;
   if (eventIconImageCache[key]) return eventIconImageCache[key];
 
   let svg;
-  const kind = classifyWcaEvent(eventName);
+  const kind = classifyEventForIcon(eventName);
   if (kind === "OH") svg = ohIconSvg(EVENT_ICON_COLOR);
   else if (kind === "PYRA") svg = pyraminxIconSvg(EVENT_ICON_COLOR);
   else if (kind === "SKEWB") svg = skewbIconSvg(EVENT_ICON_COLOR);
   else if (kind === "CLOCK") svg = clockIconSvg(EVENT_ICON_COLOR);
+  else if (kind === "RELAY") svg = relayIconSvg(EVENT_ICON_COLOR);
   else if (kind && kind.startsWith("CUBE")) svg = cubeGridIconSvg(Number(kind.slice(4)), EVENT_ICON_COLOR);
   else svg = genericEventIconSvg(eventName, EVENT_ICON_COLOR);
 
