@@ -247,6 +247,7 @@ function awardToCertData(a) {
     title: a.comp.title,
     evName: a.evName,
     nickname: a.nickname || "-",
+    obdId: a.obdId || "",
     rank: a.rank,
     best: a.best === Infinity ? "-" : formatSecondsToTime(a.best),
     average: a.average === Infinity ? "-" : formatSecondsToTime(a.average),
@@ -273,6 +274,7 @@ function renderAwardItemsHtml(items) {
           data-title="${escapeHtml(cert.title)}"
           data-event="${escapeHtml(cert.evName)}"
           data-nickname="${escapeHtml(cert.nickname)}"
+          data-obdid="${escapeHtml(cert.obdId)}"
           data-rank="${cert.rank}"
           data-best="${escapeHtml(cert.best)}"
           data-average="${escapeHtml(cert.average)}"
@@ -329,9 +331,12 @@ function createAwardsController(ids, isEligible) {
         for (const placement of placements) {
           if (placement.rank == null || placement.rank > 3) continue;
           const best = bestSingleFromTimes(placement.times);
+          // 상장에 OBD ID를 함께 표시하기 위해 입상자(3위 이내)만 프로필을 조회한다.
+          const profile = await fetchUserProfile(placement.p.uid).catch(() => null);
           awards.push({
             comp, ev, evName: canonicalEventName(ev.name), format,
             best, average: placement.average, nickname: placement.p.nickname,
+            obdId: (profile && profile.obdId) || "",
             round: placement.round, rank: placement.rank
           });
         }
@@ -805,6 +810,7 @@ auth.onAuthStateChanged(async (user) => {
     await logOut();
     return;
   }
+  await ensureObdIdAssigned(user.uid);
 
   el("user-nickname").textContent = AppState.profile.nickname;
   el("nav-admin").classList.toggle("hidden", !AppState.isAdmin);

@@ -1446,7 +1446,7 @@ el("btn-badge-maker").addEventListener("click", async () => {
       mainOrganizer: currentCompData.organizerNickname || "-"
     };
     const personalEvents = await fetchPersonalEventNames(currentCompId, events, AppState.user.uid);
-    await openBadgeModal(buildBadgeData(AppState.profile.nickname, isMainOrganizer ? "organizer" : "coorganizer", ctx, personalEvents));
+    await openBadgeModal(buildBadgeData(AppState.profile.nickname, isMainOrganizer ? "organizer" : "coorganizer", ctx, personalEvents, AppState.profile.obdId));
   } catch (err) {
     showToast("명찰 생성에 실패했습니다: " + err.message, "error");
   }
@@ -1500,7 +1500,16 @@ el("btn-badge-maker-bulk").addEventListener("click", async () => {
       people.push({ uid, name: info.nickname, role: "participant" });
     });
 
-    openBulkEditModal("badge", people.map(p => buildBadgeData(p.name, p.role, ctx, personalEventsOf(p.uid))));
+    // OBD ID 조회: 공동주최자/스태프는 이미 위에서 가져온 프로필을 재사용하고,
+    // 대표 주최자·참가자는 아직 프로필을 조회한 적이 없으므로 한 번에 가져온다.
+    const obdIdByUid = new Map();
+    coUids.forEach((uid, i) => { if (coProfiles[i]) obdIdByUid.set(uid, coProfiles[i].obdId); });
+    staffUids.forEach((uid, i) => { if (staffProfiles[i]) obdIdByUid.set(uid, staffProfiles[i].obdId); });
+    const uidsNeedingProfile = people.map(p => p.uid).filter(uid => !obdIdByUid.has(uid));
+    const fetchedProfiles = await Promise.all(uidsNeedingProfile.map(uid => fetchUserProfile(uid).catch(() => null)));
+    uidsNeedingProfile.forEach((uid, i) => { obdIdByUid.set(uid, fetchedProfiles[i] && fetchedProfiles[i].obdId); });
+
+    openBulkEditModal("badge", people.map(p => buildBadgeData(p.name, p.role, ctx, personalEventsOf(p.uid), obdIdByUid.get(p.uid))));
   } catch (err) {
     showToast("명찰 일괄 발급에 실패했습니다: " + err.message, "error");
   }

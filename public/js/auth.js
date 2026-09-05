@@ -27,6 +27,17 @@ async function loadProfile(uid) {
   return AppState.profile;
 }
 
+// OBD ID 도입 이전에 가입한 계정에는 obdId가 없으므로, 로그인할 때마다
+// 없으면 발급해서 채워준다. 실패해도 로그인 자체를 막지 않고 다음 로그인 때 다시 시도한다.
+async function ensureObdIdAssigned(uid) {
+  if (!AppState.profile || AppState.profile.obdId) return;
+  try {
+    const obdId = await generateObdId(AppState.profile.nickname);
+    await db.collection("users").doc(uid).update({ obdId });
+    AppState.profile.obdId = obdId;
+  } catch (e) { /* 다음 로그인 때 다시 시도됨 */ }
+}
+
 async function isNicknameTaken(nickname) {
   const snap = await db.collection("nicknames").doc(nickname).get();
   return snap.exists;

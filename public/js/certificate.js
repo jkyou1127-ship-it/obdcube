@@ -133,6 +133,13 @@ async function drawCertificate(canvas, data) {
   ctx.font = `400 ${Math.round(cardW * 0.095)}px ${CERT_FONT_DISPLAY}`;
   ctx.fillText(data.nickname, W / 2, cardY + cardH * 0.495);
 
+  // OBD ID (있으면 닉네임 바로 아래에 작게 표시)
+  if (data.obdId) {
+    ctx.fillStyle = "#8a90c0";
+    ctx.font = `600 ${Math.round(cardW * 0.026)}px ${CERT_FONT_BODY}`;
+    ctx.fillText(`OBD ID ${data.obdId}`, W / 2, cardY + cardH * 0.545);
+  }
+
   // 대회명 / 종목 / 날짜
   ctx.fillStyle = "#c7cbe6";
   ctx.font = `600 ${Math.round(cardW * 0.032)}px ${CERT_FONT_BODY}`;
@@ -192,6 +199,7 @@ document.addEventListener("click", (e) => {
     title: btn.dataset.title,
     evName: btn.dataset.event,
     nickname: btn.dataset.nickname,
+    obdId: btn.dataset.obdid,
     rank: Number(btn.dataset.rank),
     best: btn.dataset.best,
     average: btn.dataset.average,
@@ -367,12 +375,13 @@ const BADGE_ROLE_META = {
 // 스태프는 전체 종목을 관리하므로) ctx.events(대회 전체 종목)를 그대로 쓴다.
 // footerBox2Value는 role에 따라 매번 다시 계산해야 하므로(대표 주최자는 항상
 // "OBD Cube", 나머지는 항상 자기 이름) role을 그대로 들고 다니고 drawBadge에서 계산한다.
-function buildBadgeData(name, role, ctx, personalEvents) {
+function buildBadgeData(name, role, ctx, personalEvents, obdId) {
   const meta = BADGE_ROLE_META[role] || BADGE_ROLE_META.participant;
   return {
     title: ctx.title,
     year: ctx.year,
     name,
+    obdId: obdId || "",
     role,
     events: personalEvents || ctx.events,
     mainOrganizer: ctx.mainOrganizer,
@@ -554,6 +563,13 @@ async function drawBadge(canvas, data) {
   ctx.fillStyle = verticalGradient(ctx, H * 0.35, H * 0.58, ["#8a5bff", "#5b7cff"]);
   ctx.font = `400 ${Math.round(H * 0.17)}px ${CERT_FONT_DISPLAY}`;
   ctx.fillText(data.name, W / 2, H * 0.56);
+
+  // OBD ID (있으면 이름 바로 아래에 작게 표시)
+  if (data.obdId) {
+    ctx.fillStyle = "#8a90c0";
+    ctx.font = `600 ${Math.round(H * 0.028)}px ${CERT_FONT_BODY}`;
+    ctx.fillText(`OBD ID ${data.obdId}`, W / 2, H * 0.615);
+  }
 
   // 종목 아이콘 (WCA 종목을 본뜬 픽토그램) - 참가자는 본인이 신청한 종목만 표시된다.
   await drawEventIconsRow(ctx, data.events, W / 2, H * 0.665, W - pad * 2, H * 0.085, H * 0.018);
