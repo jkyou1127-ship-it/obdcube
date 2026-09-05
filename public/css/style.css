@@ -136,6 +136,15 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 
 .content { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
 .view h2 { margin-top: 0; }
+
+#view-rules .updated { color: var(--text-dim); font-size: 13px; margin-bottom: 10px; }
+#view-rules h3 { font-size: 16px; margin-top: 28px; border-left: 3px solid var(--primary); padding-left: 10px; }
+#view-rules p, #view-rules li { color: var(--text-dim); font-size: 14px; line-height: 1.7; }
+#view-rules ul, #view-rules ol { padding-left: 20px; }
+#view-rules .notice {
+  background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--warn);
+  border-radius: 8px; padding: 14px 16px; margin: 16px 0;
+}
 .desc { color: var(--text-dim); font-size: 14px; }
 .meta { color: var(--text-dim); font-size: 13px; }
 
