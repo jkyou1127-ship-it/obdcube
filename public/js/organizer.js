@@ -1392,42 +1392,52 @@ el("btn-badge-maker").addEventListener("click", async () => {
   try {
     const events = await fetchEvents(currentCompId);
     const isMainOrganizer = currentCompData.organizerUid === AppState.user.uid;
-    await openBadgeModal({
+    const ctx = {
       title: currentCompData.title,
       year: (currentCompData.startDate || "").slice(0, 4),
-      name: AppState.profile.nickname,
       events: events.map(ev => canonicalEventName(ev.name)),
-      mainOrganizer: currentCompData.organizerNickname || "-",
-      isMainOrganizer
-    });
+      mainOrganizer: currentCompData.organizerNickname || "-"
+    };
+    await openBadgeModal(buildBadgeData(AppState.profile.nickname, isMainOrganizer ? "organizer" : "coorganizer", ctx));
   } catch (err) {
     showToast("명찰 생성에 실패했습니다: " + err.message, "error");
   }
 });
 
+// 주최자/공동주최자/스태프뿐 아니라 이 대회에 참가 신청한 모든 참가자까지
+// 포함해 명찰을 한 번에 만든다. 여러 종목에 신청했거나 운영진이 동시에
+// 참가자이기도 한 경우 uid 기준으로 한 사람당 명찰 1장만 생성한다.
 el("btn-badge-maker-bulk").addEventListener("click", async () => {
   if (!currentCompId || !currentCompData) return;
   try {
     const events = await fetchEvents(currentCompId);
-    const eventNames = events.map(ev => canonicalEventName(ev.name));
-    const mainOrganizer = currentCompData.organizerNickname || "-";
-    const year = (currentCompData.startDate || "").slice(0, 4);
+    const ctx = {
+      title: currentCompData.title,
+      year: (currentCompData.startDate || "").slice(0, 4),
+      events: events.map(ev => canonicalEventName(ev.name)),
+      mainOrganizer: currentCompData.organizerNickname || "-"
+    };
 
-    const people = [{ name: mainOrganizer, isMainOrganizer: true }];
     const coUids = currentCompData.coOrganizerUids || [];
-    const coProfiles = await Promise.all(coUids.map(uid => fetchUserProfile(uid).catch(() => null)));
-    coProfiles.forEach(p => {
-      if (p && p.nickname) people.push({ name: p.nickname, isMainOrganizer: false });
+    const staffUids = currentCompData.staffUids || [];
+    const [coProfiles, staffProfiles, rosterLists] = await Promise.all([
+      Promise.all(coUids.map(uid => fetchUserProfile(uid).catch(() => null))),
+      Promise.all(staffUids.map(uid => fetchUserProfile(uid).catch(() => null))),
+      Promise.all(events.map(ev => fetchRoster(currentCompId, ev.id).catch(() => [])))
+    ]);
+
+    const people = [{ name: ctx.mainOrganizer, role: "organizer" }];
+    coProfiles.forEach(p => { if (p && p.nickname) people.push({ name: p.nickname, role: "coorganizer" }); });
+    staffProfiles.forEach(p => { if (p && p.nickname) people.push({ name: p.nickname, role: "staff" }); });
+
+    const seenUids = new Set([currentCompData.organizerUid, ...coUids, ...staffUids]);
+    rosterLists.flat().forEach(r => {
+      if (seenUids.has(r.uid)) return;
+      seenUids.add(r.uid);
+      people.push({ name: r.nickname, role: "participant" });
     });
 
-    await bulkDownloadBadges(people.map(p => ({
-      title: currentCompData.title,
-      year,
-      name: p.name,
-      events: eventNames,
-      mainOrganizer,
-      isMainOrganizer: p.isMainOrganizer
-    })));
+    await bulkDownloadBadges(people.map(p => buildBadgeData(p.name, p.role, ctx)));
   } catch (err) {
     showToast("명찰 일괄 발급에 실패했습니다: " + err.message, "error");
   }

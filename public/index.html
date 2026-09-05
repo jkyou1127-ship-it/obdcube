@@ -467,7 +467,7 @@
         <button type="button" class="btn small" id="btn-reopen-events">종목추가 재개</button>
         <button type="button" class="btn small" id="btn-edit-dates">날짜 변경</button>
         <button type="button" class="btn small" id="btn-badge-maker">명찰 발급</button>
-        <button type="button" class="btn small" id="btn-badge-maker-bulk">주최팀 명찰 일괄 발급</button>
+        <button type="button" class="btn small" id="btn-badge-maker-bulk">전체 명찰 일괄 발급</button>
         <button type="button" class="btn small" id="btn-end-competition">대회 종료</button>
         <button type="button" class="btn small danger" id="btn-delete-competition">대회 삭제</button>
       </div>
@@ -811,6 +811,7 @@
   <div class="modal-box">
     <button type="button" class="modal-close" id="btn-close-cert-modal" aria-label="닫기">✕</button>
     <canvas id="certificate-canvas"></canvas>
+    <input type="text" id="cert-name-input" placeholder="이름 (닉네임 대신 실명 등으로 수정 가능)" maxlength="30" />
     <div class="modal-actions">
       <button type="button" class="btn primary" id="btn-download-cert">이미지로 저장</button>
     </div>
@@ -822,6 +823,7 @@
   <div class="modal-box">
     <button type="button" class="modal-close" id="btn-close-badge-modal" aria-label="닫기">✕</button>
     <canvas id="badge-canvas"></canvas>
+    <input type="text" id="badge-name-input" placeholder="이름 (닉네임 대신 실명 등으로 수정 가능)" maxlength="30" />
     <div class="modal-actions">
       <button type="button" class="btn primary" id="btn-download-badge">이미지로 저장</button>
     </div>

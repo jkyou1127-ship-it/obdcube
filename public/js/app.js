@@ -242,6 +242,7 @@ Object.keys(COMPETITIONS_FILTER_LABELS).forEach(key => {
 // 입상 내역 항목(캐시 원본) -> 상장 메이커가 쓰는 평면 데이터로 변환.
 // 개별 "상장 발급" 버튼과 전체 일괄 다운로드가 이 변환을 함께 사용한다.
 function awardToCertData(a) {
+  const coNames = a.comp.coOrganizerNames || [];
   return {
     title: a.comp.title,
     evName: a.evName,
@@ -250,6 +251,7 @@ function awardToCertData(a) {
     best: a.best === Infinity ? "-" : formatSecondsToTime(a.best),
     average: a.average === Infinity ? "-" : formatSecondsToTime(a.average),
     organizer: a.comp.organizerNickname || "-",
+    coOrganizer: coNames.join(", "),
     date: formatDateRange(a.comp.startDate, a.comp.endDate)
   };
 }
@@ -275,6 +277,7 @@ function renderAwardItemsHtml(items) {
           data-best="${escapeHtml(cert.best)}"
           data-average="${escapeHtml(cert.average)}"
           data-organizer="${escapeHtml(cert.organizer)}"
+          data-coorganizer="${escapeHtml(cert.coOrganizer)}"
           data-date="${escapeHtml(cert.date)}"
         >상장 발급</button>
       </div>
@@ -299,6 +302,13 @@ function createAwardsController(ids, isEligible) {
     const comps = (await fetchCompetitions()).filter(c => c.status === "ended" && isEligible(c));
     const awards = [];
     for (const comp of comps) {
+      // 상장의 "플랫폼" 자리에 공동주최자가 있으면 대신 그 이름을 보여주기 위해
+      // 대회당 한 번만 공동주최자 닉네임을 조회해 comp 객체에 붙여둔다.
+      const coProfiles = await Promise.all(
+        (comp.coOrganizerUids || []).map(uid => fetchUserProfile(uid).catch(() => null))
+      );
+      comp.coOrganizerNames = coProfiles.map(p => p && p.nickname).filter(Boolean);
+
       const events = await fetchEvents(comp.id);
       for (const ev of events) {
         const participants = await fetchParticipants(comp.id, ev.id);

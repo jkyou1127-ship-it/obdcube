@@ -136,10 +136,18 @@ async function drawCertificate(canvas, data) {
   const rightX = W / 2 + gap / 2;
 
   drawCertFooterBox(ctx, leftX, boxY, boxW, boxH, "주최", data.organizer);
-  drawCertFooterBox(ctx, rightX, boxY, boxW, boxH, "플랫폼", "OBD Cube");
+  if (data.coOrganizer) {
+    drawCertFooterBox(ctx, rightX, boxY, boxW, boxH, "공동주최", data.coOrganizer);
+  } else {
+    drawCertFooterBox(ctx, rightX, boxY, boxW, boxH, "플랫폼", "OBD Cube");
+  }
 }
 
+// 미리보기 모달에 열려 있는 상장의 데이터 - 이름 입력창에서 실시간으로 고쳐 다시 그릴 때 쓴다.
+let currentCertData = null;
+
 async function openCertificateModal(data) {
+  currentCertData = { ...data };
   const canvas = el("certificate-canvas");
   canvas.width = 900;
   canvas.height = 1272;
@@ -147,9 +155,10 @@ async function openCertificateModal(data) {
   ctx.fillStyle = "#12152a";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  el("cert-name-input").value = currentCertData.nickname;
   el("certificate-modal").classList.remove("hidden");
   try {
-    await drawCertificate(canvas, data);
+    await drawCertificate(canvas, currentCertData);
   } catch (err) {
     showToast("상장 생성에 실패했습니다: " + err.message, "error");
   }
@@ -170,6 +179,7 @@ document.addEventListener("click", (e) => {
     best: btn.dataset.best,
     average: btn.dataset.average,
     organizer: btn.dataset.organizer,
+    coOrganizer: btn.dataset.coorganizer,
     date: btn.dataset.date
   });
 });
@@ -177,6 +187,16 @@ document.addEventListener("click", (e) => {
 el("btn-close-cert-modal").addEventListener("click", closeCertificateModal);
 el("certificate-modal").addEventListener("click", (e) => {
   if (e.target.id === "certificate-modal") closeCertificateModal();
+});
+
+// 닉네임 대신 실명 등으로 표시 이름을 바꿔볼 수 있는 편집 입력 - 미리보기에만
+// 반영되고 실제 계정 닉네임은 바꾸지 않는다.
+el("cert-name-input").addEventListener("input", async () => {
+  if (!currentCertData) return;
+  currentCertData.nickname = el("cert-name-input").value.trim() || "-";
+  try {
+    await drawCertificate(el("certificate-canvas"), currentCertData);
+  } catch (err) { /* 입력 중 일시적 오류는 무시하고 다음 입력에서 다시 그린다 */ }
 });
 
 el("btn-download-cert").addEventListener("click", () => {
@@ -258,6 +278,33 @@ async function bulkDownloadBadges(dataList) {
 
 // ---- 명찰 메이커 ----
 
+// 역할별 명찰 부제("2026 · ORGANIZER" 등)와 하단 오른쪽 박스 라벨.
+// 대표 주최자만 하단 오른쪽 박스가 "플랫폼/OBD Cube"이고, 나머지는 모두
+// 본인 이름을 다시 보여준다 (왼쪽 "주최" 박스는 항상 대표 주최자 이름).
+const BADGE_ROLE_META = {
+  organizer: { subtitle: "ORGANIZER", footerLabel: "플랫폼" },
+  coorganizer: { subtitle: "CO-ORGANIZER", footerLabel: "공동주최" },
+  staff: { subtitle: "STAFF", footerLabel: "스태프" },
+  participant: { subtitle: "PARTICIPANT", footerLabel: "참가자" }
+};
+
+// ctx: { title, year, events, mainOrganizer } - 대회 공통 정보. role: BADGE_ROLE_META의 키.
+// footerBox2Value는 role에 따라 매번 다시 계산해야 하므로(대표 주최자는 항상
+// "OBD Cube", 나머지는 항상 자기 이름) role을 그대로 들고 다니고 drawBadge에서 계산한다.
+function buildBadgeData(name, role, ctx) {
+  const meta = BADGE_ROLE_META[role] || BADGE_ROLE_META.participant;
+  return {
+    title: ctx.title,
+    year: ctx.year,
+    name,
+    role,
+    events: ctx.events,
+    mainOrganizer: ctx.mainOrganizer,
+    roleLabel: meta.subtitle,
+    footerBox2Label: meta.footerLabel
+  };
+}
+
 function wrapCenteredText(ctx, text, cx, y, maxWidth, lineHeight) {
   const words = text.split(" ");
   let line = "";
@@ -303,7 +350,7 @@ async function drawBadge(canvas, data) {
   ctx.fillText(data.title, W - pad, pad + H * 0.05);
   ctx.fillStyle = "#8a90c0";
   ctx.font = `600 ${Math.round(H * 0.032)}px ${CERT_FONT_BODY}`;
-  ctx.fillText(`${data.year} · ORGANIZER`, W - pad, pad + H * 0.10);
+  ctx.fillText(`${data.year} · ${data.roleLabel}`, W - pad, pad + H * 0.10);
 
   // 이름 (큼직하게, 중앙)
   ctx.textAlign = "center";
@@ -316,22 +363,23 @@ async function drawBadge(canvas, data) {
   ctx.font = `600 ${Math.round(H * 0.032)}px ${CERT_FONT_BODY}`;
   wrapCenteredText(ctx, data.events.join(" · "), W / 2, H * 0.685, W - pad * 2, H * 0.045);
 
-  // 하단 박스: 주최 + (본인이 대표 주최자면 플랫폼, 공동 주최자면 공동주최 본인 이름)
+  // 하단 박스: 왼쪽은 항상 대표 주최자, 오른쪽은 역할별 라벨(플랫폼/공동주최/스태프/참가자)
   const boxY = H * 0.78;
   const boxH = H * 0.20;
   const boxW = W * 0.34;
   const gap = W * 0.05;
   const leftX = W / 2 - gap / 2 - boxW;
   const rightX = W / 2 + gap / 2;
+  const footerBox2Value = data.role === "organizer" ? "OBD Cube" : data.name;
   drawCertFooterBox(ctx, leftX, boxY, boxW, boxH, "주최", data.mainOrganizer);
-  if (data.isMainOrganizer) {
-    drawCertFooterBox(ctx, rightX, boxY, boxW, boxH, "플랫폼", "OBD Cube");
-  } else {
-    drawCertFooterBox(ctx, rightX, boxY, boxW, boxH, "공동주최", data.name);
-  }
+  drawCertFooterBox(ctx, rightX, boxY, boxW, boxH, data.footerBox2Label, footerBox2Value);
 }
 
+// 미리보기 모달에 열려 있는 명찰의 데이터 - 이름 입력창에서 실시간으로 고쳐 다시 그릴 때 쓴다.
+let currentBadgeData = null;
+
 async function openBadgeModal(data) {
+  currentBadgeData = { ...data };
   const canvas = el("badge-canvas");
   canvas.width = 1000;
   canvas.height = 600;
@@ -339,9 +387,10 @@ async function openBadgeModal(data) {
   ctx.fillStyle = "#12152a";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  el("badge-name-input").value = currentBadgeData.name;
   el("badge-modal").classList.remove("hidden");
   try {
-    await drawBadge(canvas, data);
+    await drawBadge(canvas, currentBadgeData);
   } catch (err) {
     showToast("명찰 생성에 실패했습니다: " + err.message, "error");
   }
@@ -354,6 +403,16 @@ function closeBadgeModal() {
 el("btn-close-badge-modal").addEventListener("click", closeBadgeModal);
 el("badge-modal").addEventListener("click", (e) => {
   if (e.target.id === "badge-modal") closeBadgeModal();
+});
+
+// 닉네임 대신 실명 등으로 표시 이름을 바꿔볼 수 있는 편집 입력 - 미리보기에만
+// 반영되고 실제 계정 닉네임은 바꾸지 않는다.
+el("badge-name-input").addEventListener("input", async () => {
+  if (!currentBadgeData) return;
+  currentBadgeData.name = el("badge-name-input").value.trim() || "-";
+  try {
+    await drawBadge(el("badge-canvas"), currentBadgeData);
+  } catch (err) { /* 입력 중 일시적 오류는 무시하고 다음 입력에서 다시 그린다 */ }
 });
 
 el("btn-download-badge").addEventListener("click", () => {
