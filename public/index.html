@@ -731,6 +731,19 @@
   </div>
 </div>
 
+<!-- 다일차 대회의 "N일차 종료" 시 그날 종목 중 결선이 끝난 종목만 골라 공개하는 모달 -->
+<div id="day-end-modal" class="modal-overlay hidden">
+  <div class="modal-box day-end-box">
+    <button type="button" class="modal-close" id="btn-close-day-end-modal" aria-label="닫기">✕</button>
+    <h3 id="day-end-modal-title">일차 종료 - 종목 선택</h3>
+    <p class="desc">결선이 끝난 종목만 선택하면, 그 종목만 입상 내역/상장 발급에서 먼저 공개됩니다.</p>
+    <div id="day-end-event-list" class="day-end-event-list"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn primary" id="btn-day-end-confirm">선택한 종목 종료</button>
+    </div>
+  </div>
+</div>
+
 <!-- Firebase SDK (compat, classic script - Electron file:// 환경에서도 안전) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>

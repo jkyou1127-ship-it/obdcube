@@ -359,11 +359,12 @@ async function setEventDay(compId, eventId, dayNumber) {
   await db.collection("competitions").doc(compId).collection("events").doc(eventId).update({ dayNumber });
 }
 
-// 대회 전체를 종료하지 않고도, 그날 배정된 종목들의 결선이 끝났다는 것만
-// 표시해 입상 내역/상장 발급을 그 종목들에 한해 먼저 열어준다.
-async function endCompetitionDay(compId, dayNumber) {
+// 대회 전체를 종료하지 않고도, 결선이 끝난 종목만 골라 입상 내역/상장 발급을
+// 먼저 열어준다 (같은 날짜에 배정된 종목이라도 아직 안 끝난 게 있을 수 있음).
+async function endCompetitionDayEvents(compId, eventIds) {
+  if (!eventIds || eventIds.length === 0) return;
   await db.collection("competitions").doc(compId).update({
-    endedDays: firebase.firestore.FieldValue.arrayUnion(dayNumber)
+    endedEventIds: firebase.firestore.FieldValue.arrayUnion(...eventIds)
   });
 }
 

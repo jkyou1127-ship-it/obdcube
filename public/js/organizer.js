@@ -339,7 +339,11 @@ async function openCompetitionDetail(compId) {
   el("btn-reopen-events").classList.toggle("hidden", isEnded || comp.eventsClosed !== true);
   el("btn-edit-dates").classList.toggle("hidden", isEnded);
   el("btn-end-competition").classList.toggle("hidden", isEnded);
-  renderDayEndActions(comp, canManage, isEnded);
+  try {
+    await renderDayEndActions(comp, canManage, isEnded);
+  } catch (err) {
+    el("day-end-actions").classList.add("hidden");
+  }
   el("coorganizer-panel").classList.toggle("hidden", !canManage);
   el("staff-panel").classList.toggle("hidden", !canManage);
   el("event-request-panel").classList.toggle("hidden", eventsClosed);
@@ -1352,10 +1356,10 @@ el("btn-reopen-events").addEventListener("click", async () => {
   }
 });
 
-// 다일차(2일 이상) 대회에서, 대회 전체를 종료하지 않고도 그날 배정된 종목들의
-// 결선 결과를 먼저 입상 내역/상장 발급에 공개할 수 있게 하는 "N일차 종료" 버튼들.
-// 이미 종료된 일차는 비활성화된 채로 표시된다.
-function renderDayEndActions(comp, canManage, isEnded) {
+// 다일차(2일 이상) 대회에서, 대회 전체를 종료하지 않고도 결선이 끝난 종목만
+// 골라 입상 내역/상장 발급에 먼저 공개할 수 있게 하는 "N일차 종료" 버튼들.
+// 그날로 지정된 종목이 전부 공개됐으면 비활성화된 채로 표시된다.
+async function renderDayEndActions(comp, canManage, isEnded) {
   const container = el("day-end-actions");
   const totalDays = competitionTotalDays(comp);
   if (!canManage || isEnded || totalDays <= 1) {
@@ -1363,28 +1367,75 @@ function renderDayEndActions(comp, canManage, isEnded) {
     container.innerHTML = "";
     return;
   }
+  const events = await fetchEvents(comp.id);
+  const endedEventIds = comp.endedEventIds || [];
   const endedDays = comp.endedDays || [];
   container.classList.remove("hidden");
   container.innerHTML = Array.from({ length: totalDays }, (_, i) => i + 1).map(day => {
-    const done = endedDays.includes(day);
+    const dayEvents = events.filter(ev => (ev.dayNumber || 1) === day);
+    const done = dayEvents.length > 0 &&
+      dayEvents.every(ev => endedEventIds.includes(ev.id) || endedDays.includes(day));
     return `<button type="button" class="btn small day-end-btn" data-day="${day}" ${done ? "disabled" : ""}>
       ${day}일차 ${done ? "종료됨" : "종료"}
     </button>`;
   }).join("");
   container.querySelectorAll(".day-end-btn").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const day = parseInt(btn.dataset.day, 10);
-      if (!confirm(`${day}일차를 종료할까요? 그날로 지정된 종목들의 결선 결과가 입상 내역/상장 발급에서 공개됩니다.`)) return;
-      try {
-        await endCompetitionDay(currentCompId, day);
-        showToast(`${day}일차를 종료했습니다.`, "success");
-        await openCompetitionDetail(currentCompId);
-      } catch (err) {
-        showToast(err.message, "error");
-      }
+    btn.addEventListener("click", () => {
+      openDayEndModal(parseInt(btn.dataset.day, 10), events, endedEventIds, endedDays);
     });
   });
 }
+
+let dayEndModalDay = null;
+
+// "N일차 종료" 버튼을 누르면 그날로 지정된 종목만 골라 체크박스로 보여주고,
+// 그중 아직 공개 안 된 종목만 선택해 입상 내역/상장 발급을 열어줄 수 있다.
+function openDayEndModal(day, events, endedEventIds, endedDays) {
+  dayEndModalDay = day;
+  const dayEvents = events.filter(ev => (ev.dayNumber || 1) === day);
+  el("day-end-modal-title").textContent = `${day}일차 종료 - 종목 선택`;
+  el("day-end-event-list").innerHTML = dayEvents.map(ev => {
+    const alreadyDone = endedEventIds.includes(ev.id) || endedDays.includes(day);
+    return `
+      <label class="day-end-event-row">
+        <input type="checkbox" class="day-end-event-check" data-event="${ev.id}"
+               ${alreadyDone ? "checked disabled" : "checked"} />
+        ${escapeHtml(ev.name)} ${alreadyDone ? "<span class='badge active'>공개됨</span>" : ""}
+      </label>
+    `;
+  }).join("") || "<p class='desc'>이 일차에 배정된 종목이 없습니다.</p>";
+  el("day-end-modal").classList.remove("hidden");
+}
+
+function closeDayEndModal() {
+  el("day-end-modal").classList.add("hidden");
+  dayEndModalDay = null;
+}
+
+el("btn-close-day-end-modal").addEventListener("click", closeDayEndModal);
+el("day-end-modal").addEventListener("click", (e) => {
+  if (e.target.id === "day-end-modal") closeDayEndModal();
+});
+
+el("btn-day-end-confirm").addEventListener("click", async () => {
+  const day = dayEndModalDay;
+  if (day == null || !currentCompId) return;
+  const eventIds = Array.from(el("day-end-event-list").querySelectorAll(".day-end-event-check"))
+    .filter(chk => chk.checked && !chk.disabled)
+    .map(chk => chk.dataset.event);
+  if (eventIds.length === 0) {
+    showToast("공개할 종목을 선택해 주세요.", "error");
+    return;
+  }
+  try {
+    await endCompetitionDayEvents(currentCompId, eventIds);
+    showToast(`${day}일차 선택한 종목을 종료했습니다.`, "success");
+    closeDayEndModal();
+    await openCompetitionDetail(currentCompId);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
 
 // MINI/FAST 대회는 하루만 개최 가능하므로, 유형에 따라 종료일 입력을 숨긴다.
 function updateEditDatesMinifastNotice() {

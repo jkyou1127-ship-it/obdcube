@@ -616,3 +616,24 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
   font-size: 13px;
 }
 .bulk-edit-row input { flex: 1 1 auto; }
+
+.modal-box.day-end-box { max-width: 480px; align-items: stretch; }
+.modal-box.day-end-box h3 { margin: 0; padding-right: 24px; }
+.day-end-event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.day-end-event-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.day-end-event-row input[type="checkbox"] { flex: 0 0 auto; }

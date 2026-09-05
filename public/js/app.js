@@ -300,11 +300,11 @@ function createAwardsController(ids, isEligible) {
     el(ids.eventTabs).innerHTML = "";
     el(ids.subTabs).innerHTML = "";
 
-    // 대회 전체가 종료되지 않았어도, "N일차 종료"로 그날 종목들의 결선 결과가
+    // 대회 전체가 종료되지 않았어도, "N일차 종료"로 종목별 결선 결과가
     // 먼저 공개된 대회는 함께 포함한다 (그 안에서 어떤 종목이 실제로 공개되는지는
     // 아래 종목별 dayReady 체크에서 다시 가른다).
     const comps = (await fetchCompetitions())
-      .filter(c => isEligible(c) && (c.status === "ended" || (c.endedDays && c.endedDays.length > 0)));
+      .filter(c => isEligible(c) && (c.status === "ended" || (c.endedDays && c.endedDays.length > 0) || (c.endedEventIds && c.endedEventIds.length > 0)));
     const awards = [];
     for (const comp of comps) {
       // 상장의 "플랫폼" 자리에 공동주최자가 있으면 대신 그 이름을 보여주기 위해
@@ -316,9 +316,12 @@ function createAwardsController(ids, isEligible) {
 
       const events = await fetchEvents(comp.id);
       for (const ev of events) {
-        // 대회가 아직 종료되지 않았다면, 이 종목이 배정된 일차가 "종료" 처리된
-        // 경우에만 결과를 공개한다 (일차 배정이 없으면 기본 1일차로 취급).
-        const dayReady = comp.status === "ended" || (comp.endedDays || []).includes(ev.dayNumber || 1);
+        // 대회가 아직 종료되지 않았다면, 이 종목이 "N일차 종료"에서 직접
+        // 선택되었거나(종목 단위), 예전 방식대로 그 종목의 일차 전체가
+        // 종료 처리된 경우에만 결과를 공개한다.
+        const dayReady = comp.status === "ended"
+          || (comp.endedEventIds || []).includes(ev.id)
+          || (comp.endedDays || []).includes(ev.dayNumber || 1);
         if (!dayReady) continue;
 
         const participants = await fetchParticipants(comp.id, ev.id);
