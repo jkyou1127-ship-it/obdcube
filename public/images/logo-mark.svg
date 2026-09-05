@@ -1,25 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="OBD Cube logo mark">
   <title>OBD Cube</title>
 
-  <!-- Cube: plain faceted cube (no 3x3 grid) - stands for cubing in general, not one event -->
-  <g transform="translate(24.22,1.15) scale(0.7578)">
-    <path d="M100,11.62 L180,57.81 L100,104 L20,57.81 Z" fill="#f5f5f5" stroke="#12152a" stroke-width="2.5" stroke-linejoin="round"/>
-    <path d="M20,57.81 L100,104 L100,196.38 L20,150.19 Z" fill="#009a44" stroke="#12152a" stroke-width="2.5" stroke-linejoin="round"/>
-    <path d="M100,104 L180,57.81 L180,150.19 L100,196.38 Z" fill="#c8102e" stroke="#12152a" stroke-width="2.5" stroke-linejoin="round"/>
+  <g transform="translate(20,-3.96) scale(0.8)">
+    <!-- Cube: plain faceted cube (no 3x3 grid) - stands for cubing in general, not one event -->
+    <g transform="translate(24.22,1.15) scale(0.7578)">
+      <path d="M100,11.62 L180,57.81 L100,104 L20,57.81 Z" fill="#f5f5f5" stroke="#12152a" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M20,57.81 L100,104 L100,196.38 L20,150.19 Z" fill="#009a44" stroke="#12152a" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M100,104 L180,57.81 L180,150.19 L100,196.38 Z" fill="#c8102e" stroke="#12152a" stroke-width="2.5" stroke-linejoin="round"/>
+    </g>
+
+    <!-- Stand: three different puzzle silhouettes on three podium heights -
+         every event gets a place here, from a standard cube to a Pyraminx
+         to a shape that isn't an official WCA event at all, and the
+         heights double as "competitions of every size". -->
+    <g stroke="#12152a" stroke-width="2.5" stroke-linejoin="round">
+      <!-- 2nd place: Pyraminx-style triangle -->
+      <path d="M56,160.6 L78,196.0 L34,196.0 Z" fill="#5b7cff"/>
+      <!-- 1st place: cube, still the tallest spot -->
+      <path d="M100,150.6 L122,163.3 L100,176.0 L78,163.3 Z" fill="#5b7cff"/>
+      <path d="M78,163.3 L100,176.0 L100,196.0 L78,183.3 Z" fill="#2c3570"/>
+      <path d="M100,176.0 L122,163.3 L122,183.3 L100,196.0 Z" fill="#232b5c"/>
+      <!-- 3rd place: a shape with no official name - the non-WCA events belong too -->
+      <circle cx="144" cy="180" r="16" fill="#5b7cff"/>
+    </g>
   </g>
 
-  <!-- Stand: three different puzzle silhouettes on three podium heights -
-       every event gets a place here, from a standard cube to a Pyraminx
-       to a shape that isn't an official WCA event at all, and the
-       heights double as "competitions of every size". -->
-  <g stroke="#12152a" stroke-width="2.5" stroke-linejoin="round">
-    <!-- 2nd place: Pyraminx-style triangle -->
-    <path d="M56,160.6 L78,196.0 L34,196.0 Z" fill="#5b7cff"/>
-    <!-- 1st place: cube, still the tallest spot -->
-    <path d="M100,150.6 L122,163.3 L100,176.0 L78,163.3 Z" fill="#5b7cff"/>
-    <path d="M78,163.3 L100,176.0 L100,196.0 L78,183.3 Z" fill="#2c3570"/>
-    <path d="M100,176.0 L122,163.3 L122,183.3 L100,196.0 Z" fill="#232b5c"/>
-    <!-- 3rd place: a shape with no official name - the non-WCA events belong too -->
-    <circle cx="144" cy="180" r="16" fill="#5b7cff"/>
-  </g>
+  <!-- OBD wordmark baked into the mark itself, so the icon alone (favicon, app icon) still carries it -->
+  <text x="100" y="190" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800"
+        font-size="34" letter-spacing="1" fill="#f5f5f5" stroke="#12152a" stroke-width="3" paint-order="stroke" stroke-linejoin="round">OBD</text>
 </svg>
