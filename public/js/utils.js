@@ -23,6 +23,7 @@ function canonicalEventName(name) {
 // 상장/명찰의 종목 아이콘 선택과 종목 목록의 공인/비공인 표시가 모두 이 분류를 쓴다.
 function classifyWcaEvent(name) {
   const n = String(name || "");
+  if (n.includes("피셔") || /fisher/i.test(n)) return null; // 피셔 큐브 등 변형 큐브는 비공인
   if (n.includes("한손") || /\bOH\b/i.test(n)) return "OH";
   if (n.includes("피라밍크스") || /pyraminx/i.test(n)) return "PYRA";
   if (n.includes("스큐브") || /skewb/i.test(n)) return "SKEWB";
