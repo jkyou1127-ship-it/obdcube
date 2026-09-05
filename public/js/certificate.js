@@ -410,15 +410,11 @@ function cubeGridIconSvg(n, color) {
   </svg>`;
 }
 
-// 한손(OH) 종목 - 작은 크기에서도 알아보기 쉽도록 큐브 위에 숫자를 얹는 대신,
-// 펼친 손바닥(손가락 4개 + 엄지) 모양 자체를 아이콘으로 쓴다.
 function ohIconSvg(color) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <rect x="30" y="46" width="40" height="38" rx="14" fill="none" stroke="${color}" stroke-width="6"/>
-    <rect x="34" y="10" width="10" height="42" rx="5" fill="none" stroke="${color}" stroke-width="5"/>
-    <rect x="46" y="6" width="10" height="46" rx="5" fill="none" stroke="${color}" stroke-width="5"/>
-    <rect x="58" y="10" width="10" height="42" rx="5" fill="none" stroke="${color}" stroke-width="5"/>
-    <rect x="10" y="50" width="24" height="11" rx="5.5" fill="none" stroke="${color}" stroke-width="5" transform="rotate(-30 22 55.5)"/>
+    ${cubeGridIconSvg(3, color).replace(/^<svg[^>]*>|<\/svg>$/g, "")}
+    <circle cx="82" cy="82" r="16" fill="${color}"/>
+    <text x="82" y="89" font-size="20" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle" fill="#12152a">1</text>
   </svg>`;
 }
 
