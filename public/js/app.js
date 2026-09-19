@@ -33,6 +33,19 @@ function showMaintenanceScreen(maintenance) {
 
 el("btn-maintenance-logout").addEventListener("click", () => logOut());
 
+// 관리자는 점검 모드가 켜져 있어도 앱을 그대로 쓸 수 있지만, 켜져 있다는 걸
+// 잊지 않도록 배너로만 알려준다 - 끄는 건 관리자 페이지에서만 가능하다.
+function applyMaintenanceAdminBanner(maintenance) {
+  const banner = el("maintenance-admin-banner");
+  if (AppState.isAdmin && maintenance && maintenance.enabled) {
+    el("maintenance-admin-banner-text").textContent =
+      `사유: ${maintenance.reason || "-"} / 기간: ${maintenance.until || "-"} (관리자 페이지에서 끌 수 있습니다)`;
+    banner.classList.remove("hidden");
+  } else {
+    banner.classList.add("hidden");
+  }
+}
+
 // ---- 로그인/회원가입 탭 ----
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -826,19 +839,20 @@ auth.onAuthStateChanged(async (user) => {
   }
   await ensureObdIdAssigned(user.uid);
 
-  if (!AppState.isAdmin) {
-    try {
-      const maintenance = await fetchMaintenanceMode();
-      if (maintenance && maintenance.enabled) {
-        showMaintenanceScreen(maintenance);
-        return;
-      }
-    } catch (err) { /* 점검 상태 조회 실패 시에는 평소처럼 접속을 허용한다 */ }
+  let maintenance = null;
+  try {
+    maintenance = await fetchMaintenanceMode();
+  } catch (err) { /* 점검 상태 조회 실패 시에는 평소처럼 접속을 허용한다 */ }
+
+  if (maintenance && maintenance.enabled && !AppState.isAdmin) {
+    showMaintenanceScreen(maintenance);
+    return;
   }
 
   el("user-nickname").textContent = AppState.profile.nickname;
   el("nav-admin").classList.toggle("hidden", !AppState.isAdmin);
   showAppScreen();
+  applyMaintenanceAdminBanner(maintenance);
   applyGlobalAnnouncementBanner().catch(() => {});
   applyOpenCompetitionsBanner().catch(() => {});
   await onNavigate("competitions");

@@ -228,6 +228,7 @@ function initAdminForm() {
       await setMaintenanceMode(true, reason, until);
       showToast("점검 모드를 켰습니다.", "success");
       await renderMaintenanceAdmin();
+      applyMaintenanceAdminBanner(await fetchMaintenanceMode());
     } catch (err) {
       showToast(err.message, "error");
     }
@@ -240,6 +241,7 @@ function initAdminForm() {
       await setMaintenanceMode(false, reason, until);
       showToast("점검 모드를 껐습니다.", "success");
       await renderMaintenanceAdmin();
+      applyMaintenanceAdminBanner(await fetchMaintenanceMode());
     } catch (err) {
       showToast(err.message, "error");
     }

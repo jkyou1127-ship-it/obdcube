@@ -356,6 +356,11 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 .announcement-hint { color: var(--text-dim); font-size: 12px; }
 .announcement-detail { padding: 4px 0 8px; }
 .announcement-text { white-space: pre-wrap; }
+.announcement-banner.warning {
+  background: rgba(255,91,110,.14);
+  border-bottom-color: var(--danger);
+}
+.announcement-banner.warning strong { color: var(--danger); }
 #detail-announcement-banner {
   border: 1px solid var(--border);
   border-radius: var(--radius);
