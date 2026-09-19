@@ -1,9 +1,22 @@
 // 앱 진입점: 인증 상태 감지, 화면 전환, 각 화면 렌더링
 
+// 서비스 잠정 종료(점검) 상태 - 로그인 시/관리자가 켜고 끌 때마다 갱신된다.
+// 관리자는 이 상태여도 접속 자체는 되지만, "관리자" 탭을 뺀 나머지 모든 탭이
+// 이 값에 따라 막힌다 (switchView가 매 탭 전환마다 이 값을 확인한다).
+let maintenanceState = null;
+
+function isMaintenanceBlocking(name) {
+  return AppState.isAdmin && maintenanceState && maintenanceState.enabled && name !== "admin";
+}
+
 function switchView(name) {
   document.querySelectorAll("#view-app .view").forEach(v => v.classList.add("hidden"));
-  const target = el("view-" + name);
-  if (target) target.classList.remove("hidden");
+  const blocked = isMaintenanceBlocking(name);
+  el("maintenance-admin-banner").classList.toggle("hidden", !blocked);
+  if (!blocked) {
+    const target = el("view-" + name);
+    if (target) target.classList.remove("hidden");
+  }
   document.querySelectorAll(".nav-btn").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.nav === name);
   });
@@ -33,16 +46,14 @@ function showMaintenanceScreen(maintenance) {
 
 el("btn-maintenance-logout").addEventListener("click", () => logOut());
 
-// 관리자는 점검 모드가 켜져 있어도 앱을 그대로 쓸 수 있지만, 켜져 있다는 걸
-// 잊지 않도록 배너로만 알려준다 - 끄는 건 관리자 페이지에서만 가능하다.
+// 관리자는 점검 모드(서비스 잠정 종료)가 켜져 있어도 로그인은 되지만, "관리자"
+// 탭을 뺀 나머지 모든 탭은 switchView에서 이 상태를 보고 막아버린다 - 관리자가
+// 할 수 있는 건 관리자 페이지에서 점검 모드를 다시 끄는 것뿐이다.
 function applyMaintenanceAdminBanner(maintenance) {
-  const banner = el("maintenance-admin-banner");
-  if (AppState.isAdmin && maintenance && maintenance.enabled) {
+  maintenanceState = maintenance;
+  if (maintenance && maintenance.enabled) {
     el("maintenance-admin-banner-text").textContent =
-      `사유: ${maintenance.reason || "-"} / 기간: ${maintenance.until || "-"} (관리자 페이지에서 끌 수 있습니다)`;
-    banner.classList.remove("hidden");
-  } else {
-    banner.classList.add("hidden");
+      `사유: ${maintenance.reason || "-"} / 기간: ${maintenance.until || "-"} (관리자 페이지에서 '점검 모드 끄기'를 누르면 다시 이용할 수 있습니다)`;
   }
 }
 
@@ -100,6 +111,7 @@ document.querySelectorAll(".nav-btn").forEach(btn => {
 
 async function onNavigate(name) {
   switchView(name);
+  if (isMaintenanceBlocking(name)) return; // 점검 모드 중엔 관리자 탭 말고는 데이터 조회조차 하지 않는다
   if (name === "competitions") await renderCompetitionsList();
   if (name === "joinapply") await renderJoinApplyList();
   if (name === "minifast") await renderMinifastView();

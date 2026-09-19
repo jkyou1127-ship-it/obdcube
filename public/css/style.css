@@ -358,7 +358,7 @@ label { font-size: 13px; color: var(--text-dim); margin-top: 10px; display: bloc
 .announcement-text { white-space: pre-wrap; }
 .maintenance-full-banner {
   width: 100%;
-  min-height: 220px;
+  min-height: 65vh;
   display: flex;
   align-items: center;
   justify-content: center;
