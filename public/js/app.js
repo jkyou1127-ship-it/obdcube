@@ -1,6 +1,6 @@
 // 앱 진입점: 인증 상태 감지, 화면 전환, 각 화면 렌더링
 
-// 서비스 잠정 종료(점검) 상태 - 로그인 시/관리자가 켜고 끌 때마다 갱신된다.
+// 서비스 종료(점검) 상태 - 로그인 시/관리자가 켜고 끌 때마다 갱신된다.
 // 관리자는 이 상태여도 접속 자체는 되지만, "관리자" 탭을 뺀 나머지 모든 탭이
 // 이 값에 따라 막힌다 (switchView가 매 탭 전환마다 이 값을 확인한다).
 let maintenanceState = null;
@@ -46,7 +46,7 @@ function showMaintenanceScreen(maintenance) {
 
 el("btn-maintenance-logout").addEventListener("click", () => logOut());
 
-// 관리자는 점검 모드(서비스 잠정 종료)가 켜져 있어도 로그인은 되지만, "관리자"
+// 관리자는 점검 모드(서비스 종료)가 켜져 있어도 로그인은 되지만, "관리자"
 // 탭을 뺀 나머지 모든 탭은 switchView에서 이 상태를 보고 막아버린다 - 관리자가
 // 할 수 있는 건 관리자 페이지에서 점검 모드를 다시 끄는 것뿐이다.
 function applyMaintenanceAdminBanner(maintenance) {
