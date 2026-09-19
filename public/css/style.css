@@ -57,6 +57,7 @@ button { cursor: pointer; font-family: inherit; }
 .btn.small { padding: 6px 10px; font-size: 12px; }
 .btn.danger { background: var(--danger); border-color: var(--danger); }
 .btn.success { background: var(--success); border-color: var(--success); }
+a.btn { display: inline-block; text-decoration: none; }
 
 input, textarea, select {
   background: var(--bg-soft);
