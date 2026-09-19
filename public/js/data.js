@@ -335,6 +335,24 @@ async function setGlobalAnnouncement(text, slot) {
   });
 }
 
+// 서비스 점검 모드: 켜져 있으면 관리자를 제외한 모든 사용자의 접속을 막고
+// 사유/기간을 안내하는 점검 화면만 보여준다 (관리자는 평소처럼 접속해
+// 점검 모드를 켜고 끌 수 있다).
+async function fetchMaintenanceMode() {
+  const doc = await db.collection("settings").doc("maintenance").get();
+  return doc.exists ? doc.data() : null;
+}
+
+async function setMaintenanceMode(enabled, reason, until) {
+  await db.collection("settings").doc("maintenance").set({
+    enabled,
+    reason,
+    until,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedByNickname: AppState.profile.nickname
+  });
+}
+
 async function fetchCompetition(compId) {
   const doc = await db.collection("competitions").doc(compId).get();
   return doc.exists ? { id: doc.id, ...doc.data() } : null;

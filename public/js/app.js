@@ -17,9 +17,21 @@ function showAuthScreen() {
 
 function showAppScreen() {
   el("view-auth").classList.add("hidden");
+  el("view-maintenance").classList.add("hidden");
   el("view-app").classList.remove("hidden");
   el("theme-toggle").classList.add("hidden");
 }
+
+function showMaintenanceScreen(maintenance) {
+  el("view-auth").classList.add("hidden");
+  el("view-app").classList.add("hidden");
+  el("view-maintenance").classList.remove("hidden");
+  el("theme-toggle").classList.remove("hidden");
+  el("maintenance-reason").textContent = maintenance.reason ? `사유: ${maintenance.reason}` : "";
+  el("maintenance-until").textContent = maintenance.until ? `기간: ${maintenance.until}` : "";
+}
+
+el("btn-maintenance-logout").addEventListener("click", () => logOut());
 
 // ---- 로그인/회원가입 탭 ----
 document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -813,6 +825,16 @@ auth.onAuthStateChanged(async (user) => {
     return;
   }
   await ensureObdIdAssigned(user.uid);
+
+  if (!AppState.isAdmin) {
+    try {
+      const maintenance = await fetchMaintenanceMode();
+      if (maintenance && maintenance.enabled) {
+        showMaintenanceScreen(maintenance);
+        return;
+      }
+    } catch (err) { /* 점검 상태 조회 실패 시에는 평소처럼 접속을 허용한다 */ }
+  }
 
   el("user-nickname").textContent = AppState.profile.nickname;
   el("nav-admin").classList.toggle("hidden", !AppState.isAdmin);

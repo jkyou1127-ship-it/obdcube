@@ -60,6 +60,21 @@
   </div>
 </div>
 
+<!-- 서비스 점검 모드 - 관리자를 제외한 모든 사용자에게 앱 대신 이 화면만 보여준다 -->
+<div id="view-maintenance" class="auth-wrap hidden">
+  <div class="auth-card">
+    <h1 class="brand">
+      <img src="images/logo-mark.svg" alt="" width="40" height="40" />
+      <span class="brand-word"><span class="brand-word-obd">OBD</span><span class="brand-word-cube">Cube</span></span>
+    </h1>
+    <p class="sub">🔧 서비스 점검 중입니다</p>
+    <p id="maintenance-reason" class="desc"></p>
+    <p id="maintenance-until" class="desc"></p>
+    <p class="desc">점검이 끝나는 대로 다시 이용하실 수 있습니다. 이용에 불편을 드려 죄송합니다.</p>
+    <button type="button" class="btn" id="btn-maintenance-logout">로그아웃</button>
+  </div>
+</div>
+
 <!-- 메인 앱 -->
 <div id="view-app" class="app-wrap hidden">
   <header class="topbar">
@@ -668,6 +683,21 @@
         <form id="form-admin-announcement-2" class="inline-form">
           <textarea id="admin-announcement-input-2" placeholder="공지 2 내용 (비우고 저장하면 삭제됨, Enter로 줄바꿈 가능)" maxlength="500" rows="3"></textarea>
           <button type="submit" class="btn small">공지 2 저장</button>
+        </form>
+      </div>
+      <div class="panel">
+        <h3>서비스 점검 모드</h3>
+        <p class="desc">켜면 관리자를 제외한 모든 사용자의 접속이 막히고, 아래 사유·기간이 적힌 점검 안내 화면만 보여집니다.</p>
+        <p id="admin-maintenance-current" class="desc">점검 모드 꺼짐</p>
+        <form id="form-admin-maintenance" class="plain-form">
+          <label>사유</label>
+          <input type="text" id="admin-maintenance-reason" maxlength="200" placeholder="예: 앱 통합에 따른 점검" />
+          <label>기간</label>
+          <input type="text" id="admin-maintenance-until" maxlength="100" placeholder="예: 2026.09.19 ~ 통합 완료 시까지" />
+          <div class="inline-form">
+            <button type="submit" class="btn danger">점검 모드 켜기</button>
+            <button type="button" class="btn" id="btn-maintenance-disable">점검 모드 끄기</button>
+          </div>
         </form>
       </div>
       <div class="panel">

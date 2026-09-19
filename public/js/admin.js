@@ -1,7 +1,16 @@
 // 관리자 페이지: 대회 주최 신청 승인/반려, 관리자 지정
 
 async function renderAdminView() {
-  await Promise.all([renderPendingApplications(), renderReviewedApplications(), renderAdminsList(), renderGlobalAnnouncementAdmin()]);
+  await Promise.all([renderPendingApplications(), renderReviewedApplications(), renderAdminsList(), renderGlobalAnnouncementAdmin(), renderMaintenanceAdmin()]);
+}
+
+async function renderMaintenanceAdmin() {
+  const maintenance = await fetchMaintenanceMode();
+  el("admin-maintenance-current").textContent = maintenance && maintenance.enabled
+    ? `점검 모드 켜짐 - 사유: ${maintenance.reason || "-"} / 기간: ${maintenance.until || "-"}`
+    : "점검 모드 꺼짐";
+  el("admin-maintenance-reason").value = maintenance ? (maintenance.reason || "") : "";
+  el("admin-maintenance-until").value = maintenance ? (maintenance.until || "") : "";
 }
 
 async function renderGlobalAnnouncementAdmin() {
@@ -205,6 +214,32 @@ function initAdminForm() {
       showToast(text ? "전체 공지 2를 저장했습니다." : "전체 공지 2를 삭제했습니다.", "success");
       await renderGlobalAnnouncementAdmin();
       await applyGlobalAnnouncementBanner();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  });
+
+  el("form-admin-maintenance").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const reason = el("admin-maintenance-reason").value.trim();
+    const until = el("admin-maintenance-until").value.trim();
+    if (!confirm("점검 모드를 켜면 관리자를 제외한 모든 사용자의 접속이 막힙니다. 계속할까요?")) return;
+    try {
+      await setMaintenanceMode(true, reason, until);
+      showToast("점검 모드를 켰습니다.", "success");
+      await renderMaintenanceAdmin();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  });
+
+  el("btn-maintenance-disable").addEventListener("click", async () => {
+    const reason = el("admin-maintenance-reason").value.trim();
+    const until = el("admin-maintenance-until").value.trim();
+    try {
+      await setMaintenanceMode(false, reason, until);
+      showToast("점검 모드를 껐습니다.", "success");
+      await renderMaintenanceAdmin();
     } catch (err) {
       showToast(err.message, "error");
     }
